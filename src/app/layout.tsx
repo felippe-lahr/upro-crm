@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "WaCRM — CRM para WhatsApp",
+  title: "UProCRM — CRM para WhatsApp",
   description: "CRM multi-tenant para WhatsApp Business com bot de IA, funil de vendas e disparos.",
 };
 

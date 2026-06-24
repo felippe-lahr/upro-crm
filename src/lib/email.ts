@@ -14,9 +14,9 @@ export async function sendWelcomeEmail({
   loginUrl: string
 }) {
   await getResend().emails.send({
-    from: 'WaCRM <noreply@wacrm.com.br>',
+    from: 'UProCRM <noreply@uprocrm.com.br>',
     to,
-    subject: 'Bem-vindo ao WaCRM! Seu CRM está pronto.',
+    subject: 'Bem-vindo ao UProCRM! Seu CRM está pronto.',
     html: `
       <h1>Olá, ${name}!</h1>
       <p>Seu CRM WhatsApp está pronto para uso.</p>
@@ -28,7 +28,7 @@ export async function sendWelcomeEmail({
       </p>
       <p>Próximo passo: conecte seu número WhatsApp Business no painel de configurações.</p>
       <hr/>
-      <small>WaCRM — CRM para WhatsApp Business</small>
+      <small>UProCRM — CRM para WhatsApp Business</small>
     `
   })
 }
@@ -41,9 +41,9 @@ export async function sendPasswordResetEmail({
   resetUrl: string
 }) {
   await getResend().emails.send({
-    from: 'WaCRM <noreply@wacrm.com.br>',
+    from: 'UProCRM <noreply@uprocrm.com.br>',
     to,
-    subject: 'Redefinir senha — WaCRM',
+    subject: 'Redefinir senha — UProCRM',
     html: `
       <p>Clique no link abaixo para redefinir sua senha:</p>
       <p><a href="${resetUrl}">${resetUrl}</a></p>

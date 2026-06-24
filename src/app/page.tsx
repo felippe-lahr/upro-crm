@@ -56,9 +56,9 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500">
-              <span className="text-sm font-bold text-white">W</span>
+              <span className="text-xs font-bold text-white">UP</span>
             </div>
-            <span className="text-lg font-bold">WaCRM</span>
+            <span className="text-lg font-bold">UProCRM</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm text-[#9aa6b2] transition-colors hover:text-white">
@@ -184,7 +184,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-[#1b222c] py-8 text-center text-sm text-[#6b7886]">
-        © 2026 WaCRM. Todos os direitos reservados.
+        © 2026 UProCRM. Todos os direitos reservados.
       </footer>
     </div>
   )

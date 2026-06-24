@@ -45,9 +45,9 @@ export default function SignupPage() {
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500">
-              <span className="text-sm font-bold text-white">W</span>
+              <span className="text-xs font-bold text-white">UP</span>
             </div>
-            <span className="text-lg font-bold text-white">WaCRM</span>
+            <span className="text-lg font-bold text-white">UProCRM</span>
           </Link>
           <h1 className="mb-1 mt-6 text-2xl font-bold text-white">Criar sua conta</h1>
           <p className="text-sm text-[#9aa6b2]">7 dias grátis, sem cartão de crédito</p>

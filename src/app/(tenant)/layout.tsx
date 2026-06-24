@@ -39,9 +39,9 @@ export default async function TenantLayout({
         <div className="border-b border-line p-6">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500">
-              <span className="text-sm font-bold text-white">W</span>
+              <span className="text-xs font-bold text-white">UP</span>
             </div>
-            <span className="font-bold text-fg">WaCRM</span>
+            <span className="font-bold text-fg">UProCRM</span>
           </Link>
         </div>
 

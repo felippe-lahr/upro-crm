@@ -36,7 +36,7 @@ function CheckoutContent() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-green-500">
-            <span className="text-xl font-bold text-white">W</span>
+            <span className="text-xl font-bold text-white">UP</span>
           </div>
           <h1 className="mb-1 text-2xl font-bold">Ative sua conta</h1>
           <p className="text-sm text-[#9aa6b2]">

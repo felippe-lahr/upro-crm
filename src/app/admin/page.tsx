@@ -27,9 +27,9 @@ export default async function AdminPage() {
       <div className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-green-500 rounded-md flex items-center justify-center">
-            <span className="text-white font-bold text-xs">W</span>
+            <span className="text-white font-bold text-xs">UP</span>
           </div>
-          <span className="font-bold text-gray-900">WaCRM Admin</span>
+          <span className="font-bold text-gray-900">UProCRM Admin</span>
         </div>
         <span className="text-xs text-gray-400">Painel do SaaS</span>
       </div>
