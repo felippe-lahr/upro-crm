@@ -34,6 +34,7 @@ export default async function TenantLayout({
 
         <nav className="flex-1 p-4 space-y-1">
           <NavItem href="/dashboard" icon="📊" label="Dashboard" />
+          <NavItem href="/funnel" icon="🗂️" label="Funil de Vendas" />
           <NavItem href="/conversations" icon="💬" label="Conversas" />
           <NavItem href="/contacts" icon="👥" label="Contatos" />
           <NavItem href="/settings" icon="⚙️" label="Configurações" />

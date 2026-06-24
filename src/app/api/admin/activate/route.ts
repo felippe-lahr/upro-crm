@@ -60,14 +60,8 @@ export async function GET(req: Request) {
   if (steps.schema === 'ok') {
     try {
       const db = getTenantPrisma(schemaName)
-
-      const existing = await db.contact.count()
-      if (existing === 0) {
-        await seedDemoData(db)
-        steps.seeded = 'ok'
-      } else {
-        steps.seeded = 'já existiam dados'
-      }
+      await seedDemoData(db)
+      steps.seeded = 'ok'
     } catch (error) {
       steps.seedError = error instanceof Error ? error.message : String(error)
     }
@@ -87,6 +81,8 @@ async function seedDemoData(db: any) {
     {
       phone: '5511988887777',
       name: 'Maria Oliveira',
+      stage: 'proposta',
+      deal_value: 97,
       messages: [
         { dir: 'inbound', text: 'Oi! Vi o anúncio de vocês, queria saber mais sobre os planos.', mins: 120 },
         { dir: 'outbound', text: 'Olá Maria! Claro 😊 Temos o plano Básico por R$97/mês com bot de IA incluso. Quer que eu te explique?', mins: 118, bot: true },
@@ -97,6 +93,8 @@ async function seedDemoData(db: any) {
     {
       phone: '5521977776666',
       name: 'João Santos',
+      stage: 'em_atendimento',
+      deal_value: 197,
       messages: [
         { dir: 'inbound', text: 'Bom dia, vocês fazem integração com meu número atual?', mins: 60 },
         { dir: 'outbound', text: 'Bom dia João! Fazemos sim, pela API oficial da Meta. Conexão em 2 minutos, sem risco de ban.', mins: 58, bot: true },
@@ -106,6 +104,8 @@ async function seedDemoData(db: any) {
     {
       phone: '5531966665555',
       name: 'Ana Costa',
+      stage: 'novo_lead',
+      deal_value: 97,
       messages: [
         { dir: 'inbound', text: 'Qual o prazo do teste grátis?', mins: 20 },
         { dir: 'outbound', text: 'São 7 dias grátis, sem precisar cadastrar cartão 🎉', mins: 18, bot: true }
@@ -114,13 +114,21 @@ async function seedDemoData(db: any) {
   ]
 
   for (const c of demo) {
-    const contact = await db.contact.create({
-      data: {
+    const contact = await db.contact.upsert({
+      where: { whatsapp_id: c.phone },
+      update: { name: c.name, stage: c.stage, deal_value: c.deal_value },
+      create: {
         whatsapp_id: c.phone,
         phone: c.phone,
-        name: c.name
+        name: c.name,
+        stage: c.stage,
+        deal_value: c.deal_value
       }
     })
+
+    // só cria conversa/mensagens se ainda não houver mensagens para o contato
+    const msgCount = await db.message.count({ where: { contact_id: contact.id } })
+    if (msgCount > 0) continue
 
     const conversation = await db.conversation.create({
       data: { contact_id: contact.id, status: 'open' }

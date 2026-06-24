@@ -60,6 +60,9 @@ model Contact {
   whatsapp_id  String   @unique
   name         String?
   phone        String
+  stage        String   @default("novo_lead")
+  deal_value   Decimal? @db.Decimal(12, 2)
+  notes        String?
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
