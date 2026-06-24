@@ -23,41 +23,49 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Senha deve ter ao menos 8 caracteres' }, { status: 400 })
   }
 
-  const existing = await globalPrisma.tenant.findUnique({ where: { email } })
-  if (existing) {
-    return Response.json({ error: 'Email já cadastrado' }, { status: 409 })
-  }
-
-  const baseSlug = slugify(name)
-  let slug = baseSlug
-  let suffix = 1
-  while (await globalPrisma.tenant.findUnique({ where: { slug } })) {
-    slug = `${baseSlug}-${suffix++}`
-  }
-
-  const schemaName = `tenant_${slug.replace(/-/g, '_')}`
-
-  const tenant = await globalPrisma.tenant.create({
-    data: {
-      name,
-      email,
-      slug,
-      schema_name: schemaName,
-      status: 'pending_payment',
-      plan: 'trial'
+  try {
+    const existing = await globalPrisma.tenant.findUnique({ where: { email } })
+    if (existing) {
+      return Response.json({ error: 'Email já cadastrado' }, { status: 409 })
     }
-  })
 
-  const passwordHash = await bcrypt.hash(password, 12)
-  await globalPrisma.tenantUser.create({
-    data: {
-      tenant_id: tenant.id,
-      email,
-      name,
-      role: 'admin',
-      password_hash: passwordHash
+    const baseSlug = slugify(name)
+    let slug = baseSlug
+    let suffix = 1
+    while (await globalPrisma.tenant.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${suffix++}`
     }
-  })
 
-  return Response.json({ tenantId: tenant.id })
+    const schemaName = `tenant_${slug.replace(/-/g, '_')}`
+
+    const tenant = await globalPrisma.tenant.create({
+      data: {
+        name,
+        email,
+        slug,
+        schema_name: schemaName,
+        status: 'pending_payment',
+        plan: 'trial'
+      }
+    })
+
+    const passwordHash = await bcrypt.hash(password, 12)
+    await globalPrisma.tenantUser.create({
+      data: {
+        tenant_id: tenant.id,
+        email,
+        name,
+        role: 'admin',
+        password_hash: passwordHash
+      }
+    })
+
+    return Response.json({ tenantId: tenant.id })
+  } catch (error) {
+    console.error('[signup] error:', error)
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'Erro ao criar conta' },
+      { status: 500 }
+    )
+  }
 }
