@@ -83,6 +83,7 @@ async function seedDemoData(db: any) {
       name: 'Maria Oliveira',
       stage: 'proposta',
       deal_value: 97,
+      tags: ['quente', 'instagram'],
       messages: [
         { dir: 'inbound', text: 'Oi! Vi o anúncio de vocês, queria saber mais sobre os planos.', mins: 120 },
         { dir: 'outbound', text: 'Olá Maria! Claro 😊 Temos o plano Básico por R$97/mês com bot de IA incluso. Quer que eu te explique?', mins: 118, bot: true },
@@ -95,6 +96,7 @@ async function seedDemoData(db: any) {
       name: 'João Santos',
       stage: 'em_atendimento',
       deal_value: 197,
+      tags: ['indicação'],
       messages: [
         { dir: 'inbound', text: 'Bom dia, vocês fazem integração com meu número atual?', mins: 60 },
         { dir: 'outbound', text: 'Bom dia João! Fazemos sim, pela API oficial da Meta. Conexão em 2 minutos, sem risco de ban.', mins: 58, bot: true },
@@ -106,6 +108,7 @@ async function seedDemoData(db: any) {
       name: 'Ana Costa',
       stage: 'novo_lead',
       deal_value: 97,
+      tags: ['frio'],
       messages: [
         { dir: 'inbound', text: 'Qual o prazo do teste grátis?', mins: 20 },
         { dir: 'outbound', text: 'São 7 dias grátis, sem precisar cadastrar cartão 🎉', mins: 18, bot: true }
@@ -116,13 +119,14 @@ async function seedDemoData(db: any) {
   for (const c of demo) {
     const contact = await db.contact.upsert({
       where: { whatsapp_id: c.phone },
-      update: { name: c.name, stage: c.stage, deal_value: c.deal_value },
+      update: { name: c.name, stage: c.stage, deal_value: c.deal_value, tags: c.tags || [] },
       create: {
         whatsapp_id: c.phone,
         phone: c.phone,
         name: c.name,
         stage: c.stage,
-        deal_value: c.deal_value
+        deal_value: c.deal_value,
+        tags: c.tags || []
       }
     })
 
@@ -147,5 +151,19 @@ async function seedDemoData(db: any) {
         }
       })
     }
+  }
+
+  // Respostas rápidas de demonstração
+  const quickReplies = [
+    { shortcut: 'ola', content: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊' },
+    { shortcut: 'planos', content: 'Temos o plano Básico por R$97/mês e o Pro por R$197/mês, ambos com bot de IA incluso.' },
+    { shortcut: 'obrigado', content: 'Obrigado pelo contato! Qualquer dúvida é só chamar. 🙌' }
+  ]
+  for (const q of quickReplies) {
+    await db.quickReply.upsert({
+      where: { shortcut: q.shortcut },
+      update: { content: q.content },
+      create: q
+    })
   }
 }

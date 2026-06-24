@@ -59,49 +59,49 @@ export function KanbanBoard({ initialLeads }: { initialLeads: LeadCard[] }) {
             }}
             onDragLeave={() => setOverStage(null)}
             onDrop={() => onDrop(stage.id)}
-            className={`flex-shrink-0 w-72 rounded-2xl p-3 transition-colors ${
-              overStage === stage.id ? 'bg-green-50 ring-2 ring-green-300' : 'bg-gray-100'
+            className={`w-72 flex-shrink-0 rounded-2xl p-3 transition-colors ${
+              overStage === stage.id ? 'bg-green-500/10 ring-2 ring-green-500/50' : 'bg-surface2'
             }`}
           >
-            <div className="flex items-center justify-between mb-3 px-1">
+            <div className="mb-3 flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${stage.color}`} />
-                <span className="text-sm font-semibold text-gray-700">{stage.label}</span>
-                <span className="text-xs text-gray-400">{stageLeads.length}</span>
+                <span className={`h-2.5 w-2.5 rounded-full ${stage.color}`} />
+                <span className="text-sm font-semibold text-fg">{stage.label}</span>
+                <span className="text-xs text-faint">{stageLeads.length}</span>
               </div>
               {total > 0 && (
-                <span className="text-xs font-medium text-gray-500">
+                <span className="text-xs font-medium text-muted">
                   {formatBRL(String(total))}
                 </span>
               )}
             </div>
 
-            <div className="space-y-2 min-h-[60px]">
+            <div className="min-h-[60px] space-y-2">
               {stageLeads.map((lead) => (
                 <div
                   key={lead.id}
                   draggable
                   onDragStart={() => setDragId(lead.id)}
                   onDragEnd={() => setDragId(null)}
-                  className={`bg-white rounded-xl p-3 shadow-sm border border-gray-100 cursor-grab active:cursor-grabbing ${
+                  className={`cursor-grab rounded-xl border border-line bg-surface p-3 shadow-sm active:cursor-grabbing ${
                     dragId === lead.id ? 'opacity-50' : ''
                   }`}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-medium text-xs flex-shrink-0">
+                  <div className="mb-1 flex items-center gap-2">
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 text-xs font-medium text-green-400">
                       {(lead.name || lead.phone)[0].toUpperCase()}
                     </div>
-                    <span className="text-sm font-medium text-gray-900 truncate">
+                    <span className="truncate text-sm font-medium text-fg">
                       {lead.name || lead.phone}
                     </span>
                   </div>
                   {lead.lastMessage && (
-                    <p className="text-xs text-gray-400 truncate pl-9">{lead.lastMessage}</p>
+                    <p className="truncate pl-9 text-xs text-faint">{lead.lastMessage}</p>
                   )}
-                  <div className="flex items-center justify-between mt-2 pl-9">
-                    <span className="text-xs text-gray-400">{lead.phone}</span>
+                  <div className="mt-2 flex items-center justify-between pl-9">
+                    <span className="text-xs text-faint">{lead.phone}</span>
                     {formatBRL(lead.deal_value) && (
-                      <span className="text-xs font-semibold text-green-600">
+                      <span className="text-xs font-semibold text-green-400">
                         {formatBRL(lead.deal_value)}
                       </span>
                     )}
@@ -109,7 +109,7 @@ export function KanbanBoard({ initialLeads }: { initialLeads: LeadCard[] }) {
                 </div>
               ))}
               {stageLeads.length === 0 && (
-                <div className="text-xs text-gray-300 text-center py-4 border-2 border-dashed border-gray-200 rounded-xl">
+                <div className="rounded-xl border-2 border-dashed border-line py-4 text-center text-xs text-faint">
                   Arraste leads aqui
                 </div>
               )}

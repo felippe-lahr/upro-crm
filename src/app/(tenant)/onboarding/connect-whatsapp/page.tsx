@@ -87,50 +87,50 @@ export default function ConnectWhatsAppPage() {
   return (
     <div className="p-8 max-w-2xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Conectar WhatsApp Business</h1>
-        <p className="text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-fg">Conectar WhatsApp Business</h1>
+        <p className="mt-1 text-muted">
           O processo leva menos de 2 minutos e é totalmente oficial pela Meta.
         </p>
       </div>
 
       {status === 'success' ? (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
-          <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-xl font-bold text-green-800 mb-2">WhatsApp conectado!</h2>
-          <p className="text-green-600 text-sm">Redirecionando para o dashboard...</p>
+        <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-8 text-center">
+          <div className="mb-4 text-5xl">✅</div>
+          <h2 className="mb-2 text-xl font-bold text-green-400">WhatsApp conectado!</h2>
+          <p className="text-sm text-green-500/80">Redirecionando para o dashboard...</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 p-8">
+        <div className="rounded-2xl border border-line bg-surface p-8">
           <div className="space-y-6">
             <div className="flex items-start gap-4">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-sm flex-shrink-0">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 text-sm font-bold text-green-400">
                 1
               </div>
               <div>
-                <p className="font-medium text-gray-900">Clique em &quot;Conectar WhatsApp&quot;</p>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="font-medium text-fg">Clique em &quot;Conectar WhatsApp&quot;</p>
+                <p className="mt-0.5 text-sm text-muted">
                   Uma janela da Meta vai abrir para você fazer login no Facebook/Meta Business
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-sm flex-shrink-0">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 text-sm font-bold text-green-400">
                 2
               </div>
               <div>
-                <p className="font-medium text-gray-900">Selecione seu número WhatsApp Business</p>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="font-medium text-fg">Selecione seu número WhatsApp Business</p>
+                <p className="mt-0.5 text-sm text-muted">
                   Se ainda não tiver um, você pode criar durante o processo
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-sm flex-shrink-0">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 text-sm font-bold text-green-400">
                 3
               </div>
               <div>
-                <p className="font-medium text-gray-900">Pronto!</p>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="font-medium text-fg">Pronto!</p>
+                <p className="mt-0.5 text-sm text-muted">
                   Suas mensagens começarão a chegar automaticamente no CRM
                 </p>
               </div>
@@ -138,7 +138,7 @@ export default function ConnectWhatsAppPage() {
           </div>
 
           {errorMsg && (
-            <div className="mt-6 bg-red-50 text-red-600 text-sm px-4 py-3 rounded-lg">
+            <div className="mt-6 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400">
               {errorMsg}
             </div>
           )}
@@ -161,7 +161,7 @@ export default function ConnectWhatsAppPage() {
             )}
           </button>
 
-          <p className="text-xs text-gray-400 text-center mt-4">
+          <p className="mt-4 text-center text-xs text-faint">
             Conexão oficial pela Meta Cloud API · Sem risco de ban
           </p>
         </div>

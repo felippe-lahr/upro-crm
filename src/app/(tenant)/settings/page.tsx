@@ -15,12 +15,22 @@ interface TenantSettings {
   trial_ends_at: string | null
 }
 
+interface QuickReply {
+  id: string
+  shortcut: string
+  content: string
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<TenantSettings | null>(null)
   const [botEnabled, setBotEnabled] = useState(false)
   const [botPrompt, setBotPrompt] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  const [replies, setReplies] = useState<QuickReply[]>([])
+  const [shortcut, setShortcut] = useState('')
+  const [content, setContent] = useState('')
 
   useEffect(() => {
     fetch('/api/tenant/settings')
@@ -30,7 +40,15 @@ export default function SettingsPage() {
         setBotEnabled(data.bot_enabled)
         setBotPrompt(data.bot_prompt || '')
       })
+    loadReplies()
   }, [])
+
+  function loadReplies() {
+    fetch('/api/quick-replies')
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setReplies(d))
+      .catch(() => {})
+  }
 
   async function saveSettings() {
     setSaving(true)
@@ -45,46 +63,61 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 3000)
   }
 
+  async function addReply() {
+    if (!shortcut.trim() || !content.trim()) return
+    await fetch('/api/quick-replies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shortcut, content })
+    })
+    setShortcut('')
+    setContent('')
+    loadReplies()
+  }
+
+  async function deleteReply(id: string) {
+    await fetch('/api/quick-replies', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    })
+    loadReplies()
+  }
+
   if (!settings) {
     return (
-      <div className="p-8 flex items-center justify-center">
-        <div className="text-gray-400">Carregando...</div>
+      <div className="flex items-center justify-center p-8">
+        <div className="text-muted">Carregando...</div>
       </div>
     )
   }
 
   return (
-    <div className="p-8 max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Configurações</h1>
+    <div className="max-w-2xl p-8">
+      <h1 className="mb-8 text-2xl font-bold text-fg">Configurações</h1>
 
       {/* Account */}
-      <section className="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Conta</h2>
+      <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+        <h2 className="mb-4 font-semibold text-fg">Conta</h2>
         <dl className="space-y-3">
+          <Row label="Empresa" value={settings.name} />
+          <Row label="Email" value={settings.email} />
           <div className="flex justify-between text-sm">
-            <dt className="text-gray-500">Empresa</dt>
-            <dd className="font-medium text-gray-900">{settings.name}</dd>
-          </div>
-          <div className="flex justify-between text-sm">
-            <dt className="text-gray-500">Email</dt>
-            <dd className="font-medium text-gray-900">{settings.email}</dd>
-          </div>
-          <div className="flex justify-between text-sm">
-            <dt className="text-gray-500">Plano</dt>
+            <dt className="text-muted">Plano</dt>
             <dd>
-              <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full capitalize">
+              <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-medium capitalize text-green-400">
                 {settings.plan}
               </span>
             </dd>
           </div>
           <div className="flex justify-between text-sm">
-            <dt className="text-gray-500">Status</dt>
+            <dt className="text-muted">Status</dt>
             <dd>
               <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
+                className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
                   settings.status === 'active'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-red-100 text-red-700'
+                    ? 'bg-green-500/15 text-green-400'
+                    : 'bg-red-500/15 text-red-400'
                 }`}
               >
                 {settings.status}
@@ -95,29 +128,27 @@ export default function SettingsPage() {
       </section>
 
       {/* WhatsApp */}
-      <section className="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
-        <h2 className="font-semibold text-gray-900 mb-4">WhatsApp Business</h2>
+      <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+        <h2 className="mb-4 font-semibold text-fg">WhatsApp Business</h2>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-fg">
               {settings.whatsapp_connected ? 'Conectado' : 'Não conectado'}
             </p>
             {settings.phone_number_id && (
-              <p className="text-xs text-gray-400 mt-0.5">
-                Phone ID: {settings.phone_number_id}
-              </p>
+              <p className="mt-0.5 text-xs text-faint">Phone ID: {settings.phone_number_id}</p>
             )}
           </div>
           <div
-            className={`w-3 h-3 rounded-full ${
-              settings.whatsapp_connected ? 'bg-green-500' : 'bg-gray-300'
+            className={`h-3 w-3 rounded-full ${
+              settings.whatsapp_connected ? 'bg-green-500' : 'bg-faint'
             }`}
           />
         </div>
         {!settings.whatsapp_connected && (
           <a
             href="/onboarding/connect-whatsapp"
-            className="mt-4 block text-center bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+            className="mt-4 block rounded-lg bg-green-500 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-green-600"
           >
             Conectar WhatsApp
           </a>
@@ -125,16 +156,16 @@ export default function SettingsPage() {
       </section>
 
       {/* Bot IA */}
-      <section className="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+        <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-gray-900">Bot com IA</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Responde automaticamente com Claude Sonnet</p>
+            <h2 className="font-semibold text-fg">Bot com IA</h2>
+            <p className="mt-0.5 text-xs text-faint">Responde automaticamente com Claude Sonnet</p>
           </div>
           <button
             onClick={() => setBotEnabled(!botEnabled)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              botEnabled ? 'bg-green-500' : 'bg-gray-200'
+              botEnabled ? 'bg-green-500' : 'bg-surface2'
             }`}
           >
             <span
@@ -147,7 +178,7 @@ export default function SettingsPage() {
 
         {botEnabled && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-sm font-medium text-fg">
               Personalidade do bot (system prompt)
             </label>
             <textarea
@@ -155,22 +186,81 @@ export default function SettingsPage() {
               onChange={(e) => setBotPrompt(e.target.value)}
               rows={4}
               placeholder="Ex: Você é um assistente da Empresa XYZ. Sempre seja educado, responda em português e encaminhe dúvidas complexas para um agente humano."
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              className="w-full resize-none rounded-lg border border-line bg-background px-4 py-3 text-sm text-fg focus:border-green-500 focus:outline-none"
             />
           </div>
         )}
       </section>
 
-      <div className="flex items-center gap-3">
+      <div className="mb-8 flex items-center gap-3">
         <button
           onClick={saveSettings}
           disabled={saving}
-          className="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition-colors"
+          className="rounded-xl bg-green-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-40"
         >
           {saving ? 'Salvando...' : 'Salvar configurações'}
         </button>
-        {saved && <span className="text-green-600 text-sm">Salvo!</span>}
+        {saved && <span className="text-sm text-green-400">Salvo!</span>}
       </div>
+
+      {/* Quick replies */}
+      <section className="rounded-2xl border border-line bg-surface p-6">
+        <h2 className="font-semibold text-fg">Respostas rápidas</h2>
+        <p className="mt-0.5 mb-4 text-xs text-faint">
+          Modelos de mensagem reutilizáveis nas conversas (ícone ⚡).
+        </p>
+
+        <div className="mb-4 space-y-2">
+          {replies.map((r) => (
+            <div
+              key={r.id}
+              className="flex items-start gap-3 rounded-lg border border-line bg-background p-3"
+            >
+              <span className="text-xs font-semibold text-green-400">/{r.shortcut}</span>
+              <span className="flex-1 text-sm text-muted">{r.content}</span>
+              <button
+                onClick={() => deleteReply(r.id)}
+                className="text-faint hover:text-red-400"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {replies.length === 0 && (
+            <p className="text-xs text-faint">Nenhuma resposta rápida cadastrada.</p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            value={shortcut}
+            onChange={(e) => setShortcut(e.target.value)}
+            placeholder="atalho"
+            className="rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none sm:w-32"
+          />
+          <input
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Conteúdo da resposta"
+            className="flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+          />
+          <button
+            onClick={addReply}
+            className="rounded-lg bg-surface2 px-4 py-2 text-sm font-medium text-fg hover:bg-line"
+          >
+            Adicionar
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-sm">
+      <dt className="text-muted">{label}</dt>
+      <dd className="font-medium text-fg">{value}</dd>
     </div>
   )
 }

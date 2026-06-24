@@ -2,26 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light theme (default tokens) ───────────────────────────── */
 :root {
-  --background: #ffffff;
+  --background: #f9fafb;
   --foreground: #171717;
+
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --sidebar: #ffffff;
+  --line: #e5e7eb;
+  --fg: #111827;
+  --muted: #6b7280;
+  --faint: #9ca3af;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Dark theme ─────────────────────────────────────────────── */
+.dark {
+  --background: #0b0f14;
+  --foreground: #e6e8eb;
+
+  --surface: #131820;
+  --surface-2: #1b222c;
+  --sidebar: #0f141a;
+  --line: #232c38;
+  --fg: #e6e8eb;
+  --muted: #9aa6b2;
+  --faint: #6b7886;
 }
 
 body {
-  color: var(--foreground);
+  color: var(--fg);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* Themed scrollbars for dark mode */
+.dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #2a3442;
+  border-radius: 8px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: transparent;
 }

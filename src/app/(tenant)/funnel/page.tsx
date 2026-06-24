@@ -33,17 +33,17 @@ export default async function FunnelPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Funil de Vendas</h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-fg">Funil de Vendas</h1>
+        <p className="mt-1 text-sm text-muted">
           Arraste os contatos entre os estágios para acompanhar o pipeline.
         </p>
       </div>
 
       {leads.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
-          <div className="text-5xl mb-4">📊</div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Nenhum lead ainda</h2>
-          <p className="text-gray-500 text-sm">
+        <div className="rounded-2xl border border-line bg-surface p-16 text-center">
+          <div className="mb-4 text-5xl">📊</div>
+          <h2 className="mb-2 text-lg font-semibold text-fg">Nenhum lead ainda</h2>
+          <p className="text-sm text-muted">
             Os contatos do WhatsApp aparecem aqui automaticamente como leads.
           </p>
         </div>

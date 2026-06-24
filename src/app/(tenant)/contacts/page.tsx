@@ -1,18 +1,26 @@
 import { auth } from '@/lib/auth'
 import { getTenantPrisma } from '@/lib/prisma-tenant'
+import Link from 'next/link'
+import { ImportContacts } from '@/components/ui/import-contacts'
 
 export default async function ContactsPage() {
   const session = await auth()
   const schemaName = (session!.user as any).schemaName
 
-  let contacts: { id: string; name: string | null; phone: string; created_at: Date }[] = []
+  let contacts: {
+    id: string
+    name: string | null
+    phone: string
+    tags: string[]
+    created_at: Date
+  }[] = []
 
   if (schemaName) {
     try {
       const db = getTenantPrisma(schemaName)
       contacts = await db.contact.findMany({
         orderBy: { created_at: 'desc' },
-        take: 100
+        take: 200
       })
     } catch {
       // schema not provisioned
@@ -21,46 +29,63 @@ export default async function ContactsPage() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Contatos</h1>
-          <p className="text-gray-500 text-sm mt-1">{contacts.length} contato{contacts.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold text-fg">Contatos</h1>
+          <p className="mt-1 text-sm text-muted">
+            {contacts.length} contato{contacts.length !== 1 ? 's' : ''}
+          </p>
         </div>
+        <ImportContacts />
       </div>
 
       {contacts.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
-          <div className="text-5xl mb-4">👥</div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Nenhum contato ainda</h2>
-          <p className="text-gray-500 text-sm">
-            Os contatos aparecem automaticamente quando alguém te envia uma mensagem no WhatsApp.
+        <div className="rounded-2xl border border-line bg-surface p-16 text-center">
+          <div className="mb-4 text-5xl">👥</div>
+          <h2 className="mb-2 text-lg font-semibold text-fg">Nenhum contato ainda</h2>
+          <p className="text-sm text-muted">
+            Os contatos aparecem automaticamente quando alguém te envia uma mensagem — ou
+            importe uma lista em CSV.
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-50 bg-gray-50">
-                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Nome</th>
-                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Telefone</th>
-                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Desde</th>
+              <tr className="border-b border-line bg-surface2">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Nome</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Telefone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Etiquetas</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Desde</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-line">
               {contacts.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={c.id} className="transition-colors hover:bg-surface2">
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-medium text-sm">
+                    <Link href={`/conversations/${c.id}`} className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/15 text-sm font-medium text-green-400">
                         {(c.name || c.phone)[0].toUpperCase()}
                       </div>
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-fg">
                         {c.name || 'Sem nome'}
                       </span>
+                    </Link>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-muted">{c.phone}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {(c.tags || []).map((t) => (
+                        <span
+                          key={t}
+                          className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs text-green-400"
+                        >
+                          {t}
+                        </span>
+                      ))}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{c.phone}</td>
-                  <td className="px-6 py-4 text-sm text-gray-400">
+                  <td className="px-6 py-4 text-sm text-faint">
                     {new Date(c.created_at).toLocaleDateString('pt-BR')}
                   </td>
                 </tr>

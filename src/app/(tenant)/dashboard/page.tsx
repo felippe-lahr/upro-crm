@@ -16,17 +16,40 @@ export default async function DashboardPage() {
     }
   })
 
-  let stats = { contacts: 0, messages: 0, conversations: 0 }
+  let stats = {
+    contacts: 0,
+    messagesToday: 0,
+    openConversations: 0,
+    pipelineValue: 0,
+    wonValue: 0
+  }
 
   if (tenant?.status === 'active' && schemaName) {
     try {
       const db = getTenantPrisma(schemaName)
-      const [contacts, messages, conversations]: [number, number, number] = await Promise.all([
+      const startOfDay = new Date()
+      startOfDay.setHours(0, 0, 0, 0)
+
+      const [contacts, messagesToday, openConversations, pipeline, won] = await Promise.all([
         db.contact.count(),
-        db.message.count(),
-        db.conversation.count()
+        db.message.count({ where: { timestamp: { gte: startOfDay } } }),
+        db.conversation.count({ where: { status: 'open' } }),
+        db.contact.aggregate({
+          _sum: { deal_value: true },
+          where: { stage: { notIn: ['ganho', 'perdido'] } }
+        }),
+        db.contact.aggregate({
+          _sum: { deal_value: true },
+          where: { stage: 'ganho' }
+        })
       ])
-      stats = { contacts, messages, conversations }
+      stats = {
+        contacts,
+        messagesToday,
+        openConversations,
+        pipelineValue: Number(pipeline._sum.deal_value || 0),
+        wonValue: Number(won._sum.deal_value || 0)
+      }
     } catch {
       // schema not yet provisioned
     }
@@ -36,27 +59,30 @@ export default async function DashboardPage() {
     ? Math.max(0, Math.ceil((new Date(tenant.trial_ends_at).getTime() - Date.now()) / 86400000))
     : 0
 
+  const brl = (n: number) =>
+    n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-fg">
           Bem-vindo, {String(user?.name || '').split(' ')[0]}!
         </h1>
-        <p className="text-gray-500 text-sm mt-1">{tenant?.name}</p>
+        <p className="mt-1 text-sm text-muted">{tenant?.name}</p>
       </div>
 
       {/* Alerts */}
       {!tenant?.whatsapp_connected && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
           <div>
-            <p className="font-medium text-amber-800 text-sm">WhatsApp não conectado</p>
-            <p className="text-amber-600 text-xs mt-0.5">
+            <p className="text-sm font-medium text-amber-400">WhatsApp não conectado</p>
+            <p className="mt-0.5 text-xs text-amber-500/80">
               Conecte seu número para começar a receber mensagens
             </p>
           </div>
           <Link
             href="/onboarding/connect-whatsapp"
-            className="bg-amber-500 hover:bg-amber-600 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors"
+            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600"
           >
             Conectar agora
           </Link>
@@ -64,52 +90,30 @@ export default async function DashboardPage() {
       )}
 
       {tenant?.plan === 'trial' && trialDays > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <p className="text-blue-800 text-sm">
+        <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
+          <p className="text-sm text-blue-300">
             <strong>Trial:</strong> {trialDays} dia{trialDays !== 1 ? 's' : ''} restante{trialDays !== 1 ? 's' : ''}.
           </p>
         </div>
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatCard label="Contatos" value={stats.contacts} icon="👥" />
-        <StatCard label="Mensagens" value={stats.messages} icon="💬" />
-        <StatCard label="Conversas" value={stats.conversations} icon="🗂️" />
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+        <StatCard label="Contatos" value={String(stats.contacts)} icon="👥" />
+        <StatCard label="Mensagens hoje" value={String(stats.messagesToday)} icon="💬" />
+        <StatCard label="Conversas abertas" value={String(stats.openConversations)} icon="🔔" />
+        <StatCard label="Em negociação" value={brl(stats.pipelineValue)} icon="📈" accent />
+        <StatCard label="Fechado (ganho)" value={brl(stats.wonValue)} icon="🏆" accent />
       </div>
 
       {/* Quick actions */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Ações rápidas</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link
-            href="/conversations"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-center"
-          >
-            <span className="text-2xl">💬</span>
-            <span className="text-sm text-gray-700">Ver conversas</span>
-          </Link>
-          <Link
-            href="/contacts"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-center"
-          >
-            <span className="text-2xl">👥</span>
-            <span className="text-sm text-gray-700">Ver contatos</span>
-          </Link>
-          <Link
-            href="/settings"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-center"
-          >
-            <span className="text-2xl">🤖</span>
-            <span className="text-sm text-gray-700">Configurar bot</span>
-          </Link>
-          <Link
-            href="/onboarding/connect-whatsapp"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-center"
-          >
-            <span className="text-2xl">🔌</span>
-            <span className="text-sm text-gray-700">WhatsApp</span>
-          </Link>
+      <div className="rounded-2xl border border-line bg-surface p-6">
+        <h2 className="mb-4 font-semibold text-fg">Ações rápidas</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <QuickAction href="/conversations" icon="💬" label="Ver conversas" />
+          <QuickAction href="/funnel" icon="🗂️" label="Funil de vendas" />
+          <QuickAction href="/broadcasts" icon="📣" label="Novo disparo" />
+          <QuickAction href="/settings" icon="🤖" label="Configurar bot" />
         </div>
       </div>
     </div>
@@ -119,19 +123,35 @@ export default async function DashboardPage() {
 function StatCard({
   label,
   value,
-  icon
+  icon,
+  accent
 }: {
   label: string
-  value: number
+  value: string
   icon: string
+  accent?: boolean
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-gray-400 text-sm">{label}</span>
+    <div className="rounded-2xl border border-line bg-surface p-6">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm text-muted">{label}</span>
         <span className="text-2xl">{icon}</span>
       </div>
-      <div className="text-3xl font-bold text-gray-900">{value.toLocaleString('pt-BR')}</div>
+      <div className={`text-3xl font-bold ${accent ? 'text-green-400' : 'text-fg'}`}>
+        {value}
+      </div>
     </div>
+  )
+}
+
+function QuickAction({ href, icon, label }: { href: string; icon: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-center gap-2 rounded-xl bg-surface2 p-4 text-center transition-colors hover:bg-line"
+    >
+      <span className="text-2xl">{icon}</span>
+      <span className="text-sm text-fg">{label}</span>
+    </Link>
   )
 }

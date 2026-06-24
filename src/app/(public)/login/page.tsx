@@ -37,63 +37,70 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#0b0f14] px-4 text-[#e6e8eb]">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+        <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">W</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500">
+              <span className="text-sm font-bold text-white">W</span>
             </div>
-            <span className="font-bold text-gray-900 text-lg">WaCRM</span>
+            <span className="text-lg font-bold text-white">WaCRM</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-1">Entrar na sua conta</h1>
-          <p className="text-gray-500 text-sm">
+          <h1 className="mb-1 mt-6 text-2xl font-bold text-white">Entrar na sua conta</h1>
+          <p className="text-sm text-[#9aa6b2]">
             Não tem conta?{' '}
-            <Link href="/signup" className="text-green-600 hover:underline">
+            <Link href="/signup" className="text-green-400 hover:underline">
               Cadastre-se grátis
             </Link>
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="rounded-2xl border border-[#1b222c] bg-[#131820] p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-lg">
+              <div className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400">
                 {error}
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <Field label="Email">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full rounded-lg border border-[#232c38] bg-[#0b0f14] px-4 py-3 text-sm text-[#e6e8eb] focus:border-green-500 focus:outline-none"
                 placeholder="seu@email.com"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            </Field>
+            <Field label="Senha">
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full rounded-lg border border-[#232c38] bg-[#0b0f14] px-4 py-3 text-sm text-[#e6e8eb] focus:border-green-500 focus:outline-none"
                 placeholder="••••••••"
               />
-            </div>
+            </Field>
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white py-3 rounded-xl font-medium transition-colors"
+              className="w-full rounded-xl bg-green-500 py-3 font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-50"
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
         </div>
       </div>
+    </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-[#c4cdd6]">{label}</label>
+      {children}
     </div>
   )
 }
