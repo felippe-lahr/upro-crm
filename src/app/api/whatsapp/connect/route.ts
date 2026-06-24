@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { globalPrisma } from '@/lib/prisma-tenant'

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import Stripe from 'stripe'
 import { provisionTenant } from '@/lib/provision-tenant'
 import { globalPrisma } from '@/lib/prisma-tenant'

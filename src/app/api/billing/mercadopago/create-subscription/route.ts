@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { MercadoPagoConfig, PreApproval } from 'mercadopago'
 import { globalPrisma } from '@/lib/prisma-tenant'
 

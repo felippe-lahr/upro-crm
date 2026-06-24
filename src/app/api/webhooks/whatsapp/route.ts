@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { processBotResponse } from '@/lib/bot'
 import crypto from 'crypto'

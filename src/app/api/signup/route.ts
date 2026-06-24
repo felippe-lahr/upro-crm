@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { globalPrisma } from '@/lib/prisma-tenant'
 import bcrypt from 'bcryptjs'
 
