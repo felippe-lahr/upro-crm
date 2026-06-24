@@ -1,13 +1,11 @@
 export const dynamic = 'force-dynamic'
 
-import { MercadoPagoConfig, PreApproval } from 'mercadopago'
 import { globalPrisma } from '@/lib/prisma-tenant'
 
-const client = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN!
-})
-
 export async function POST(req: Request) {
+  const { MercadoPagoConfig, PreApproval } = await import('mercadopago')
+  const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
+
   const { tenantId } = await req.json()
 
   const tenant = await globalPrisma.tenant.findUnique({ where: { id: tenantId } })

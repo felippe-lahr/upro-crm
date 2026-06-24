@@ -1,11 +1,11 @@
 export const dynamic = 'force-dynamic'
 
-import Stripe from 'stripe'
 import { globalPrisma } from '@/lib/prisma-tenant'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-
 export async function POST(req: Request) {
+  const Stripe = (await import('stripe')).default
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
   const { tenantId } = await req.json()
 
   const tenant = await globalPrisma.tenant.findUnique({ where: { id: tenantId } })
