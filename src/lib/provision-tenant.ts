@@ -21,11 +21,15 @@ export async function provisionTenant(tenantId: string) {
     }
   })
 
-  await sendWelcomeEmail({
-    to: tenant.email,
-    name: tenant.name,
-    loginUrl: `${process.env.NEXT_PUBLIC_URL}/login`
-  })
+  try {
+    await sendWelcomeEmail({
+      to: tenant.email,
+      name: tenant.name,
+      loginUrl: `${process.env.NEXT_PUBLIC_URL}/login`
+    })
+  } catch (error) {
+    console.error('[provisionTenant] welcome email failed (non-fatal):', error)
+  }
 }
 
 async function runMigrationsForSchema(schemaName: string) {
