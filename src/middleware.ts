@@ -31,5 +31,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
+  // Exclui rotas de API do middleware — cada rota de API valida auth internamente.
+  // Isso evita que fetches para /api/* sejam redirecionados para /login.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
 }

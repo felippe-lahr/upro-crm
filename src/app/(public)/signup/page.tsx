@@ -17,21 +17,26 @@ export default function SignupPage() {
     setError('')
     setLoading(true)
 
-    const res = await fetch('/api/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    })
+    try {
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      })
 
-    const data = await res.json()
-    setLoading(false)
+      const data = await res.json()
 
-    if (!res.ok) {
-      setError(data.error || 'Erro ao criar conta')
-      return
+      if (!res.ok) {
+        setError(data.error || 'Erro ao criar conta')
+        return
+      }
+
+      router.push(`/checkout?tenant=${data.tenantId}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro de conexão. Tente novamente.')
+    } finally {
+      setLoading(false)
     }
-
-    router.push(`/checkout?tenant=${data.tenantId}`)
   }
 
   return (

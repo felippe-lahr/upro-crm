@@ -17,18 +17,22 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false
-    })
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false
+      })
 
-    setLoading(false)
-
-    if (result?.error) {
-      setError('Email ou senha inválidos')
-    } else {
-      router.push('/dashboard')
+      if (result?.error) {
+        setError('Email ou senha inválidos')
+      } else {
+        router.push('/dashboard')
+      }
+    } catch {
+      setError('Erro de conexão. Tente novamente.')
+    } finally {
+      setLoading(false)
     }
   }
 
