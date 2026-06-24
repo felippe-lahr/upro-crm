@@ -1,6 +1,8 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend(): Resend {
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
 export async function sendWelcomeEmail({
   to,
@@ -11,7 +13,7 @@ export async function sendWelcomeEmail({
   name: string
   loginUrl: string
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'WaCRM <noreply@wacrm.com.br>',
     to,
     subject: 'Bem-vindo ao WaCRM! Seu CRM está pronto.',
@@ -38,7 +40,7 @@ export async function sendPasswordResetEmail({
   to: string
   resetUrl: string
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'WaCRM <noreply@wacrm.com.br>',
     to,
     subject: 'Redefinir senha — WaCRM',
