@@ -1,37 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import NextAuth from 'next-auth'
+import { NextResponse } from 'next/server'
+import { authConfig } from '@/lib/auth.config'
 
-export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+const { auth } = NextAuth(authConfig)
+
+export default auth((req) => {
   const pathname = req.nextUrl.pathname
+  const session = req.auth
+  const user = session?.user as any
 
-  const publicPrefixes = ['/', '/login', '/signup', '/checkout', '/api/webhooks', '/api/billing', '/api/auth']
-  const isPublic = publicPrefixes.some((p) =>
-    p === '/' ? pathname === '/' : pathname.startsWith(p)
-  )
+  const publicPrefixes = ['/login', '/signup', '/checkout']
+  const isPublic =
+    pathname === '/' || publicPrefixes.some((p) => pathname.startsWith(p))
 
   if (isPublic) {
     return NextResponse.next()
   }
 
-  if (!token) {
-    return NextResponse.redirect(new URL('/login', req.url))
+  if (!session) {
+    return NextResponse.redirect(new URL('/login', req.nextUrl))
   }
 
-  if (pathname.startsWith('/admin') && token.role !== 'superadmin') {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+  if (pathname.startsWith('/admin') && user?.role !== 'superadmin') {
+    return NextResponse.redirect(new URL('/dashboard', req.nextUrl))
   }
 
-  const headers = new Headers(req.headers)
-  headers.set('x-tenant-id', token.tenantId as string)
-  headers.set('x-tenant-schema', token.schemaName as string)
-  headers.set('x-user-role', token.role as string)
-
-  return NextResponse.next({ request: { headers } })
-}
+  return NextResponse.next()
+})
 
 export const config = {
-  // Exclui rotas de API do middleware — cada rota de API valida auth internamente.
-  // Isso evita que fetches para /api/* sejam redirecionados para /login.
+  // /api fica de fora — cada rota valida auth internamente
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
 }
