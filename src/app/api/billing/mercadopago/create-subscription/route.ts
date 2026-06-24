@@ -55,11 +55,16 @@ export async function POST(req: Request) {
   const preApproval = new PreApproval(client)
   const result = await preApproval.create({
     body: {
-      preapproval_plan_id: process.env.MP_PLAN_ID,
+      reason: billing === 'annual' ? 'UProCRM — Plano Anual' : 'UProCRM — Plano Mensal',
       payer_email: tenant.email,
       external_reference: tenantId,
       back_url: `${process.env.NEXT_PUBLIC_URL}/onboarding?tenant=${tenantId}`,
-      ...(finalPrice !== BASE_PRICE ? { transaction_amount: finalPrice } : {})
+      auto_recurring: {
+        frequency: billing === 'annual' ? 12 : 1,
+        frequency_type: 'months',
+        transaction_amount: finalPrice,
+        currency_id: 'BRL'
+      }
     }
   })
 
