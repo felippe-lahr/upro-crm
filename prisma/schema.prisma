@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Public schema models ────────────────────────────────────────────────────
+
+model Tenant {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String   @unique
+  name        String
+  email       String   @unique
+  plan        String   @default("trial")
+  status      String   @default("pending_payment")
+  schema_name String   @unique
+
+  waba_id             String?
+  phone_number_id     String?
+  whatsapp_token      String?
+  whatsapp_connected  Boolean  @default(false)
+
+  bot_enabled         Boolean  @default(false)
+  bot_prompt          String?
+
+  mp_subscription_id  String?
+  stripe_customer_id  String?
+  trial_ends_at       DateTime?
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  users       TenantUser[]
+
+  @@map("tenants")
+}
+
+model TenantUser {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String   @db.Uuid
+  email         String
+  name          String?
+  role          String   @default("agent")
+  password_hash String
+  created_at    DateTime @default(now())
+
+  tenant        Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, email])
+  @@map("tenant_users")
+}
+
+// ─── Tenant-scoped models (used with dynamic schema) ─────────────────────────
+
+model Contact {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  whatsapp_id  String   @unique
+  name         String?
+  phone        String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  messages     Message[]
+  conversations Conversation[]
+
+  @@map("contacts")
+}
+
+model Conversation {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contact_id String   @db.Uuid
+  status     String   @default("open")
+  assigned_to String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  contact    Contact  @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  messages   Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  whatsapp_id     String?  @unique
+  contact_id      String   @db.Uuid
+  conversation_id String?  @db.Uuid
+  direction       String
+  type            String   @default("text")
+  content         String?
+  media_url       String?
+  sent_by_bot     Boolean  @default(false)
+  timestamp       DateTime @default(now())
+
+  contact         Contact       @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  conversation    Conversation? @relation(fields: [conversation_id], references: [id])
+
+  @@map("messages")
+}
+
+model Agent {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String   @unique
+  name       String
+  role       String   @default("agent")
+  created_at DateTime @default(now())
+
+  @@map("agents")
+}
