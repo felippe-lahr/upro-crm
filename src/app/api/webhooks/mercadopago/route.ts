@@ -2,6 +2,7 @@ import { provisionTenant } from '@/lib/provision-tenant'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import crypto from 'crypto'
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function verifyMPSignature(req: Request, body: string): boolean {
   const xSignature = req.headers.get('x-signature')
   const xRequestId = req.headers.get('x-request-id')
