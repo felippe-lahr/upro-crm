@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
-import { processBotResponse, processMenuBotResponse, type MenuOption } from '@/lib/bot'
+import { processBotResponse, processMenuBotResponse, extractContactInfo, type MenuOption } from '@/lib/bot'
 import { transcribeWhatsAppAudio } from '@/lib/transcribe'
 import crypto from 'crypto'
 
@@ -123,6 +123,7 @@ async function processIncomingMessage(
   if (tenant.plan === 'pro' && tenant.bot_enabled) {
     if (resolvedText) {
       await processBotResponse(tenant, resolvedText, dbContact, message.from)
+      await extractContactInfo(tenant, dbContact)
     }
     return
   }

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { contactId, notes, tags, stage, deal_value, name } = await req.json()
+  const { contactId, notes, tags, stage, deal_value, name, email } = await req.json()
   if (!contactId) {
     return Response.json({ error: 'contactId obrigatório' }, { status: 400 })
   }
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
   if (typeof notes === 'string') data.notes = notes
   if (Array.isArray(tags)) data.tags = tags.map((t: unknown) => String(t))
   if (typeof name === 'string') data.name = name
+  if (typeof email === 'string') data.email = email.trim() || null
   if (typeof stage === 'string' && STAGE_IDS.includes(stage)) data.stage = stage
   if (deal_value !== undefined) data.deal_value = deal_value === null ? null : Number(deal_value)
 

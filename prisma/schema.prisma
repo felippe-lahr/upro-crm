@@ -89,9 +89,11 @@ model Contact {
   whatsapp_id  String   @unique
   name         String?
   phone        String
+  email        String?
   stage        String   @default("novo_lead")
   deal_value   Decimal? @db.Decimal(12, 2)
   notes        String?
+  ai_summary   String?
   tags         String[] @default([])
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt

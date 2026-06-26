@@ -43,7 +43,9 @@ export default async function ConversationPage({
         id: contact.id,
         name: contact.name,
         phone: contact.phone,
+        email: contact.email,
         notes: contact.notes,
+        ai_summary: contact.ai_summary,
         tags: contact.tags || [],
         stage: contact.stage,
         deal_value: contact.deal_value ? String(contact.deal_value) : null

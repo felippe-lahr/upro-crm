@@ -1,6 +1,79 @@
 import { getTenantPrisma } from './prisma-tenant'
 import { decrypt } from './crypto'
 
+/**
+ * Lê o histórico da conversa e extrai dados estruturados do lead para o CRM:
+ * nome, e-mail e um resumo curto. Avança o funil de "novo_lead" para
+ * "em_atendimento" quando já há informação suficiente. Best-effort: falhas
+ * são silenciosas para nunca quebrar o atendimento.
+ */
+export async function extractContactInfo(
+  tenant: { schema_name: string },
+  contact: { id: string }
+) {
+  try {
+    const tenantPrisma = getTenantPrisma(tenant.schema_name)
+
+    const current = await tenantPrisma.contact.findUnique({ where: { id: contact.id } })
+    if (!current) return
+
+    const history = await tenantPrisma.message.findMany({
+      where: { contact_id: contact.id },
+      orderBy: { timestamp: 'desc' },
+      take: 30
+    })
+
+    const transcript = (history as any[])
+      .reverse()
+      .filter((m: any) => m.content)
+      .map((m: any) => `${m.direction === 'inbound' ? 'Cliente' : 'Atendente'}: ${m.content}`)
+      .join('\n')
+
+    if (!transcript.trim()) return
+
+    const Anthropic = (await import('@anthropic-ai/sdk')).default
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      system:
+        'Você extrai dados de um lead a partir de uma conversa de atendimento. ' +
+        'Responda APENAS com um JSON válido, sem texto extra, no formato: ' +
+        '{"name": string|null, "email": string|null, "summary": string, "qualified": boolean}. ' +
+        '- name: nome da pessoa/responsável, se mencionado. ' +
+        '- email: e-mail, se mencionado (valide formato básico). ' +
+        '- summary: resumo de 1 a 2 frases do que o cliente quer/precisa, em português. ' +
+        '- qualified: true se já dá para entender claramente o interesse/necessidade do cliente. ' +
+        'Use null quando a informação não aparecer. NUNCA invente dados.',
+      messages: [{ role: 'user', content: transcript }]
+    })
+
+    const raw = response.content[0].type === 'text' ? response.content[0].text : ''
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return
+
+    let data: any
+    try {
+      data = JSON.parse(jsonMatch[0])
+    } catch {
+      return
+    }
+
+    const update: any = {}
+    if (data.name && !current.name) update.name = String(data.name).slice(0, 120)
+    if (data.email && /\S+@\S+\.\S+/.test(data.email)) update.email = String(data.email).slice(0, 160)
+    if (data.summary) update.ai_summary = String(data.summary).slice(0, 500)
+    if (data.qualified && current.stage === 'novo_lead') update.stage = 'em_atendimento'
+
+    if (Object.keys(update).length > 0) {
+      await tenantPrisma.contact.update({ where: { id: contact.id }, data: update })
+    }
+  } catch (err) {
+    console.error('[extractContactInfo] failed', err)
+  }
+}
+
 // Janela (minutos) em que o bot fica em silêncio após um humano responder
 const HUMAN_TAKEOVER_MINUTES = 30
 // Quantas mensagens de histórico o bot considera como contexto
@@ -11,7 +84,8 @@ const ESCALATE_MARKER = '[ESCALAR]'
 const GUARDRAIL = `\n\n---\nREGRAS IMPORTANTES (siga sempre):\n` +
   `- Responda APENAS com base nas informações fornecidas acima. NUNCA invente valores, datas, horários, regras ou disponibilidade.\n` +
   `- Se você não souber a resposta, ou se o cliente pedir para falar com um humano/atendente, ou se for um assunto sensível (reclamação, cancelamento, negociação), responda de forma breve e cordial avisando que vai encaminhar para um atendente, e inclua o marcador ${ESCALATE_MARKER} ao final da mensagem.\n` +
-  `- Seja claro, objetivo e responda em português do Brasil.`
+  `- Seja claro, objetivo e responda em português do Brasil.\n` +
+  `- Se ainda não souber o nome e o e-mail do cliente, peça-os de forma natural ao longo da conversa (não tudo de uma vez, sem parecer um formulário), para que possamos dar continuidade ao atendimento.`
 
 export async function processBotResponse(
   tenant: {

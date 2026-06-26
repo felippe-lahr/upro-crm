@@ -8,7 +8,9 @@ interface Contact {
   id: string
   name: string | null
   phone: string
+  email: string | null
   notes: string | null
+  ai_summary: string | null
   tags: string[]
   stage: string
   deal_value: string | null
@@ -242,6 +244,33 @@ export function ConversationThread({
 
       {/* Side panel: notes / tags / stage */}
       <aside className="hidden w-72 flex-col gap-5 overflow-auto border-l border-line bg-surface p-5 lg:flex">
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-faint">Contato</h3>
+          <div className="space-y-1 text-xs">
+            <div className="flex gap-2">
+              <span className="text-faint">Tel:</span>
+              <span className="text-fg">{contact.phone}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-faint">E-mail:</span>
+              <span className={contact.email ? 'text-fg' : 'text-faint'}>
+                {contact.email || 'não informado'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {contact.ai_summary && (
+          <div>
+            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-faint">
+              <span>✨</span> Resumo (IA)
+            </h3>
+            <p className="rounded-lg border border-purple-500/20 bg-purple-500/5 px-3 py-2 text-xs leading-relaxed text-muted">
+              {contact.ai_summary}
+            </p>
+          </div>
+        )}
+
         <div>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-faint">Etiquetas</h3>
           <div className="mb-2 flex flex-wrap gap-1.5">
