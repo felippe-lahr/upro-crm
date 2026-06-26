@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
     let subscription: any
     try {
-      subscription = await preApproval.get({ preApprovalId: subscriptionId })
+      subscription = await preApproval.get({ id: subscriptionId })
     } catch (err) {
       console.error('[MP webhook] failed to fetch subscription', err)
       return Response.json({ ok: true })
