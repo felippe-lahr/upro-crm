@@ -32,6 +32,10 @@ export default function SettingsPage() {
   const [shortcut, setShortcut] = useState('')
   const [content, setContent] = useState('')
 
+  const [showCancel, setShowCancel] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState('')
+
   useEffect(() => {
     fetch('/api/tenant/settings')
       .then((r) => r.json())
@@ -73,6 +77,24 @@ export default function SettingsPage() {
     setShortcut('')
     setContent('')
     loadReplies()
+  }
+
+  async function cancelSubscription() {
+    setCancelling(true)
+    setCancelError('')
+    try {
+      const res = await fetch('/api/billing/cancel', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok && data.ok) {
+        window.location.href = '/login'
+      } else {
+        setCancelError(data.error || 'Não foi possível cancelar. Tente novamente.')
+      }
+    } catch {
+      setCancelError('Erro ao cancelar. Tente novamente.')
+    } finally {
+      setCancelling(false)
+    }
   }
 
   async function deleteReply(id: string) {
@@ -125,6 +147,46 @@ export default function SettingsPage() {
             </dd>
           </div>
         </dl>
+
+        {settings.status === 'active' && (
+          <div className="mt-5 border-t border-line pt-5">
+            {!showCancel ? (
+              <button
+                onClick={() => setShowCancel(true)}
+                className="text-xs text-faint transition-colors hover:text-red-400"
+              >
+                Cancelar assinatura
+              </button>
+            ) : (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
+                <p className="text-sm font-medium text-fg">Cancelar assinatura?</p>
+                <p className="mt-1 text-xs text-muted">
+                  Sua assinatura será cancelada e não haverá novas cobranças. Você perderá o
+                  acesso ao UProCRM imediatamente. Esta ação não pode ser desfeita.
+                </p>
+                {cancelError && (
+                  <p className="mt-2 text-xs text-red-400">{cancelError}</p>
+                )}
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={cancelSubscription}
+                    disabled={cancelling}
+                    className="rounded-lg bg-red-500 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-40"
+                  >
+                    {cancelling ? 'Cancelando...' : 'Sim, cancelar'}
+                  </button>
+                  <button
+                    onClick={() => { setShowCancel(false); setCancelError('') }}
+                    disabled={cancelling}
+                    className="rounded-lg bg-surface2 px-4 py-2 text-xs font-medium text-fg transition-colors hover:bg-line disabled:opacity-40"
+                  >
+                    Voltar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       {/* WhatsApp */}

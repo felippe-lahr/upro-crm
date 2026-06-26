@@ -29,7 +29,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         )
         if (!valid) return null
 
-        if (user.tenant.status === 'suspended') return null
+        if (['suspended', 'cancelled'].includes(user.tenant.status) && user.role !== 'superadmin') {
+          return null
+        }
 
         return {
           id: user.id,
