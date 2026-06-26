@@ -80,7 +80,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6 py-28 text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-sm font-medium text-green-400">
             <span className="h-2 w-2 rounded-full bg-green-500" />
-            7 dias grátis, sem cartão
+            Cancele quando quiser
           </div>
           <h1 className="mb-6 text-5xl font-bold leading-tight md:text-6xl">
             CRM completo para<br />

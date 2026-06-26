@@ -50,7 +50,7 @@ export default function SignupPage() {
             <span className="text-lg font-bold text-white">UProCRM</span>
           </Link>
           <h1 className="mb-1 mt-6 text-2xl font-bold text-white">Criar sua conta</h1>
-          <p className="text-sm text-[#9aa6b2]">7 dias grátis, sem cartão de crédito</p>
+          <p className="text-sm text-[#9aa6b2]">Configure em 2 minutos. Cancele quando quiser.</p>
         </div>
 
         <div className="rounded-2xl border border-[#1b222c] bg-[#131820] p-8">
