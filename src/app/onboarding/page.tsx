@@ -8,7 +8,6 @@ function OnboardingContent() {
   const router = useRouter()
   const tenantId = searchParams.get('tenant') || ''
   const [status, setStatus] = useState<'loading' | 'active' | 'pending' | 'error'>('loading')
-  const [subdomain, setSubdomain] = useState('')
 
   useEffect(() => {
     if (!tenantId) {
@@ -23,7 +22,6 @@ function OnboardingContent() {
         const res = await fetch(`/api/billing/status?tenant=${tenantId}`)
         const data = await res.json()
         if (data.active) {
-          setSubdomain(data.subdomain || '')
           setStatus('active')
         } else if (attempts < 10) {
           setTimeout(check, 3000)
@@ -67,22 +65,15 @@ function OnboardingContent() {
           <p className="mb-6 text-sm text-[#9aa6b2]">
             Seu pagamento foi confirmado. Agora você já pode acessar o UProCRM.
           </p>
-          {subdomain && (
-            <a
-              href={`https://${subdomain}.uprocrm.com.br`}
-              className="inline-block rounded-xl bg-green-500 px-8 py-3 font-semibold text-white transition-colors hover:bg-green-400"
-            >
-              Acessar meu CRM →
-            </a>
-          )}
-          {!subdomain && (
-            <button
-              onClick={() => router.push('/login')}
-              className="inline-block rounded-xl bg-green-500 px-8 py-3 font-semibold text-white transition-colors hover:bg-green-400"
-            >
-              Fazer login →
-            </button>
-          )}
+          <p className="mb-6 text-xs text-[#6b7886]">
+            Faça login com o e-mail e a senha que você cadastrou.
+          </p>
+          <button
+            onClick={() => router.push('/login')}
+            className="inline-block rounded-xl bg-green-500 px-8 py-3 font-semibold text-white transition-colors hover:bg-green-400"
+          >
+            Acessar meu CRM →
+          </button>
         </div>
       </div>
     )
