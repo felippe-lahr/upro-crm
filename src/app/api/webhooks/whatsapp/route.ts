@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { processBotResponse, processMenuBotResponse, type MenuOption } from '@/lib/bot'
+import { transcribeWhatsAppAudio } from '@/lib/transcribe'
 import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string | null): boolean {
@@ -93,20 +94,36 @@ async function processIncomingMessage(
     }
   })
 
+  // Resolve o texto da mensagem (transcreve áudio quando possível)
+  let resolvedText = ''
+  if (message.type === 'text') {
+    resolvedText = message.text?.body || ''
+  } else if (message.type === 'audio' && message.audio?.id) {
+    const transcription = await transcribeWhatsAppAudio(tenant, message.audio.id)
+    if (transcription) resolvedText = transcription
+  }
+
+  const storedContent =
+    message.type === 'audio' && resolvedText
+      ? `🎤 ${resolvedText}`
+      : extractMessageContent(message)
+
   await tenantPrisma.message.create({
     data: {
       whatsapp_id: message.id,
       contact_id: dbContact.id,
       direction: 'inbound',
       type: message.type,
-      content: extractMessageContent(message),
+      content: storedContent,
       timestamp: new Date(parseInt(message.timestamp) * 1000)
     }
   })
 
   // Bot com IA: exclusivo do plano Pro
   if (tenant.plan === 'pro' && tenant.bot_enabled) {
-    await processBotResponse(tenant, message, dbContact)
+    if (resolvedText) {
+      await processBotResponse(tenant, resolvedText, dbContact, message.from)
+    }
     return
   }
 
