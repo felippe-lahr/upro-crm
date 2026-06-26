@@ -124,6 +124,8 @@ function CheckoutContent() {
               const result = await res.json()
               if (result.success) {
                 router.push(`/onboarding?tenant=${tenantId}`)
+              } else if (result.init_point) {
+                window.location.href = result.init_point
               } else {
                 setError(result.error || 'Pagamento não autorizado. Tente outro cartão.')
               }

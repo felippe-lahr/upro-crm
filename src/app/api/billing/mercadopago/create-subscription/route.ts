@@ -78,10 +78,15 @@ export async function POST(req: Request) {
     })
 
     const status = (result as any).status
+    console.log('[MP preapproval result]', JSON.stringify({ status, id: (result as any).id, init_point: (result as any).init_point }))
     if (status === 'authorized' || status === 'pending') {
       return Response.json({ success: true, status, final_price: finalPrice })
     }
-    return Response.json({ error: 'Pagamento não autorizado. Verifique os dados do cartão.', status }, { status: 422 })
+    // MP may return init_point even for transparent checkout in some cases
+    if ((result as any).init_point) {
+      return Response.json({ init_point: (result as any).init_point, final_price: finalPrice })
+    }
+    return Response.json({ error: `Pagamento não autorizado (status: ${status}). Verifique os dados do cartão.`, status }, { status: 422 })
   }
 
   // Fallback: redirect to MP checkout
