@@ -52,6 +52,13 @@ export default async function TenantLayout({
           <NavItem href="/contacts" icon="👥" label="Contatos" />
           <NavItem href="/broadcasts" icon="📣" label="Disparos" />
           <NavItem href="/settings" icon="⚙️" label="Configurações" />
+
+          {(session.user as any).role === 'superadmin' && (
+            <>
+              <div className="my-2 border-t border-line" />
+              <NavItem href="/admin" icon="🛡️" label="Admin" />
+            </>
+          )}
         </nav>
 
         <div className="border-t border-line p-4">
