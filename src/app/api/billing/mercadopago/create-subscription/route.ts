@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { globalPrisma } from '@/lib/prisma-tenant'
 
 export async function POST(req: Request) {
+  try {
   const { MercadoPagoConfig, PreApproval } = await import('mercadopago')
   const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
 
@@ -82,8 +83,10 @@ export async function POST(req: Request) {
         }
       })
     } catch (err: any) {
-      console.error('[MP preapproval error]', JSON.stringify(err?.cause || err?.message || err))
-      return Response.json({ error: err?.message || 'Erro ao criar assinatura' }, { status: 500 })
+      const errMsg = err?.message || String(err)
+      const errCause = err?.cause ? String(err.cause) : undefined
+      console.error('[MP preapproval error]', errMsg, errCause)
+      return Response.json({ error: errMsg || 'Erro ao criar assinatura' }, { status: 500 })
     }
 
     const status = (result as any).status
@@ -115,4 +118,9 @@ export async function POST(req: Request) {
   })
 
   return Response.json({ init_point: result.init_point, final_price: finalPrice })
+  } catch (err: any) {
+    const errMsg = err?.message || String(err)
+    console.error('[create-subscription unhandled]', errMsg, err?.stack)
+    return Response.json({ error: errMsg || 'Erro interno' }, { status: 500 })
+  }
 }
