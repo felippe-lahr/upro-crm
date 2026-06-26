@@ -6,9 +6,8 @@ export async function POST(req: Request) {
   const { MercadoPagoConfig, PreApproval } = await import('mercadopago')
   const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
 
-  const { tenantId, couponCode, billing } = await req.json()
+  const { tenantId, couponCode, billing, cardTokenId, payerEmail, payerDocType, payerDocNumber } = await req.json()
 
-  // billing: 'monthly' | 'annual'
   const saasConfig = await globalPrisma.saasConfig.upsert({
     where: { id: 'singleton' },
     create: { id: 'singleton' },
@@ -53,6 +52,38 @@ export async function POST(req: Request) {
   }
 
   const preApproval = new PreApproval(client)
+
+  // Transparent checkout: cardTokenId provided → create subscription directly
+  if (cardTokenId) {
+    const result = await preApproval.create({
+      body: {
+        reason: billing === 'annual' ? 'UProCRM — Plano Anual' : 'UProCRM — Plano Mensal',
+        payer_email: payerEmail || tenant.email,
+        external_reference: tenantId,
+        card_token_id: cardTokenId,
+        auto_recurring: {
+          frequency: billing === 'annual' ? 12 : 1,
+          frequency_type: 'months',
+          transaction_amount: finalPrice,
+          currency_id: 'BRL'
+        },
+        ...(payerDocType && payerDocNumber ? {
+          payer: {
+            email: payerEmail || tenant.email,
+            identification: { type: payerDocType, number: payerDocNumber }
+          }
+        } : {})
+      }
+    })
+
+    const status = (result as any).status
+    if (status === 'authorized' || status === 'pending') {
+      return Response.json({ success: true, status, final_price: finalPrice })
+    }
+    return Response.json({ error: 'Pagamento não autorizado. Verifique os dados do cartão.', status }, { status: 422 })
+  }
+
+  // Fallback: redirect to MP checkout
   const result = await preApproval.create({
     body: {
       reason: billing === 'annual' ? 'UProCRM — Plano Anual' : 'UProCRM — Plano Mensal',
