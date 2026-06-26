@@ -55,27 +55,36 @@ export async function POST(req: Request) {
 
   // Transparent checkout: cardTokenId provided → create subscription directly
   if (cardTokenId) {
-    const result = await preApproval.create({
-      body: {
-        reason: billing === 'annual' ? 'UProCRM — Plano Anual' : 'UProCRM — Plano Mensal',
-        payer_email: payerEmail || tenant.email,
-        external_reference: tenantId,
-        card_token_id: cardTokenId,
-        back_url: `${process.env.NEXT_PUBLIC_URL}/onboarding?tenant=${tenantId}`,
-        auto_recurring: {
-          frequency: billing === 'annual' ? 12 : 1,
-          frequency_type: 'months',
-          transaction_amount: finalPrice,
-          currency_id: 'BRL'
-        },
-        ...(payerDocType && payerDocNumber ? {
-          payer: {
-            email: payerEmail || tenant.email,
-            identification: { type: payerDocType, number: payerDocNumber }
-          }
-        } : {})
-      }
-    })
+    // Sanitize doc number (remove formatting)
+    const cleanDoc = payerDocNumber ? payerDocNumber.replace(/\D/g, '') : undefined
+
+    let result: any
+    try {
+      result = await preApproval.create({
+        body: {
+          reason: billing === 'annual' ? 'UProCRM — Plano Anual' : 'UProCRM — Plano Mensal',
+          payer_email: payerEmail || tenant.email,
+          external_reference: tenantId,
+          card_token_id: cardTokenId,
+          back_url: `${process.env.NEXT_PUBLIC_URL}/onboarding?tenant=${tenantId}`,
+          auto_recurring: {
+            frequency: billing === 'annual' ? 12 : 1,
+            frequency_type: 'months',
+            transaction_amount: finalPrice,
+            currency_id: 'BRL'
+          },
+          ...(payerDocType && cleanDoc ? {
+            payer: {
+              email: payerEmail || tenant.email,
+              identification: { type: payerDocType, number: cleanDoc }
+            }
+          } : {})
+        }
+      })
+    } catch (err: any) {
+      console.error('[MP preapproval error]', JSON.stringify(err?.cause || err?.message || err))
+      return Response.json({ error: err?.message || 'Erro ao criar assinatura' }, { status: 500 })
+    }
 
     const status = (result as any).status
     console.log('[MP preapproval result]', JSON.stringify({ status, id: (result as any).id, init_point: (result as any).init_point }))
