@@ -107,6 +107,7 @@ function CheckoutContent() {
           onSubmit: async (data: any) => {
             setLoading(true)
             setError('')
+            console.log('[MP Brick onSubmit] token:', data?.token, 'payer:', data?.payer)
             try {
               const res = await fetch('/api/billing/mercadopago/create-subscription', {
                 method: 'POST',
