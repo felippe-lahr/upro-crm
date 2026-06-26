@@ -29,23 +29,40 @@ export async function POST(req: Request) {
   const rawBody = await req.text()
   const body = JSON.parse(rawBody)
 
+  console.log('[MP webhook]', JSON.stringify(body))
+
   if (body.type === 'subscription_preapproval') {
     const subscriptionId = body.data?.id
     if (!subscriptionId) return Response.json({ ok: true })
 
-    const tenantId = body.data?.external_reference
+    // Fetch full subscription details from MP (webhook only sends the ID)
+    const { MercadoPagoConfig, PreApproval } = await import('mercadopago')
+    const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
+    const preApproval = new PreApproval(client)
+
+    let subscription: any
+    try {
+      subscription = await preApproval.get({ preApprovalId: subscriptionId })
+    } catch (err) {
+      console.error('[MP webhook] failed to fetch subscription', err)
+      return Response.json({ ok: true })
+    }
+
+    console.log('[MP webhook] subscription', JSON.stringify({ status: subscription.status, external_reference: subscription.external_reference }))
+
+    const tenantId = subscription.external_reference
     if (!tenantId) return Response.json({ ok: true })
 
-    if (body.data?.status === 'authorized') {
+    if (subscription.status === 'authorized') {
       await globalPrisma.tenant.update({
         where: { id: tenantId },
         data: { mp_subscription_id: subscriptionId }
       })
       await provisionTenant(tenantId)
-    } else if (['cancelled', 'paused'].includes(body.data?.status)) {
+    } else if (['cancelled', 'paused'].includes(subscription.status)) {
       await globalPrisma.tenant.update({
         where: { id: tenantId },
-        data: { status: body.data.status === 'paused' ? 'suspended' : 'cancelled' }
+        data: { status: subscription.status === 'paused' ? 'suspended' : 'cancelled' }
       })
     }
   }
