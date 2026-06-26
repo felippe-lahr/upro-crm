@@ -67,6 +67,7 @@ export async function POST(req: Request) {
           payer_email: payerEmail || tenant.email,
           external_reference: tenantId,
           card_token_id: cardTokenId,
+          status: 'authorized',
           back_url: `${process.env.NEXT_PUBLIC_URL}/onboarding?tenant=${tenantId}`,
           auto_recurring: {
             frequency: billing === 'annual' ? 12 : 1,
