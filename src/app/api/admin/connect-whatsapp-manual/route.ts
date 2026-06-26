@@ -21,12 +21,6 @@ export async function POST(req: Request) {
   if (!token || token !== process.env.NEXTAUTH_SECRET) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
-  if (!phone_number_id || !access_token) {
-    return Response.json(
-      { error: 'Informe phone_number_id e access_token' },
-      { status: 400 }
-    )
-  }
 
   const tenant = tenantId
     ? await globalPrisma.tenant.findUnique({ where: { id: tenantId } })
@@ -36,6 +30,27 @@ export async function POST(req: Request) {
 
   if (!tenant) {
     return Response.json({ error: 'Tenant não encontrado (informe email ou tenantId)' }, { status: 404 })
+  }
+
+  // Desconectar: limpa a configuração de WhatsApp do tenant
+  if (body.disconnect === true) {
+    await globalPrisma.tenant.update({
+      where: { id: tenant.id },
+      data: {
+        phone_number_id: null,
+        whatsapp_token: null,
+        whatsapp_connected: false,
+        bot_enabled: false
+      }
+    })
+    return Response.json({ ok: true, disconnected: true, tenant: tenant.email })
+  }
+
+  if (!phone_number_id || !access_token) {
+    return Response.json(
+      { error: 'Informe phone_number_id e access_token' },
+      { status: 400 }
+    )
   }
 
   await globalPrisma.tenant.update({
