@@ -16,7 +16,7 @@ import { encrypt } from '@/lib/crypto'
  */
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}))
-  const { token, email, tenantId, phone_number_id, access_token, waba_id } = body
+  const { token, email, tenantId, phone_number_id, access_token, waba_id, plan } = body
 
   if (!token || token !== process.env.NEXTAUTH_SECRET) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
@@ -44,13 +44,15 @@ export async function POST(req: Request) {
       phone_number_id: String(phone_number_id),
       whatsapp_token: encrypt(String(access_token)),
       waba_id: waba_id ? String(waba_id) : tenant.waba_id,
-      whatsapp_connected: true
+      whatsapp_connected: true,
+      ...(plan ? { plan: String(plan) } : {})
     }
   })
 
   return Response.json({
     ok: true,
     tenant: tenant.email,
-    phone_number_id: String(phone_number_id)
+    phone_number_id: String(phone_number_id),
+    plan: plan ? String(plan) : tenant.plan
   })
 }
