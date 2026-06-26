@@ -26,6 +26,10 @@ model Tenant {
   bot_enabled         Boolean  @default(false)
   bot_prompt          String?
 
+  menu_bot_enabled    Boolean  @default(false)
+  menu_bot_greeting   String?
+  menu_bot_options    Json?
+
   mp_subscription_id  String?
   stripe_customer_id  String?
   trial_ends_at       DateTime?

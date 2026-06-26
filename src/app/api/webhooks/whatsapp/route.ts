@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
-import { processBotResponse } from '@/lib/bot'
+import { processBotResponse, processMenuBotResponse, type MenuOption } from '@/lib/bot'
 import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string | null): boolean {
@@ -66,11 +66,15 @@ export async function POST(req: Request) {
 async function processIncomingMessage(
   tenant: {
     id: string
+    plan: string
     schema_name: string
     phone_number_id: string
     whatsapp_token: string
     bot_enabled: boolean
     bot_prompt: string | null
+    menu_bot_enabled: boolean
+    menu_bot_greeting: string | null
+    menu_bot_options: any
   },
   message: any,
   contactInfo: any
@@ -100,8 +104,25 @@ async function processIncomingMessage(
     }
   })
 
-  if (tenant.bot_enabled) {
+  // Bot com IA: exclusivo do plano Pro
+  if (tenant.plan === 'pro' && tenant.bot_enabled) {
     await processBotResponse(tenant, message, dbContact)
+    return
+  }
+
+  // Menu bot: disponível nos demais planos
+  if (tenant.menu_bot_enabled) {
+    await processMenuBotResponse(
+      {
+        schema_name: tenant.schema_name,
+        phone_number_id: tenant.phone_number_id,
+        whatsapp_token: tenant.whatsapp_token,
+        menu_bot_greeting: tenant.menu_bot_greeting,
+        menu_bot_options: (tenant.menu_bot_options as MenuOption[]) || []
+      },
+      message,
+      dbContact
+    )
   }
 }
 
@@ -119,6 +140,12 @@ function extractMessageContent(message: any): string {
       return message.document?.filename || '[Documento]'
     case 'location':
       return `[Localização: ${message.location?.latitude}, ${message.location?.longitude}]`
+    case 'interactive':
+      return (
+        message.interactive?.button_reply?.title ||
+        message.interactive?.list_reply?.title ||
+        '[Resposta do menu]'
+      )
     default:
       return `[${message.type}]`
   }

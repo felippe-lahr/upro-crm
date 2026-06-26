@@ -64,6 +64,103 @@ export async function processBotResponse(
   })
 }
 
+export interface MenuOption {
+  id: string
+  label: string
+  response: string
+}
+
+/**
+ * Menu bot (planos sem IA): se a mensagem for o clique de um botão, responde a
+ * opção correspondente; caso contrário, envia a saudação + os botões do menu.
+ */
+export async function processMenuBotResponse(
+  tenant: {
+    schema_name: string
+    phone_number_id: string
+    whatsapp_token: string
+    menu_bot_greeting: string | null
+    menu_bot_options: MenuOption[]
+  },
+  message: any,
+  contact: { id: string }
+) {
+  const options = tenant.menu_bot_options || []
+  if (options.length === 0) return
+
+  const tenantPrisma = getTenantPrisma(tenant.schema_name)
+
+  // Clique em um botão do menu
+  const buttonId = message?.interactive?.button_reply?.id
+  if (buttonId) {
+    const chosen = options.find((o) => o.id === buttonId)
+    if (chosen) {
+      await sendWhatsAppMessage(tenant, message.from, chosen.response)
+      await saveOutbound(tenantPrisma, contact.id, chosen.response)
+      return
+    }
+  }
+
+  // Qualquer outra mensagem → mostra o menu
+  const greeting = tenant.menu_bot_greeting || 'Olá! Como podemos ajudar?'
+  await sendWhatsAppButtons(tenant, message.from, greeting, options.slice(0, 3))
+  await saveOutbound(tenantPrisma, contact.id, greeting)
+}
+
+async function saveOutbound(tenantPrisma: any, contactId: string, content: string) {
+  await tenantPrisma.message.create({
+    data: {
+      contact_id: contactId,
+      direction: 'outbound',
+      type: 'text',
+      content,
+      sent_by_bot: true,
+      timestamp: new Date()
+    }
+  })
+}
+
+export async function sendWhatsAppButtons(
+  tenant: { phone_number_id: string; whatsapp_token: string },
+  to: string,
+  bodyText: string,
+  options: MenuOption[]
+) {
+  const token = decrypt(tenant.whatsapp_token)
+
+  const res = await fetch(
+    `https://graph.facebook.com/v21.0/${tenant.phone_number_id}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: { text: bodyText },
+          action: {
+            buttons: options.map((o) => ({
+              type: 'reply',
+              reply: { id: o.id, title: o.label.slice(0, 20) }
+            }))
+          }
+        }
+      })
+    }
+  )
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`WhatsApp buttons send failed: ${err}`)
+  }
+}
+
 export async function sendWhatsAppMessage(
   tenant: { phone_number_id: string; whatsapp_token: string },
   to: string,

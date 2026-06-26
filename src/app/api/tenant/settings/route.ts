@@ -15,7 +15,8 @@ export async function GET() {
     select: {
       id: true, name: true, email: true, plan: true, status: true,
       whatsapp_connected: true, phone_number_id: true, waba_id: true,
-      bot_enabled: true, bot_prompt: true, trial_ends_at: true
+      bot_enabled: true, bot_prompt: true, trial_ends_at: true,
+      menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true
     }
   })
 
@@ -29,15 +30,49 @@ export async function PATCH(req: Request) {
   }
 
   const tenantId = (session!.user as any).tenantId
-  const { bot_enabled, bot_prompt } = await req.json()
+  const body = await req.json()
+  const { bot_enabled, bot_prompt, menu_bot_enabled, menu_bot_greeting, menu_bot_options } = body
+
+  // Bot com IA é exclusivo do plano Pro
+  if (bot_enabled === true) {
+    const current = await globalPrisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { plan: true }
+    })
+    if (current?.plan !== 'pro') {
+      return Response.json(
+        { error: 'O Bot com IA está disponível apenas no plano Pro.' },
+        { status: 403 }
+      )
+    }
+  }
+
+  // Normaliza as opções do menu (id estável, no máximo 3 botões)
+  let normalizedOptions
+  if (menu_bot_options !== undefined) {
+    normalizedOptions = (Array.isArray(menu_bot_options) ? menu_bot_options : [])
+      .filter((o: any) => o && typeof o.label === 'string' && o.label.trim())
+      .slice(0, 3)
+      .map((o: any, i: number) => ({
+        id: o.id || `opt_${i + 1}`,
+        label: String(o.label).slice(0, 20),
+        response: String(o.response || '')
+      }))
+  }
 
   const updated = await globalPrisma.tenant.update({
     where: { id: tenantId },
     data: {
       ...(bot_enabled !== undefined && { bot_enabled }),
-      ...(bot_prompt !== undefined && { bot_prompt })
+      ...(bot_prompt !== undefined && { bot_prompt }),
+      ...(menu_bot_enabled !== undefined && { menu_bot_enabled }),
+      ...(menu_bot_greeting !== undefined && { menu_bot_greeting }),
+      ...(normalizedOptions !== undefined && { menu_bot_options: normalizedOptions })
     },
-    select: { id: true, bot_enabled: true, bot_prompt: true }
+    select: {
+      id: true, bot_enabled: true, bot_prompt: true,
+      menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true
+    }
   })
 
   return Response.json(updated)

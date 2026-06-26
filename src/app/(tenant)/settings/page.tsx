@@ -2,6 +2,12 @@
 
 import { useState, useEffect } from 'react'
 
+interface MenuOption {
+  id?: string
+  label: string
+  response: string
+}
+
 interface TenantSettings {
   id: string
   name: string
@@ -13,6 +19,9 @@ interface TenantSettings {
   bot_enabled: boolean
   bot_prompt: string | null
   trial_ends_at: string | null
+  menu_bot_enabled: boolean
+  menu_bot_greeting: string | null
+  menu_bot_options: MenuOption[] | null
 }
 
 interface QuickReply {
@@ -25,8 +34,14 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<TenantSettings | null>(null)
   const [botEnabled, setBotEnabled] = useState(false)
   const [botPrompt, setBotPrompt] = useState('')
+  const [menuBotEnabled, setMenuBotEnabled] = useState(false)
+  const [menuGreeting, setMenuGreeting] = useState('')
+  const [menuOptions, setMenuOptions] = useState<MenuOption[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
+  const isPro = settings?.plan === 'pro'
 
   const [replies, setReplies] = useState<QuickReply[]>([])
   const [shortcut, setShortcut] = useState('')
@@ -44,6 +59,13 @@ export default function SettingsPage() {
         setSettings(data)
         setBotEnabled(data.bot_enabled)
         setBotPrompt(data.bot_prompt || '')
+        setMenuBotEnabled(data.menu_bot_enabled)
+        setMenuGreeting(data.menu_bot_greeting || '')
+        setMenuOptions(
+          Array.isArray(data.menu_bot_options) && data.menu_bot_options.length
+            ? data.menu_bot_options
+            : [{ label: '', response: '' }]
+        )
       })
     loadReplies()
   }, [])
@@ -58,14 +80,36 @@ export default function SettingsPage() {
   async function saveSettings() {
     setSaving(true)
     setSaved(false)
-    await fetch('/api/tenant/settings', {
+    setSaveError('')
+    const res = await fetch('/api/tenant/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bot_enabled: botEnabled, bot_prompt: botPrompt })
+      body: JSON.stringify({
+        bot_enabled: isPro ? botEnabled : false,
+        bot_prompt: botPrompt,
+        menu_bot_enabled: menuBotEnabled,
+        menu_bot_greeting: menuGreeting,
+        menu_bot_options: menuOptions.filter((o) => o.label.trim())
+      })
     })
     setSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setSaveError(d.error || 'Erro ao salvar.')
+      return
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
+  }
+
+  function updateOption(i: number, field: 'label' | 'response', value: string) {
+    setMenuOptions((opts) => opts.map((o, idx) => (idx === i ? { ...o, [field]: value } : o)))
+  }
+  function addOption() {
+    setMenuOptions((opts) => (opts.length >= 3 ? opts : [...opts, { label: '', response: '' }]))
+  }
+  function removeOption(i: number) {
+    setMenuOptions((opts) => opts.filter((_, idx) => idx !== i))
   }
 
   async function addReply() {
@@ -254,39 +298,147 @@ export default function SettingsPage() {
         )}
       </section>
 
-      {/* Bot IA */}
+      {/* Bot com IA — exclusivo do Pro */}
       <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-fg">Bot com IA</h2>
-            <p className="mt-0.5 text-xs text-faint">Responde automaticamente com Claude Sonnet</p>
+            <h2 className="flex items-center gap-2 font-semibold text-fg">
+              Bot com IA
+              <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-purple-400">
+                Pro
+              </span>
+            </h2>
+            <p className="mt-0.5 text-xs text-faint">
+              Responde automaticamente em linguagem natural com Claude
+            </p>
           </div>
           <button
-            onClick={() => setBotEnabled(!botEnabled)}
+            onClick={() => isPro && setBotEnabled(!botEnabled)}
+            disabled={!isPro}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              botEnabled ? 'bg-green-500' : 'bg-surface2'
-            }`}
+              botEnabled && isPro ? 'bg-green-500' : 'bg-surface2'
+            } ${!isPro ? 'cursor-not-allowed opacity-50' : ''}`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                botEnabled ? 'translate-x-6' : 'translate-x-1'
+                botEnabled && isPro ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
           </button>
         </div>
 
-        {botEnabled && (
+        {!isPro && (
+          <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-4">
+            <p className="text-sm font-medium text-fg">Disponível no plano Pro</p>
+            <p className="mt-1 text-xs text-muted">
+              No plano Pro, o bot entende qualquer pergunta e responde sozinho em linguagem
+              natural — ideal para tirar dúvidas, qualificar leads e atender 24/7.
+            </p>
+            <p className="mt-3 text-xs text-purple-400">
+              Para fazer upgrade, entre em contato com o suporte.
+            </p>
+          </div>
+        )}
+
+        {isPro && botEnabled && (
           <div>
             <label className="mb-2 block text-sm font-medium text-fg">
-              Personalidade do bot (system prompt)
+              Personalidade e base de conhecimento do bot
             </label>
             <textarea
               value={botPrompt}
               onChange={(e) => setBotPrompt(e.target.value)}
-              rows={4}
-              placeholder="Ex: Você é um assistente da Empresa XYZ. Sempre seja educado, responda em português e encaminhe dúvidas complexas para um agente humano."
+              rows={6}
+              placeholder="Ex: Você é o assistente da Escola XYZ. Horário: seg-sex 7h-18h. Séries: do maternal ao 9º ano. Atividades extracurriculares: judô (3ª e 5ª, 14h), ballet (2ª e 4ª, 15h), robótica (sáb 9h). Matrículas 2026 abertas. Sempre responda em português, seja cordial e, para matrícula, peça nome do responsável e telefone."
               className="w-full resize-none rounded-lg border border-line bg-background px-4 py-3 text-sm text-fg focus:border-green-500 focus:outline-none"
             />
+            <p className="mt-2 text-xs text-faint">
+              Quanto mais informação você colocar aqui (horários, valores, regras), melhor o bot
+              responde. Ele usa tudo isso como base de conhecimento.
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* Menu bot — disponível no Básico */}
+      <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-fg">Menu de atendimento</h2>
+            <p className="mt-0.5 text-xs text-faint">
+              Envia botões de opção ao cliente e responde cada escolha automaticamente
+            </p>
+          </div>
+          <button
+            onClick={() => setMenuBotEnabled(!menuBotEnabled)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              menuBotEnabled ? 'bg-green-500' : 'bg-surface2'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                menuBotEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+
+        {menuBotEnabled && (
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-fg">
+                Mensagem de saudação
+              </label>
+              <input
+                value={menuGreeting}
+                onChange={(e) => setMenuGreeting(e.target.value)}
+                placeholder="Ex: Olá! Bem-vindo à Escola XYZ. Como podemos ajudar?"
+                className="w-full rounded-lg border border-line bg-background px-4 py-2.5 text-sm text-fg focus:border-green-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-fg">
+                Opções (até 3 botões)
+              </label>
+              {menuOptions.map((opt, i) => (
+                <div key={i} className="rounded-lg border border-line bg-background p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-green-400">{i + 1}</span>
+                    <input
+                      value={opt.label}
+                      onChange={(e) => updateOption(i, 'label', e.target.value)}
+                      maxLength={20}
+                      placeholder="Texto do botão (máx 20 car.)"
+                      className="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+                    />
+                    {menuOptions.length > 1 && (
+                      <button
+                        onClick={() => removeOption(i)}
+                        className="text-faint hover:text-red-400"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    value={opt.response}
+                    onChange={(e) => updateOption(i, 'response', e.target.value)}
+                    rows={2}
+                    placeholder="Resposta enviada ao cliente quando ele escolher esta opção"
+                    className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+                  />
+                </div>
+              ))}
+              {menuOptions.length < 3 && (
+                <button
+                  onClick={addOption}
+                  className="text-xs font-medium text-green-400 hover:text-green-300"
+                >
+                  + Adicionar opção
+                </button>
+              )}
+            </div>
           </div>
         )}
       </section>
@@ -300,6 +452,7 @@ export default function SettingsPage() {
           {saving ? 'Salvando...' : 'Salvar configurações'}
         </button>
         {saved && <span className="text-sm text-green-400">Salvo!</span>}
+        {saveError && <span className="text-sm text-red-400">{saveError}</span>}
       </div>
 
       {/* Quick replies */}
