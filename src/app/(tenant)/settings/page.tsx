@@ -35,6 +35,7 @@ export default function SettingsPage() {
   const [showCancel, setShowCancel] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
+  const [cancelConfirmText, setCancelConfirmText] = useState('')
 
   useEffect(() => {
     fetch('/api/tenant/settings')
@@ -159,28 +160,64 @@ export default function SettingsPage() {
               </button>
             ) : (
               <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
-                <p className="text-sm font-medium text-fg">Cancelar assinatura?</p>
+                <p className="text-sm font-medium text-fg">Tem certeza que quer cancelar?</p>
                 <p className="mt-1 text-xs text-muted">
-                  Sua assinatura será cancelada e não haverá novas cobranças. Você perderá o
-                  acesso ao UProCRM imediatamente. Esta ação não pode ser desfeita.
+                  Ao cancelar, você perde imediatamente o acesso a tudo que construiu no UProCRM:
                 </p>
+                <ul className="mt-3 space-y-1.5 text-xs text-muted">
+                  <li className="flex gap-2">
+                    <span className="text-red-400">✕</span>
+                    <span><strong className="text-fg">Atendimento automático com IA</strong> — o bot deixa de responder seus clientes 24/7</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-red-400">✕</span>
+                    <span><strong className="text-fg">Histórico de conversas</strong> — todas as mensagens e o contexto dos seus clientes ficam inacessíveis</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-red-400">✕</span>
+                    <span><strong className="text-fg">Sua base de contatos</strong> — leads e clientes cadastrados deixam de ser acessíveis</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-red-400">✕</span>
+                    <span><strong className="text-fg">Funil de vendas</strong> — o acompanhamento das suas negociações em andamento</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-red-400">✕</span>
+                    <span><strong className="text-fg">Conexão com o WhatsApp</strong> e os disparos em massa configurados</span>
+                  </li>
+                </ul>
+                <p className="mt-3 text-xs text-muted">
+                  Não haverá novas cobranças. Esta ação não pode ser desfeita — para voltar a usar,
+                  será necessário assinar novamente.
+                </p>
+                <div className="mt-4">
+                  <label className="block text-xs text-muted">
+                    Para confirmar, digite <strong className="text-fg">CANCELAR</strong> abaixo:
+                  </label>
+                  <input
+                    value={cancelConfirmText}
+                    onChange={(e) => setCancelConfirmText(e.target.value)}
+                    placeholder="CANCELAR"
+                    className="mt-1.5 w-full rounded-lg border border-line bg-background px-3 py-2 text-sm uppercase text-fg focus:border-red-500 focus:outline-none"
+                  />
+                </div>
                 {cancelError && (
                   <p className="mt-2 text-xs text-red-400">{cancelError}</p>
                 )}
                 <div className="mt-4 flex gap-2">
                   <button
-                    onClick={cancelSubscription}
+                    onClick={() => { setShowCancel(false); setCancelError(''); setCancelConfirmText('') }}
                     disabled={cancelling}
-                    className="rounded-lg bg-red-500 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-40"
+                    className="rounded-lg bg-green-500 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-40"
                   >
-                    {cancelling ? 'Cancelando...' : 'Sim, cancelar'}
+                    Manter minha assinatura
                   </button>
                   <button
-                    onClick={() => { setShowCancel(false); setCancelError('') }}
-                    disabled={cancelling}
-                    className="rounded-lg bg-surface2 px-4 py-2 text-xs font-medium text-fg transition-colors hover:bg-line disabled:opacity-40"
+                    onClick={cancelSubscription}
+                    disabled={cancelling || cancelConfirmText.trim().toUpperCase() !== 'CANCELAR'}
+                    className="rounded-lg bg-transparent px-4 py-2 text-xs font-medium text-faint transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-faint"
                   >
-                    Voltar
+                    {cancelling ? 'Cancelando...' : 'Cancelar mesmo assim'}
                   </button>
                 </div>
               </div>
