@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { provisionTenant } from '@/lib/provision-tenant'
 import { globalPrisma } from '@/lib/prisma-tenant'
+import { generateAffiliateCommission } from '@/lib/affiliate'
 import crypto from 'crypto'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -59,11 +60,34 @@ export async function POST(req: Request) {
         data: { mp_subscription_id: subscriptionId }
       })
       await provisionTenant(tenantId)
+      // Primeira comissão do afiliado (mês da ativação)
+      const amount = Number(subscription.auto_recurring?.transaction_amount || 0)
+      if (amount > 0) await generateAffiliateCommission(tenantId, amount)
     } else if (['cancelled', 'paused'].includes(subscription.status)) {
       await globalPrisma.tenant.update({
         where: { id: tenantId },
         data: { status: subscription.status === 'paused' ? 'suspended' : 'cancelled' }
       })
+    }
+  }
+
+  // Pagamento recorrente mensal da assinatura → comissão do mês
+  if (body.type === 'subscription_authorized_payment') {
+    const paymentId = body.data?.id
+    if (!paymentId) return Response.json({ ok: true })
+    try {
+      const { MercadoPagoConfig, PreApproval } = await import('mercadopago')
+      const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
+      // O evento traz o preapproval_id; resolvemos o tenant por ele
+      const preapprovalId = body.data?.preapproval_id || body.preapproval_id
+      if (preapprovalId) {
+        const subscription: any = await new PreApproval(client).get({ id: preapprovalId })
+        const tenantId = subscription.external_reference
+        const amount = Number(subscription.auto_recurring?.transaction_amount || 0)
+        if (tenantId && amount > 0) await generateAffiliateCommission(tenantId, amount)
+      }
+    } catch (err) {
+      console.error('[MP webhook] recurring commission failed', err)
     }
   }
 
