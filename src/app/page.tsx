@@ -1,74 +1,55 @@
 import Link from 'next/link'
+import {
+  MessageSquare, Bot, KanbanSquare, Megaphone, Tags, BarChart3, ShieldCheck,
+  ArrowRight, Check, Plug2, Users, Workflow
+} from 'lucide-react'
+import { CrmPreview } from '@/components/landing/crm-preview'
 
 const FEATURES = [
-  {
-    icon: '💬',
-    title: 'Inbox compartilhada',
-    desc: 'Todas as conversas do WhatsApp num só lugar. Status (aberta / pendente / fechada), histórico completo e envio direto pela plataforma.'
-  },
-  {
-    icon: '🤖',
-    title: 'Bot com IA (Claude)',
-    desc: 'O Claude Sonnet responde seus clientes 24/7 com o tom da sua marca. Você configura a personalidade uma vez.'
-  },
-  {
-    icon: '🗂️',
-    title: 'Funil de vendas Kanban',
-    desc: 'Arraste leads entre os estágios — de novo lead a fechado. Veja o valor do pipeline em cada coluna.'
-  },
-  {
-    icon: '📣',
-    title: 'Disparos em massa',
-    desc: 'Envie mensagens para todos os contatos ou segmente por etiqueta. Acompanhe entregas e falhas.'
-  },
-  {
-    icon: '🏷️',
-    title: 'Etiquetas e anotações',
-    desc: 'Organize contatos com tags e registre anotações internas em cada conversa.'
-  },
-  {
-    icon: '⚡',
-    title: 'Respostas rápidas',
-    desc: 'Crie modelos de mensagem reutilizáveis e insira com um clique durante o atendimento.'
-  },
-  {
-    icon: '📊',
-    title: 'Dashboard de métricas',
-    desc: 'Contatos, mensagens do dia, conversas abertas, pipeline em negociação e total fechado.'
-  },
-  {
-    icon: '🔌',
-    title: 'Conexão oficial Meta',
-    desc: 'WhatsApp Cloud API oficial. Sem risco de ban, sem gambiarras. Conexão em 2 minutos.'
-  },
-  {
-    icon: '🔒',
-    title: 'Dados isolados',
-    desc: 'Cada cliente tem um banco de dados (schema) totalmente separado. Privacidade por arquitetura.'
-  }
+  { icon: MessageSquare, title: 'Inbox compartilhada', desc: 'Todas as conversas do WhatsApp num só lugar. Status, histórico completo e respostas em equipe sem pisar no pé um do outro.' },
+  { icon: Bot, title: 'Bot com IA', desc: 'O Claude responde seus clientes 24/7 com o tom da sua marca, captura nome e e-mail e encaminha pra um humano quando precisa.' },
+  { icon: KanbanSquare, title: 'Funil de vendas', desc: 'Arraste leads entre os estágios. Veja o valor do pipeline por coluna e o que está travando a venda.' },
+  { icon: Megaphone, title: 'Disparos em massa', desc: 'Envie mensagens segmentadas por etiqueta e acompanhe entregas e respostas em tempo real.' },
+  { icon: Tags, title: 'Etiquetas e contatos', desc: 'Organize com tags, anotações e campos. Cada lead vira um cadastro completo, automaticamente.' },
+  { icon: BarChart3, title: 'Métricas em tempo real', desc: 'Conversas abertas, novos contatos, tempo de resposta e pipeline — sem você montar um único gráfico.' }
+]
+
+const STEPS = [
+  { n: '01', icon: Plug2, title: 'Conecte seu WhatsApp', desc: 'Conexão oficial pela Meta Cloud API, sem risco de ban. Leva 2 minutos.' },
+  { n: '02', icon: Users, title: 'Receba seus contatos', desc: 'As mensagens que chegam viram contatos no CRM automaticamente, com etiquetas e funil prontos.' },
+  { n: '03', icon: Workflow, title: 'Atenda e venda', desc: 'O bot responde, qualifica e organiza os leads. Sua equipe foca em fechar.' }
+]
+
+const FAQ = [
+  { q: 'Preciso de WhatsApp Business API?', a: 'A conexão é feita pela API oficial da Meta (Cloud API). A gente te guia no processo — leva poucos minutos e não há risco de banimento.' },
+  { q: 'O bot de IA responde sozinho?', a: 'Sim. Você configura a personalidade e a base de conhecimento uma vez, e o Claude responde 24/7. Ele também pausa quando um atendente assume a conversa.' },
+  { q: 'Posso cancelar quando quiser?', a: 'Sim, sem fidelidade. O cancelamento é feito pelo próprio painel e não há novas cobranças.' },
+  { q: 'Meus dados ficam seguros?', a: 'Cada cliente tem um banco de dados isolado (schema próprio). Privacidade por arquitetura, não por configuração.' },
+  { q: 'Quais formas de pagamento?', a: 'Pix, boleto ou cartão de crédito via Mercado Pago, com checkout transparente direto na plataforma.' }
 ]
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0b0f14] text-[#e6e8eb]">
+    <div className="min-h-screen bg-background text-fg">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-[#1b222c] bg-[#0b0f14]/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500">
-              <span className="text-xs font-bold text-white">UP</span>
+      <header className="sticky top-0 z-20 border-b border-line bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white shadow-lg shadow-brand/30">
+              <MessageSquare className="h-5 w-5" />
             </div>
-            <span className="text-lg font-bold">UProCRM</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm text-[#9aa6b2] transition-colors hover:text-white">
-              Entrar
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
-            >
-              Começar grátis
+            <span className="text-lg font-bold tracking-tight">UProCRM</span>
+          </Link>
+          <nav className="hidden items-center gap-8 md:flex">
+            <a href="#recursos" className="text-sm font-medium text-muted transition-colors hover:text-fg">Recursos</a>
+            <a href="#como-funciona" className="text-sm font-medium text-muted transition-colors hover:text-fg">Como funciona</a>
+            <a href="#planos" className="text-sm font-medium text-muted transition-colors hover:text-fg">Planos</a>
+            <a href="#faq" className="text-sm font-medium text-muted transition-colors hover:text-fg">FAQ</a>
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-sm font-medium text-muted transition-colors hover:text-fg">Entrar</Link>
+            <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brand/25 transition-colors hover:bg-brand-600">
+              Começar grátis <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -76,55 +57,84 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-green-500/10 blur-3xl" />
-        <div className="mx-auto max-w-6xl px-6 py-28 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-sm font-medium text-green-400">
-            <span className="h-2 w-2 rounded-full bg-green-500" />
-            Cancele quando quiser
+        <div className="pointer-events-none absolute -top-32 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-brand/10 blur-3xl" />
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:py-24">
+          <div>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand-soft px-3 py-1 text-sm font-medium text-brand">
+              <ShieldCheck className="h-4 w-4" />
+              Conexão oficial WhatsApp Business API
+            </div>
+            <h1 className="text-balance text-4xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
+              Atenda no WhatsApp e venda mais com{' '}
+              <span className="bg-gradient-to-r from-brand to-brand-700 bg-clip-text text-transparent">inteligência artificial</span>
+            </h1>
+            <p className="mt-6 max-w-lg text-lg text-muted">
+              Inbox compartilhada, funil de vendas, disparos em massa e um bot de IA que
+              atende seus clientes 24/7. Tudo num só CRM, com setup em 2 minutos.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-brand px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand/25 transition-colors hover:bg-brand-600">
+                Criar conta grátis <ArrowRight className="h-5 w-5" />
+              </Link>
+              <a href="#planos" className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-7 py-3.5 text-base font-semibold text-fg transition-colors hover:border-brand/40">
+                Ver planos
+              </a>
+            </div>
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
+              <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-brand" /> Sem risco de ban</span>
+              <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-brand" /> Setup em 2 min</span>
+              <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-brand" /> Cancele quando quiser</span>
+            </div>
           </div>
-          <h1 className="mb-6 text-5xl font-bold leading-tight md:text-6xl">
-            CRM completo para<br />
-            <span className="bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
-              WhatsApp Business
-            </span>
-          </h1>
-          <p className="mx-auto mb-10 max-w-2xl text-xl text-[#9aa6b2]">
-            Inbox compartilhada, funil de vendas, disparos em massa e bot com IA — tudo
-            num CRM multi-tenant com setup em 2 minutos.
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Link
-              href="/signup"
-              className="rounded-xl bg-green-500 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-green-500/20 transition-colors hover:bg-green-600"
-            >
-              Criar conta grátis
-            </Link>
-            <Link
-              href="#planos"
-              className="rounded-xl border border-[#232c38] px-8 py-4 text-lg font-medium text-[#9aa6b2] transition-colors hover:border-[#3a4554] hover:text-white"
-            >
-              Ver planos
-            </Link>
+
+          {/* Mockup */}
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-0 -m-6 rounded-[2rem] bg-gradient-to-br from-brand-700 to-brand opacity-90 blur-[1px]" />
+            <div className="relative rounded-[2rem] bg-gradient-to-br from-brand-700 to-brand p-6 shadow-2xl shadow-brand/30">
+              <CrmPreview />
+            </div>
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="border-t border-[#1b222c] py-24">
+      <section id="recursos" className="py-20">
         <div className="mx-auto max-w-6xl px-6">
-          <h2 className="mb-3 text-center text-3xl font-bold">Tudo que você precisa</h2>
-          <p className="mb-14 text-center text-[#9aa6b2]">
-            Um CRM pensado para quem vende e atende pelo WhatsApp.
-          </p>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="mx-auto mb-14 max-w-2xl text-center">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand">Recursos</div>
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Um CRM completo para quem vende pelo WhatsApp</h2>
+            <p className="mt-4 text-muted">Pare de juntar inbox, planilha e ferramenta de disparo. Está tudo aqui — e conversa com o WhatsApp de forma nativa.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="rounded-2xl border border-[#1b222c] bg-[#131820] p-6 transition-colors hover:border-green-500/40"
-              >
-                <div className="mb-4 text-3xl">{f.icon}</div>
+              <div key={f.title} className="group rounded-2xl border border-line bg-surface p-6 transition-all hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-soft text-brand transition-colors group-hover:bg-brand group-hover:text-white">
+                  <f.icon className="h-5 w-5" />
+                </div>
                 <h3 className="mb-2 font-semibold">{f.title}</h3>
-                <p className="text-sm text-[#9aa6b2]">{f.desc}</p>
+                <p className="text-sm text-muted">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="como-funciona" className="border-t border-line py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto mb-14 max-w-2xl text-center">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand">Como funciona</div>
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Do zero ao atendimento em minutos</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {STEPS.map((s) => (
+              <div key={s.n} className="relative overflow-hidden rounded-2xl border border-line bg-surface p-7">
+                <span className="absolute -right-2 -top-4 text-7xl font-extrabold text-brand-soft">{s.n}</span>
+                <div className="relative mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-white">
+                  <s.icon className="h-5 w-5" />
+                </div>
+                <h3 className="relative mb-2 font-semibold">{s.title}</h3>
+                <p className="relative text-sm text-muted">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -132,59 +142,100 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="planos" className="border-t border-[#1b222c] py-24">
-        <div className="mx-auto max-w-4xl px-6">
-          <h2 className="mb-3 text-center text-3xl font-bold">Planos simples</h2>
-          <p className="mb-12 text-center text-[#9aa6b2]">
-            Sem taxa de setup. Pague com Pix, boleto ou cartão via Mercado Pago. Cancele quando quiser.
-          </p>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            <div className="rounded-2xl border border-[#232c38] bg-[#131820] p-8">
-              <div className="mb-2 text-sm font-medium text-[#9aa6b2]">BÁSICO</div>
-              <div className="mb-1 text-4xl font-bold">R$ 97</div>
-              <div className="mb-6 text-sm text-[#9aa6b2]">/mês</div>
-              <ul className="mb-8 space-y-3">
-                {['1 número WhatsApp', 'Bot com IA', 'Funil de vendas Kanban', 'Disparos em massa', '5.000 mensagens/mês', 'Suporte por email'].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-sm text-[#c4cdd6]">
-                    <span className="text-green-400">✓</span> {item}
+      <section id="planos" className="border-t border-line py-20">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="mx-auto mb-14 max-w-2xl text-center">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand">Planos</div>
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Preço simples, sem surpresa</h2>
+            <p className="mt-4 text-muted">Sem taxa de setup. Pix, boleto ou cartão via Mercado Pago. Cancele quando quiser.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {/* Básico */}
+            <div className="rounded-2xl border border-line bg-surface p-8">
+              <div className="text-sm font-semibold text-muted">Básico</div>
+              <div className="mt-3 flex items-baseline gap-1">
+                <span className="text-4xl font-extrabold">R$ 97</span>
+                <span className="text-sm text-muted">/mês</span>
+              </div>
+              <p className="mt-2 text-sm text-muted">Para começar a organizar seu atendimento.</p>
+              <ul className="mt-6 space-y-3">
+                {['1 número WhatsApp', 'Inbox + funil de vendas', 'Menu de atendimento', 'Etiquetas e disparos', 'Suporte por e-mail'].map((i) => (
+                  <li key={i} className="flex items-center gap-2.5 text-sm text-fg">
+                    <Check className="h-4 w-4 flex-shrink-0 text-brand" /> {i}
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/signup"
-                className="block w-full rounded-xl bg-green-500 py-3 text-center font-medium text-white transition-colors hover:bg-green-600"
-              >
+              <Link href="/signup" className="mt-8 block rounded-xl border border-line py-3 text-center font-semibold text-fg transition-colors hover:border-brand/40">
                 Começar grátis
               </Link>
             </div>
-            <div className="relative rounded-2xl border-2 border-green-500 bg-[#131820] p-8">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-green-500 px-3 py-1 text-xs font-bold text-white">
-                POPULAR
+            {/* Pro */}
+            <div className="relative rounded-2xl border-2 border-brand bg-surface p-8 shadow-xl shadow-brand/10">
+              <div className="absolute -top-3 left-8 rounded-full bg-brand px-3 py-1 text-xs font-bold text-white">MAIS POPULAR</div>
+              <div className="text-sm font-semibold text-brand">Pro</div>
+              <div className="mt-3 flex items-baseline gap-1">
+                <span className="text-4xl font-extrabold">R$ 197</span>
+                <span className="text-sm text-muted">/mês</span>
               </div>
-              <div className="mb-2 text-sm font-medium text-green-400">PRO</div>
-              <div className="mb-1 text-4xl font-bold">R$ 197</div>
-              <div className="mb-6 text-sm text-[#9aa6b2]">/mês</div>
-              <ul className="mb-8 space-y-3">
-                {['3 números WhatsApp', 'Bot com IA avançado', 'Mensagens ilimitadas', 'Etiquetas e segmentação', 'Respostas rápidas', 'Suporte prioritário'].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-sm text-[#c4cdd6]">
-                    <span className="text-green-400">✓</span> {item}
+              <p className="mt-2 text-sm text-muted">Atendimento automático com IA de verdade.</p>
+              <ul className="mt-6 space-y-3">
+                {['Tudo do Básico', 'Bot com IA (Claude) 24/7', 'Qualificação e captura de leads', 'Encaminhamento para humano', 'Transcrição de áudios', 'Suporte prioritário'].map((i) => (
+                  <li key={i} className="flex items-center gap-2.5 text-sm text-fg">
+                    <Check className="h-4 w-4 flex-shrink-0 text-brand" /> {i}
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/signup"
-                className="block w-full rounded-xl bg-green-500 py-3 text-center font-medium text-white transition-colors hover:bg-green-600"
-              >
-                Começar grátis
+              <Link href="/signup" className="mt-8 block rounded-xl bg-brand py-3 text-center font-semibold text-white shadow-lg shadow-brand/25 transition-colors hover:bg-brand-600">
+                Assinar o Pro
               </Link>
             </div>
           </div>
         </div>
       </section>
 
+      {/* FAQ */}
+      <section id="faq" className="border-t border-line py-20">
+        <div className="mx-auto max-w-3xl px-6">
+          <div className="mb-12 text-center">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand">FAQ</div>
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Perguntas frequentes</h2>
+          </div>
+          <div className="space-y-3">
+            {FAQ.map((item) => (
+              <details key={item.q} className="group rounded-xl border border-line bg-surface p-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between font-medium">
+                  {item.q}
+                  <span className="ml-4 text-brand transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 text-sm text-muted">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA final */}
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-brand px-8 py-16 text-center shadow-2xl shadow-brand/30">
+          <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Pronto para automatizar seu atendimento?</h2>
+          <p className="mx-auto mt-4 max-w-xl text-white/80">Crie sua conta, conecte o WhatsApp e deixe o bot trabalhar por você.</p>
+          <Link href="/signup" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 text-base font-semibold text-brand-700 transition-transform hover:scale-[1.02]">
+            Criar conta grátis <ArrowRight className="h-5 w-5" />
+          </Link>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="border-t border-[#1b222c] py-8 text-center text-sm text-[#6b7886]">
-        © 2026 UProCRM. Todos os direitos reservados.
+      <footer className="border-t border-line py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
+              <MessageSquare className="h-4 w-4" />
+            </div>
+            <span className="font-bold">UProCRM</span>
+          </div>
+          <p className="text-sm text-faint">© 2026 UProCRM · Todos os direitos reservados.</p>
+        </div>
       </footer>
     </div>
   )

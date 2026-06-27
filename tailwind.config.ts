@@ -20,6 +20,16 @@ const config: Config = {
         fg: "var(--fg)",
         muted: "var(--muted)",
         faint: "var(--faint)",
+        brand: {
+          DEFAULT: "var(--brand)",
+          600: "var(--brand-600)",
+          700: "var(--brand-700)",
+          soft: "var(--brand-soft)",
+        },
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "monospace"],
       },
     },
   },
