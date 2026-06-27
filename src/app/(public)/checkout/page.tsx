@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { Lock, ShieldCheck, Check, Tag, CreditCard, Loader2, MessageSquare } from 'lucide-react'
 
 interface SaasConfig {
   price_basic: number
@@ -158,97 +159,151 @@ function CheckoutContent() {
     }
   }
 
+  const annualBilled = couponStatus?.valid
+    ? Math.max(1, annualTotal - (couponStatus.discount_type === 'percent'
+      ? Math.round(annualTotal * couponStatus.discount_value / 100)
+      : couponStatus.discount_value * 12))
+    : annualTotal
+
+  const PLAN_INCLUDES = [
+    'Inbox compartilhada do WhatsApp',
+    'Funil de vendas e contatos',
+    'Etiquetas, anotações e disparos',
+    'Conexão oficial Meta (sem ban)'
+  ]
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 text-fg">
-      <div className="w-full max-w-lg">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand">
-            <span className="text-xl font-bold text-white">UP</span>
+    <div className="min-h-screen bg-background text-fg">
+      {/* Top bar */}
+      <header className="border-b border-line">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white shadow-lg shadow-brand/25">
+              <MessageSquare className="h-4 w-4" />
+            </div>
+            <span className="font-bold tracking-tight">UProCRM</span>
           </div>
-          <h1 className="mb-1 text-2xl font-bold">Ative sua conta</h1>
-          <p className="text-sm text-muted">Plano Básico · Cancele quando quiser.</p>
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted">
+            <Lock className="h-3.5 w-3.5" /> Pagamento seguro
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto grid max-w-5xl gap-8 px-6 py-10 lg:grid-cols-[1fr_1.1fr]">
+        {/* ─── Resumo do pedido ─── */}
+        <div className="lg:order-1">
+          <h1 className="text-2xl font-bold tracking-tight">Ative seu plano</h1>
+          <p className="mt-1 text-sm text-muted">Comece a atender no WhatsApp em minutos.</p>
+
+          <div className="mt-6 rounded-2xl border border-line bg-surface p-6">
+            {/* Plano + toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-brand">Plano Básico</div>
+                <div className="mt-0.5 text-sm text-muted">Assinatura {billing === 'annual' ? 'anual' : 'mensal'}</div>
+              </div>
+              <div className="flex overflow-hidden rounded-lg border border-line text-xs">
+                <button onClick={() => setBilling('monthly')} className={`px-3 py-1.5 font-medium transition-colors ${billing === 'monthly' ? 'bg-brand text-white' : 'text-muted hover:text-fg'}`}>Mensal</button>
+                <button onClick={() => setBilling('annual')} className={`px-3 py-1.5 font-medium transition-colors ${billing === 'annual' ? 'bg-brand text-white' : 'text-muted hover:text-fg'}`}>
+                  Anual <span className={billing === 'annual' ? 'text-white/80' : 'text-brand'}>-{config.annual_discount}%</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Preço */}
+            <div className="mt-5 flex items-end gap-2 border-t border-line pt-5">
+              {couponStatus?.valid && (
+                <span className="mb-1 text-base text-faint line-through">R$ {displayedPrice}</span>
+              )}
+              <span className="text-4xl font-bold tracking-tight">R$ {finalPrice}</span>
+              <span className="mb-1 text-sm text-muted">/mês</span>
+            </div>
+            {billing === 'annual' && (
+              <p className="mt-1 text-xs text-muted">Cobrado R$ {annualBilled} uma vez por ano</p>
+            )}
+
+            {/* Cupom */}
+            <div className="mt-5">
+              <div className="flex gap-2">
+                <div className="flex flex-1 items-center gap-2 rounded-lg border border-line bg-background px-3 focus-within:border-brand">
+                  <Tag className="h-4 w-4 text-faint" />
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponStatus(null); setError('') }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleValidateCoupon()}
+                    placeholder="Cupom de desconto"
+                    className="flex-1 bg-transparent py-2.5 text-sm uppercase text-fg placeholder:normal-case placeholder:text-faint focus:outline-none"
+                  />
+                </div>
+                <button onClick={handleValidateCoupon} disabled={checkingCoupon || !couponCode.trim()} className="rounded-lg border border-line px-4 text-sm font-medium text-fg transition-colors hover:border-brand hover:text-brand disabled:opacity-40">
+                  {checkingCoupon ? '...' : 'Aplicar'}
+                </button>
+              </div>
+              {couponStatus?.valid && (
+                <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-brand">
+                  <Check className="h-3.5 w-3.5" />
+                  {couponStatus.description || `Desconto de ${couponStatus.discount_type === 'percent' ? `${couponStatus.discount_value}%` : `R$ ${couponStatus.discount_value}`} aplicado!`}
+                </p>
+              )}
+            </div>
+
+            {/* Incluído */}
+            <ul className="mt-6 space-y-2.5 border-t border-line pt-5">
+              {PLAN_INCLUDES.map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-sm text-fg">
+                  <Check className="h-4 w-4 flex-shrink-0 text-brand" /> {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-brand" /> Sem fidelidade</span>
+            <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-brand" /> Cancele quando quiser</span>
+          </div>
         </div>
 
-        <div className="space-y-5 rounded-2xl border border-line bg-surface p-8">
-          {error && (
-            <div className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
-          )}
-
-          {/* Mensal / Anual toggle */}
-          <div className="flex overflow-hidden rounded-xl border border-line">
-            <button onClick={() => setBilling('monthly')} className={`flex-1 py-2.5 text-sm font-medium transition-colors ${billing === 'monthly' ? 'bg-brand text-white' : 'bg-transparent text-muted hover:text-white'}`}>
-              Mensal
-            </button>
-            <button onClick={() => setBilling('annual')} className={`relative flex-1 py-2.5 text-sm font-medium transition-colors ${billing === 'annual' ? 'bg-brand text-white' : 'bg-transparent text-muted hover:text-white'}`}>
-              Anual
-              <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-xs ${billing === 'annual' ? 'bg-white/20' : 'bg-brand/20 text-brand'}`}>
-                -{config.annual_discount}%
-              </span>
-            </button>
-          </div>
-
-          {/* Preço */}
-          <div className="rounded-xl border border-line bg-background p-4 text-center">
-            {couponStatus?.valid ? (
-              <>
-                <div className="text-sm text-faint line-through">R$ {displayedPrice}/mês</div>
-                <div className="text-3xl font-bold text-brand">R$ {finalPrice}<span className="text-lg font-normal text-muted">/mês</span></div>
-              </>
-            ) : (
-              <div className="text-3xl font-bold text-white">R$ {displayedPrice}<span className="text-lg font-normal text-muted">/mês</span></div>
-            )}
-            {billing === 'annual' && (
-              <div className="mt-1 text-xs text-muted">
-                Cobrado R$ {couponStatus?.valid
-                  ? Math.max(1, annualTotal - (couponStatus.discount_type === 'percent'
-                    ? Math.round(annualTotal * couponStatus.discount_value / 100)
-                    : couponStatus.discount_value * 12))
-                  : annualTotal} por ano
+        {/* ─── Pagamento ─── */}
+        <div className="lg:order-2">
+          <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-semibold">
+                <CreditCard className="h-5 w-5 text-brand" /> Pagamento no cartão
+              </h2>
+              <div className="flex items-center gap-1">
+                {['mastercard', 'visa', 'elo'].map((b) => (
+                  <span key={b} className="rounded border border-line bg-background px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted">{b}</span>
+                ))}
               </div>
-            )}
-          </div>
-
-          {/* Cupom */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted">Cupom de desconto (opcional)</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={couponCode}
-                onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponStatus(null); setError('') }}
-                onKeyDown={(e) => e.key === 'Enter' && handleValidateCoupon()}
-                placeholder="Ex: BEMVINDO50"
-                className="flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm uppercase text-fg focus:border-brand focus:outline-none"
-              />
-              <button onClick={handleValidateCoupon} disabled={checkingCoupon || !couponCode.trim()} className="rounded-lg border border-line px-3 py-2 text-sm text-muted transition-colors hover:border-brand hover:text-brand disabled:opacity-40">
-                {checkingCoupon ? '...' : 'Aplicar'}
-              </button>
             </div>
-            {couponStatus?.valid && (
-              <p className="mt-1.5 text-xs text-brand">
-                ✓ {couponStatus.description || `Desconto de ${couponStatus.discount_type === 'percent' ? `${couponStatus.discount_value}%` : `R$ ${couponStatus.discount_value}`} aplicado!`}
-              </p>
+
+            {error && (
+              <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">{error}</div>
             )}
-          </div>
 
-          {/* Card Brick */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted">Dados do cartão</label>
-            {!brickReady && (
-              <div className="flex h-48 items-center justify-center rounded-lg border border-line">
-                <span className="text-sm text-faint">Carregando formulário...</span>
-              </div>
-            )}
-            <div id="mp-card-brick" className={brickReady ? '' : 'hidden'} />
-          </div>
+            <div className="relative">
+              {!brickReady && (
+                <div className="flex h-64 items-center justify-center rounded-lg border border-line">
+                  <span className="flex items-center gap-2 text-sm text-faint">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando pagamento seguro…
+                  </span>
+                </div>
+              )}
+              <div id="mp-card-brick" className={brickReady ? '' : 'hidden'} />
 
-          {loading && <div className="text-center text-sm text-muted">Processando pagamento...</div>}
+              {loading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-surface/80 backdrop-blur-sm">
+                  <span className="flex items-center gap-2 text-sm font-medium text-brand">
+                    <Loader2 className="h-5 w-5 animate-spin" /> Processando pagamento…
+                  </span>
+                </div>
+              )}
+            </div>
 
-          <div className="pt-1 text-center">
-            <div className="flex items-center justify-center gap-4 text-xs text-faint">
-              <span>🔒 Pagamento seguro</span>
-              <span>✓ Sem fidelidade</span>
-              <span>✓ Cancele a qualquer hora</span>
+            <div className="mt-5 flex items-center justify-center gap-1.5 border-t border-line pt-4 text-xs text-faint">
+              <Lock className="h-3.5 w-3.5" />
+              Seus dados são processados com segurança pelo Mercado Pago
             </div>
           </div>
         </div>
