@@ -132,9 +132,19 @@ export async function processBotResponse(
     tenant.bot_prompt ||
     'Você é um assistente de atendimento ao cliente. Seja sempre educado, claro e prestativo.'
 
+  // Contato novo (ainda sem nome): pede nome e e-mail já na saudação
+  const current = await tenantPrisma.contact.findUnique({
+    where: { id: contact.id },
+    select: { name: true, email: true }
+  })
+  const welcome =
+    !current?.name
+      ? `\n\nIMPORTANTE — PRIMEIRO CONTATO: ainda não sabemos quem é esta pessoa. Comece sua resposta com uma saudação calorosa e, de forma cordial e natural, pergunte o nome dela${current?.email ? '' : ' e o melhor e-mail para contato'}. Em seguida, responda à dúvida. Faça isso na mesma mensagem, sem parecer um formulário.`
+      : ''
+
   let botReply = await chatComplete({
     maxTokens: 1024,
-    system: basePrompt + GUARDRAIL,
+    system: basePrompt + GUARDRAIL + welcome,
     messages
   })
 
