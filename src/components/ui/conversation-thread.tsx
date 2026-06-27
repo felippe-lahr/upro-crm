@@ -30,7 +30,7 @@ interface QuickReply {
 }
 
 const STATUSES = [
-  { id: 'open', label: 'Aberta', color: 'bg-green-500' },
+  { id: 'open', label: 'Aberta', color: 'bg-brand' },
   { id: 'pending', label: 'Pendente', color: 'bg-amber-500' },
   { id: 'closed', label: 'Fechada', color: 'bg-gray-500' }
 ]
@@ -151,7 +151,7 @@ export function ConversationThread({
       <div className="flex flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-line bg-surface px-6 py-4">
           <Link href="/conversations" className="text-muted hover:text-fg">←</Link>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-500/15 font-medium text-green-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/15 font-medium text-brand">
             {(contact.name || contact.phone)[0].toUpperCase()}
           </div>
           <div className="flex-1">
@@ -186,7 +186,7 @@ export function ConversationThread({
               <div
                 className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm ${
                   m.direction === 'outbound'
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-brand-600 text-white'
                     : 'border border-line bg-surface text-fg'
                 }`}
               >
@@ -219,7 +219,7 @@ export function ConversationThread({
                   }}
                   className="block w-full border-b border-line px-4 py-2 text-left last:border-0 hover:bg-surface2"
                 >
-                  <span className="text-xs font-semibold text-green-400">/{q.shortcut}</span>
+                  <span className="text-xs font-semibold text-brand">/{q.shortcut}</span>
                   <span className="ml-2 text-sm text-muted">{q.content.slice(0, 50)}</span>
                 </button>
               ))}
@@ -244,12 +244,12 @@ export function ConversationThread({
               }}
               rows={1}
               placeholder="Digite uma mensagem..."
-              className="flex-1 resize-none rounded-xl border border-line bg-background px-4 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+              className="flex-1 resize-none rounded-xl border border-line bg-background px-4 py-2 text-sm text-fg focus:border-brand focus:outline-none"
             />
             <button
               onClick={send}
               disabled={sending || !text.trim()}
-              className="rounded-xl bg-green-500 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-40"
+              className="rounded-xl bg-brand px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-40"
             >
               {sending ? '...' : 'Enviar'}
             </button>
@@ -292,10 +292,10 @@ export function ConversationThread({
             {tags.map((t) => (
               <span
                 key={t}
-                className="flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-xs text-green-400"
+                className="flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-xs text-brand"
               >
                 {t}
-                <button onClick={() => removeTag(t)} className="hover:text-green-200">×</button>
+                <button onClick={() => removeTag(t)} className="hover:text-brand">×</button>
               </span>
             ))}
             {tags.length === 0 && <span className="text-xs text-faint">Nenhuma etiqueta</span>}
@@ -305,7 +305,7 @@ export function ConversationThread({
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addTag()}
             placeholder="Adicionar etiqueta + Enter"
-            className="w-full rounded-lg border border-line bg-background px-3 py-1.5 text-xs text-fg focus:border-green-500 focus:outline-none"
+            className="w-full rounded-lg border border-line bg-background px-3 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
           />
         </div>
 
@@ -314,7 +314,7 @@ export function ConversationThread({
           <select
             value={contact.stage}
             onChange={(e) => patchContact({ stage: e.target.value })}
-            className="w-full rounded-lg border border-line bg-background px-3 py-1.5 text-xs text-fg focus:border-green-500 focus:outline-none"
+            className="w-full rounded-lg border border-line bg-background px-3 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
           >
             {FUNNEL_STAGES.map((s) => (
               <option key={s.id} value={s.id}>{s.label}</option>
@@ -329,7 +329,7 @@ export function ConversationThread({
             onChange={(e) => setNotes(e.target.value)}
             rows={6}
             placeholder="Anotações internas sobre este contato..."
-            className="w-full resize-none rounded-lg border border-line bg-background px-3 py-2 text-xs text-fg focus:border-green-500 focus:outline-none"
+            className="w-full resize-none rounded-lg border border-line bg-background px-3 py-2 text-xs text-fg focus:border-brand focus:outline-none"
           />
           <button
             onClick={saveNotes}

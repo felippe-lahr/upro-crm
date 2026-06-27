@@ -60,7 +60,7 @@ export default function LandingPage() {
         <div className="pointer-events-none absolute -top-32 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-brand/10 blur-3xl" />
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:py-24">
           <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand-soft px-3 py-1 text-sm font-medium text-brand">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand/10 px-3 py-1 text-sm font-medium text-brand">
               <ShieldCheck className="h-4 w-4" />
               Conexão oficial WhatsApp Business API
             </div>
@@ -108,7 +108,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
               <div key={f.title} className="group rounded-2xl border border-line bg-surface p-6 transition-all hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5">
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-soft text-brand transition-colors group-hover:bg-brand group-hover:text-white">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand transition-colors group-hover:bg-brand group-hover:text-white">
                   <f.icon className="h-5 w-5" />
                 </div>
                 <h3 className="mb-2 font-semibold">{f.title}</h3>
@@ -129,7 +129,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {STEPS.map((s) => (
               <div key={s.n} className="relative overflow-hidden rounded-2xl border border-line bg-surface p-7">
-                <span className="absolute -right-2 -top-4 text-7xl font-extrabold text-brand-soft">{s.n}</span>
+                <span className="absolute -right-2 -top-4 text-7xl font-extrabold text-brand/10">{s.n}</span>
                 <div className="relative mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-white">
                   <s.icon className="h-5 w-5" />
                 </div>

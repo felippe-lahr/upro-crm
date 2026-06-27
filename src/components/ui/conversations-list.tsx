@@ -70,7 +70,7 @@ export function ConversationsList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nome ou telefone..."
-            className="flex-1 min-w-[200px] rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+            className="flex-1 min-w-[200px] rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
           />
           <div className="flex overflow-hidden rounded-lg border border-line">
             {DATE_PRESETS.map((p) => (
@@ -78,7 +78,7 @@ export function ConversationsList({
                 key={p.id}
                 onClick={() => setDatePreset(p.id)}
                 className={`px-3 py-2 text-xs font-medium transition-colors ${
-                  datePreset === p.id ? 'bg-green-500 text-white' : 'bg-surface text-muted hover:text-fg'
+                  datePreset === p.id ? 'bg-brand text-white' : 'bg-surface text-muted hover:text-fg'
                 }`}
               >
                 {p.label}
@@ -95,7 +95,7 @@ export function ConversationsList({
                 onClick={() => toggleTag(t)}
                 className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
                   activeTags.includes(t)
-                    ? 'bg-green-500 text-white'
+                    ? 'bg-brand text-white'
                     : 'bg-surface2 text-muted hover:text-fg'
                 }`}
               >
@@ -127,7 +127,7 @@ export function ConversationsList({
               href={`/conversations/${conv.contactId}`}
               className="flex items-center gap-4 border-b border-line px-6 py-4 transition-colors last:border-0 hover:bg-surface2"
             >
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 font-medium text-green-400">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand/15 font-medium text-brand">
                 {(conv.name || conv.phone)[0].toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
@@ -141,7 +141,7 @@ export function ConversationsList({
                   </span>
                 </div>
                 <p className="mt-0.5 truncate text-sm text-muted">
-                  {conv.lastDirection === 'outbound' && <span className="mr-1 text-green-400">↑</span>}
+                  {conv.lastDirection === 'outbound' && <span className="mr-1 text-brand">↑</span>}
                   {conv.lastContent || '[mídia]'}
                 </p>
                 {conv.tags.length > 0 && (
@@ -149,7 +149,7 @@ export function ConversationsList({
                     {conv.tags.map((t) => (
                       <span
                         key={t}
-                        className="rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] text-green-400"
+                        className="rounded-full bg-brand/15 px-2 py-0.5 text-[11px] text-brand"
                       >
                         {t}
                       </span>

@@ -1,6 +1,10 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import {
+  LayoutDashboard, KanbanSquare, MessageSquare, Users, Megaphone, Settings, ShieldCheck,
+  type LucideIcon
+} from 'lucide-react'
 import { SignOutButton } from '@/components/ui/sign-out-button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { getTenantPrisma } from '@/lib/prisma-tenant'
@@ -37,26 +41,26 @@ export default async function TenantLayout({
       {/* Sidebar */}
       <aside className="flex w-64 flex-col border-r border-line bg-sidebar">
         <div className="border-b border-line p-6">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500">
-              <span className="text-xs font-bold text-white">UP</span>
+          <Link href="/dashboard" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white shadow-lg shadow-brand/25">
+              <MessageSquare className="h-4 w-4" />
             </div>
-            <span className="font-bold text-fg">UProCRM</span>
+            <span className="font-bold tracking-tight text-fg">UProCRM</span>
           </Link>
         </div>
 
         <nav className="flex-1 space-y-1 p-4">
-          <NavItem href="/dashboard" icon="📊" label="Dashboard" />
-          <NavItem href="/funnel" icon="🗂️" label="Funil de Vendas" />
-          <NavItem href="/conversations" icon="💬" label="Conversas" badge={unread} />
-          <NavItem href="/contacts" icon="👥" label="Contatos" />
-          <NavItem href="/broadcasts" icon="📣" label="Disparos" />
-          <NavItem href="/settings" icon="⚙️" label="Configurações" />
+          <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+          <NavItem href="/funnel" icon={KanbanSquare} label="Funil de Vendas" />
+          <NavItem href="/conversations" icon={MessageSquare} label="Conversas" badge={unread} />
+          <NavItem href="/contacts" icon={Users} label="Contatos" />
+          <NavItem href="/broadcasts" icon={Megaphone} label="Disparos" />
+          <NavItem href="/settings" icon={Settings} label="Configurações" />
 
           {(session.user as any).role === 'superadmin' && (
             <>
               <div className="my-2 border-t border-line" />
-              <NavItem href="/admin" icon="🛡️" label="Admin" />
+              <NavItem href="/admin" icon={ShieldCheck} label="Admin" />
             </>
           )}
         </nav>
@@ -86,24 +90,24 @@ export default async function TenantLayout({
 
 function NavItem({
   href,
-  icon,
+  icon: Icon,
   label,
   badge
 }: {
   href: string
-  icon: string
+  icon: LucideIcon
   label: string
   badge?: number
 }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-surface2 hover:text-fg"
+      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-brand/5 hover:text-brand"
     >
-      <span>{icon}</span>
+      <Icon className="h-[18px] w-[18px]" />
       <span className="flex-1">{label}</span>
       {badge && badge > 0 ? (
-        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-green-500 px-1.5 text-xs font-semibold text-white">
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-xs font-semibold text-white">
           {badge > 99 ? '99+' : badge}
         </span>
       ) : null}

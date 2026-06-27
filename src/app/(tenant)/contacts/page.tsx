@@ -64,7 +64,7 @@ export default async function ContactsPage() {
                 <tr key={c.id} className="transition-colors hover:bg-surface2">
                   <td className="px-6 py-4">
                     <Link href={`/conversations/${c.id}`} className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/15 text-sm font-medium text-green-400">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/15 text-sm font-medium text-brand">
                         {(c.name || c.phone)[0].toUpperCase()}
                       </div>
                       <span className="text-sm font-medium text-fg">
@@ -78,7 +78,7 @@ export default async function ContactsPage() {
                       {(c.tags || []).map((t) => (
                         <span
                           key={t}
-                          className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs text-green-400"
+                          className="rounded-full bg-brand/15 px-2 py-0.5 text-xs text-brand"
                         >
                           {t}
                         </span>

@@ -65,52 +65,52 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
   }
 
   return (
-    <div className="rounded-2xl border border-[#232c38] bg-[#131820] overflow-hidden">
-      <div className="px-6 py-4 border-b border-[#232c38] flex items-center justify-between">
+    <div className="rounded-2xl border border-line bg-surface overflow-hidden">
+      <div className="px-6 py-4 border-b border-line flex items-center justify-between">
         <h2 className="font-semibold text-white">Cupons de Desconto</h2>
         <button
           onClick={() => setCreating(!creating)}
-          className="rounded-lg bg-green-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-600 transition-colors"
+          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition-colors"
         >
           + Novo cupom
         </button>
       </div>
 
       {creating && (
-        <form onSubmit={handleCreate} className="p-6 border-b border-[#232c38] grid grid-cols-2 gap-3">
+        <form onSubmit={handleCreate} className="p-6 border-b border-line grid grid-cols-2 gap-3">
           {error && <div className="col-span-2 text-xs text-red-400 bg-red-500/10 rounded px-3 py-2">{error}</div>}
           <div>
-            <label className="text-xs text-[#9aa6b2] mb-1 block">Código *</label>
+            <label className="text-xs text-muted mb-1 block">Código *</label>
             <input
               value={form.code}
               onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
               required
               placeholder="BEMVINDO50"
-              className="w-full rounded-lg border border-[#232c38] bg-[#0b0f14] px-3 py-2 text-sm text-white focus:border-green-500 focus:outline-none uppercase"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none uppercase"
             />
           </div>
           <div>
-            <label className="text-xs text-[#9aa6b2] mb-1 block">Descrição</label>
+            <label className="text-xs text-muted mb-1 block">Descrição</label>
             <input
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
               placeholder="Ex: Desconto de lançamento"
-              className="w-full rounded-lg border border-[#232c38] bg-[#0b0f14] px-3 py-2 text-sm text-white focus:border-green-500 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="text-xs text-[#9aa6b2] mb-1 block">Tipo</label>
+            <label className="text-xs text-muted mb-1 block">Tipo</label>
             <select
               value={form.discount_type}
               onChange={e => setForm({ ...form, discount_type: e.target.value })}
-              className="w-full rounded-lg border border-[#232c38] bg-[#0b0f14] px-3 py-2 text-sm text-white focus:border-green-500 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
             >
               <option value="percent">Percentual (%)</option>
               <option value="fixed">Valor fixo (R$)</option>
             </select>
           </div>
           <div>
-            <label className="text-xs text-[#9aa6b2] mb-1 block">
+            <label className="text-xs text-muted mb-1 block">
               Desconto * {form.discount_type === 'percent' ? '(%)' : '(R$)'}
             </label>
             <input
@@ -121,34 +121,34 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
               min="1"
               max={form.discount_type === 'percent' ? '100' : undefined}
               placeholder={form.discount_type === 'percent' ? '50' : '30'}
-              className="w-full rounded-lg border border-[#232c38] bg-[#0b0f14] px-3 py-2 text-sm text-white focus:border-green-500 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="text-xs text-[#9aa6b2] mb-1 block">Limite de usos</label>
+            <label className="text-xs text-muted mb-1 block">Limite de usos</label>
             <input
               type="number"
               value={form.max_uses}
               onChange={e => setForm({ ...form, max_uses: e.target.value })}
               placeholder="Ilimitado"
               min="1"
-              className="w-full rounded-lg border border-[#232c38] bg-[#0b0f14] px-3 py-2 text-sm text-white focus:border-green-500 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="text-xs text-[#9aa6b2] mb-1 block">Expira em</label>
+            <label className="text-xs text-muted mb-1 block">Expira em</label>
             <input
               type="date"
               value={form.expires_at}
               onChange={e => setForm({ ...form, expires_at: e.target.value })}
-              className="w-full rounded-lg border border-[#232c38] bg-[#0b0f14] px-3 py-2 text-sm text-white focus:border-green-500 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
             />
           </div>
           <div className="col-span-2 flex gap-2 justify-end pt-1">
-            <button type="button" onClick={() => setCreating(false)} className="px-4 py-2 text-sm text-[#9aa6b2] hover:text-white transition-colors">
+            <button type="button" onClick={() => setCreating(false)} className="px-4 py-2 text-sm text-muted hover:text-white transition-colors">
               Cancelar
             </button>
-            <button type="submit" className="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors">
+            <button type="submit" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition-colors">
               Criar cupom
             </button>
           </div>
@@ -156,35 +156,35 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
       )}
 
       {coupons.length === 0 ? (
-        <div className="px-6 py-8 text-center text-sm text-[#6b7886]">Nenhum cupom criado ainda.</div>
+        <div className="px-6 py-8 text-center text-sm text-faint">Nenhum cupom criado ainda.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[#232c38]">
+              <tr className="border-b border-line">
                 {['Código', 'Desconto', 'Usos', 'Expira', 'Status', ''].map(h => (
-                  <th key={h} className="text-left text-xs font-medium text-[#6b7886] uppercase tracking-wider px-6 py-3">{h}</th>
+                  <th key={h} className="text-left text-xs font-medium text-faint uppercase tracking-wider px-6 py-3">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1b222c]">
               {coupons.map(c => (
-                <tr key={c.id} className="hover:bg-[#1b222c] transition-colors">
+                <tr key={c.id} className="hover:bg-surface2 transition-colors">
                   <td className="px-6 py-3">
-                    <span className="font-mono text-sm font-semibold text-green-400">{c.code}</span>
-                    {c.description && <div className="text-xs text-[#6b7886]">{c.description}</div>}
+                    <span className="font-mono text-sm font-semibold text-brand">{c.code}</span>
+                    {c.description && <div className="text-xs text-faint">{c.description}</div>}
                   </td>
                   <td className="px-6 py-3 text-sm text-white">
                     {c.discount_type === 'percent' ? `${c.discount_value}%` : `R$ ${c.discount_value}`}
                   </td>
-                  <td className="px-6 py-3 text-sm text-[#9aa6b2]">
+                  <td className="px-6 py-3 text-sm text-muted">
                     {c.uses_count}{c.max_uses ? `/${c.max_uses}` : ''}
                   </td>
-                  <td className="px-6 py-3 text-sm text-[#9aa6b2]">
+                  <td className="px-6 py-3 text-sm text-muted">
                     {c.expires_at ? new Date(c.expires_at).toLocaleDateString('pt-BR') : '—'}
                   </td>
                   <td className="px-6 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${c.active ? 'bg-green-500/20 text-green-400' : 'bg-[#232c38] text-[#9aa6b2]'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${c.active ? 'bg-brand/20 text-brand' : 'bg-surface2 text-muted'}`}>
                       {c.active ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>

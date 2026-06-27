@@ -46,7 +46,7 @@ export function ImportContacts() {
       <button
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-40"
+        className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-40"
       >
         {busy ? 'Importando...' : '⬆ Importar CSV'}
       </button>

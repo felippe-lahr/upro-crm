@@ -21,10 +21,9 @@ const config: Config = {
         muted: "var(--muted)",
         faint: "var(--faint)",
         brand: {
-          DEFAULT: "var(--brand)",
-          600: "var(--brand-600)",
-          700: "var(--brand-700)",
-          soft: "var(--brand-soft)",
+          DEFAULT: "rgb(var(--brand) / <alpha-value>)",
+          600: "rgb(var(--brand-600) / <alpha-value>)",
+          700: "rgb(var(--brand-700) / <alpha-value>)",
         },
       },
       fontFamily: {

@@ -180,7 +180,7 @@ export default function SettingsPage() {
           <div className="flex justify-between text-sm">
             <dt className="text-muted">Plano</dt>
             <dd>
-              <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-medium capitalize text-green-400">
+              <span className="rounded-full bg-brand/15 px-2 py-0.5 text-xs font-medium capitalize text-brand">
                 {settings.plan}
               </span>
             </dd>
@@ -191,7 +191,7 @@ export default function SettingsPage() {
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
                   settings.status === 'active'
-                    ? 'bg-green-500/15 text-green-400'
+                    ? 'bg-brand/15 text-brand'
                     : 'bg-red-500/15 text-red-400'
                 }`}
               >
@@ -260,7 +260,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => { setShowCancel(false); setCancelError(''); setCancelConfirmText('') }}
                     disabled={cancelling}
-                    className="rounded-lg bg-green-500 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-40"
+                    className="rounded-lg bg-brand px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-40"
                   >
                     Manter minha assinatura
                   </button>
@@ -292,14 +292,14 @@ export default function SettingsPage() {
           </div>
           <div
             className={`h-3 w-3 rounded-full ${
-              settings.whatsapp_connected ? 'bg-green-500' : 'bg-faint'
+              settings.whatsapp_connected ? 'bg-brand' : 'bg-faint'
             }`}
           />
         </div>
         {!settings.whatsapp_connected && (
           <a
             href="/onboarding/connect-whatsapp"
-            className="mt-4 block rounded-lg bg-green-500 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-green-600"
+            className="mt-4 block rounded-lg bg-brand py-2 text-center text-sm font-medium text-white transition-colors hover:bg-brand-600"
           >
             Conectar WhatsApp
           </a>
@@ -324,7 +324,7 @@ export default function SettingsPage() {
             onClick={() => isPro && setBotEnabled(!botEnabled)}
             disabled={!isPro}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              botEnabled && isPro ? 'bg-green-500' : 'bg-surface2'
+              botEnabled && isPro ? 'bg-brand' : 'bg-surface2'
             } ${!isPro ? 'cursor-not-allowed opacity-50' : ''}`}
           >
             <span
@@ -358,7 +358,7 @@ export default function SettingsPage() {
               onChange={(e) => setBotPrompt(e.target.value)}
               rows={6}
               placeholder="Ex: Você é o assistente da Escola XYZ. Horário: seg-sex 7h-18h. Séries: do maternal ao 9º ano. Atividades extracurriculares: judô (3ª e 5ª, 14h), ballet (2ª e 4ª, 15h), robótica (sáb 9h). Matrículas 2026 abertas. Sempre responda em português, seja cordial e, para matrícula, peça nome do responsável e telefone."
-              className="w-full resize-none rounded-lg border border-line bg-background px-4 py-3 text-sm text-fg focus:border-green-500 focus:outline-none"
+              className="w-full resize-none rounded-lg border border-line bg-background px-4 py-3 text-sm text-fg focus:border-brand focus:outline-none"
             />
             <p className="mt-2 text-xs text-faint">
               Quanto mais informação você colocar aqui (horários, valores, regras), melhor o bot
@@ -396,7 +396,7 @@ export default function SettingsPage() {
           <button
             onClick={() => setMenuBotEnabled(!menuBotEnabled)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              menuBotEnabled ? 'bg-green-500' : 'bg-surface2'
+              menuBotEnabled ? 'bg-brand' : 'bg-surface2'
             }`}
           >
             <span
@@ -417,7 +417,7 @@ export default function SettingsPage() {
                 value={menuGreeting}
                 onChange={(e) => setMenuGreeting(e.target.value)}
                 placeholder="Ex: Olá! Bem-vindo à Escola XYZ. Como podemos ajudar?"
-                className="w-full rounded-lg border border-line bg-background px-4 py-2.5 text-sm text-fg focus:border-green-500 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-background px-4 py-2.5 text-sm text-fg focus:border-brand focus:outline-none"
               />
             </div>
 
@@ -428,13 +428,13 @@ export default function SettingsPage() {
               {menuOptions.map((opt, i) => (
                 <div key={i} className="rounded-lg border border-line bg-background p-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-green-400">{i + 1}</span>
+                    <span className="text-xs font-semibold text-brand">{i + 1}</span>
                     <input
                       value={opt.label}
                       onChange={(e) => updateOption(i, 'label', e.target.value)}
                       maxLength={20}
                       placeholder="Texto do botão (máx 20 car.)"
-                      className="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+                      className="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
                     />
                     {menuOptions.length > 1 && (
                       <button
@@ -450,14 +450,14 @@ export default function SettingsPage() {
                     onChange={(e) => updateOption(i, 'response', e.target.value)}
                     rows={2}
                     placeholder="Resposta enviada ao cliente quando ele escolher esta opção"
-                    className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+                    className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
                   />
                 </div>
               ))}
               {menuOptions.length < 3 && (
                 <button
                   onClick={addOption}
-                  className="text-xs font-medium text-green-400 hover:text-green-300"
+                  className="text-xs font-medium text-brand hover:text-brand"
                 >
                   + Adicionar opção
                 </button>
@@ -471,11 +471,11 @@ export default function SettingsPage() {
         <button
           onClick={saveSettings}
           disabled={saving}
-          className="rounded-xl bg-green-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-40"
+          className="rounded-xl bg-brand px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-40"
         >
           {saving ? 'Salvando...' : 'Salvar configurações'}
         </button>
-        {saved && <span className="text-sm text-green-400">Salvo!</span>}
+        {saved && <span className="text-sm text-brand">Salvo!</span>}
         {saveError && <span className="text-sm text-red-400">{saveError}</span>}
       </div>
 
@@ -492,7 +492,7 @@ export default function SettingsPage() {
               key={r.id}
               className="flex items-start gap-3 rounded-lg border border-line bg-background p-3"
             >
-              <span className="text-xs font-semibold text-green-400">/{r.shortcut}</span>
+              <span className="text-xs font-semibold text-brand">/{r.shortcut}</span>
               <span className="flex-1 text-sm text-muted">{r.content}</span>
               <button
                 onClick={() => deleteReply(r.id)}
@@ -512,13 +512,13 @@ export default function SettingsPage() {
             value={shortcut}
             onChange={(e) => setShortcut(e.target.value)}
             placeholder="atalho"
-            className="rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none sm:w-32"
+            className="rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none sm:w-32"
           />
           <input
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Conteúdo da resposta"
-            className="flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+            className="flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
           />
           <button
             onClick={addReply}
@@ -552,7 +552,7 @@ function ToggleRow({
       <button
         onClick={onChange}
         className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-          checked ? 'bg-green-500' : 'bg-surface2'
+          checked ? 'bg-brand' : 'bg-surface2'
         }`}
       >
         <span

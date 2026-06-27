@@ -137,7 +137,7 @@ function StatCard({
         <span className="text-sm text-muted">{label}</span>
         <span className="text-2xl">{icon}</span>
       </div>
-      <div className={`text-3xl font-bold ${accent ? 'text-green-400' : 'text-fg'}`}>
+      <div className={`text-3xl font-bold ${accent ? 'text-brand' : 'text-fg'}`}>
         {value}
       </div>
     </div>

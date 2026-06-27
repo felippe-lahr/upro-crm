@@ -94,16 +94,16 @@ export default function ConnectWhatsAppPage() {
       </div>
 
       {status === 'success' ? (
-        <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-8 text-center">
+        <div className="rounded-2xl border border-brand/30 bg-brand/10 p-8 text-center">
           <div className="mb-4 text-5xl">✅</div>
-          <h2 className="mb-2 text-xl font-bold text-green-400">WhatsApp conectado!</h2>
-          <p className="text-sm text-green-500/80">Redirecionando para o dashboard...</p>
+          <h2 className="mb-2 text-xl font-bold text-brand">WhatsApp conectado!</h2>
+          <p className="text-sm text-brand/80">Redirecionando para o dashboard...</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-line bg-surface p-8">
           <div className="space-y-6">
             <div className="flex items-start gap-4">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 text-sm font-bold text-green-400">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-bold text-brand">
                 1
               </div>
               <div>
@@ -114,7 +114,7 @@ export default function ConnectWhatsAppPage() {
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 text-sm font-bold text-green-400">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-bold text-brand">
                 2
               </div>
               <div>
@@ -125,7 +125,7 @@ export default function ConnectWhatsAppPage() {
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 text-sm font-bold text-green-400">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-bold text-brand">
                 3
               </div>
               <div>
@@ -146,7 +146,7 @@ export default function ConnectWhatsAppPage() {
           <button
             onClick={launchEmbeddedSignup}
             disabled={status === 'loading'}
-            className="mt-8 w-full bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white py-4 rounded-xl font-semibold text-lg transition-colors flex items-center justify-center gap-2"
+            className="mt-8 w-full bg-brand hover:bg-brand-600 disabled:bg-brand/50 text-white py-4 rounded-xl font-semibold text-lg transition-colors flex items-center justify-center gap-2"
           >
             {status === 'loading' ? (
               <>

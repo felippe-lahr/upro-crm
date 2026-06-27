@@ -64,7 +64,7 @@ export default async function ConversationsPage() {
           {!schemaName && (
             <Link
               href="/onboarding/connect-whatsapp"
-              className="mt-4 inline-block rounded-xl bg-green-500 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
+              className="mt-4 inline-block rounded-xl bg-brand px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600"
             >
               Conectar WhatsApp
             </Link>

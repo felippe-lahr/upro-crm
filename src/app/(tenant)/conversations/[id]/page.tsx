@@ -19,7 +19,7 @@ export default async function ConversationPage({
     return (
       <div className="p-8">
         <p className="text-muted">Contato não encontrado.</p>
-        <Link href="/conversations" className="text-green-400">← Voltar</Link>
+        <Link href="/conversations" className="text-brand">← Voltar</Link>
       </div>
     )
   }

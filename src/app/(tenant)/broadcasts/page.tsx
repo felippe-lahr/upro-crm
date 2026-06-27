@@ -68,19 +68,19 @@ export default function BroadcastsPage() {
           onChange={(e) => setMessage(e.target.value)}
           rows={4}
           placeholder="Escreva a mensagem que será enviada..."
-          className="mb-3 w-full resize-none rounded-lg border border-line bg-background px-4 py-3 text-sm text-fg focus:border-green-500 focus:outline-none"
+          className="mb-3 w-full resize-none rounded-lg border border-line bg-background px-4 py-3 text-sm text-fg focus:border-brand focus:outline-none"
         />
         <div className="flex items-center gap-3">
           <input
             value={filterTag}
             onChange={(e) => setFilterTag(e.target.value)}
             placeholder="Filtrar por etiqueta (opcional)"
-            className="flex-1 rounded-lg border border-line bg-background px-4 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+            className="flex-1 rounded-lg border border-line bg-background px-4 py-2 text-sm text-fg focus:border-brand focus:outline-none"
           />
           <button
             onClick={send}
             disabled={sending || !message.trim()}
-            className="rounded-xl bg-green-500 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-40"
+            className="rounded-xl bg-brand px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-40"
           >
             {sending ? 'Enviando...' : 'Enviar disparo'}
           </button>
@@ -102,7 +102,7 @@ export default function BroadcastsPage() {
                 <span className="text-xs text-faint">
                   {new Date(b.created_at).toLocaleString('pt-BR')}
                   {b.filter_tag && (
-                    <span className="ml-2 rounded-full bg-green-500/15 px-2 py-0.5 text-green-400">
+                    <span className="ml-2 rounded-full bg-brand/15 px-2 py-0.5 text-brand">
                       #{b.filter_tag}
                     </span>
                   )}

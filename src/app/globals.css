@@ -15,11 +15,10 @@
   --muted: #5b6675;
   --faint: #94a3b8;
 
-  /* Marca Unifique Pro — azul royal */
-  --brand: #2563eb;
-  --brand-600: #1d4ed8;
-  --brand-700: #1e40af;
-  --brand-soft: rgba(37, 99, 235, 0.10);
+  /* Marca Unifique Pro — azul royal (canais RGB p/ suportar opacidade) */
+  --brand: 37 99 235;
+  --brand-600: 29 78 216;
+  --brand-700: 30 64 175;
 }
 
 /* ── Dark theme (alternativa) ───────────────────────────────── */
@@ -35,10 +34,9 @@
   --muted: #9aa6b8;
   --faint: #6b7a90;
 
-  --brand: #3b82f6;
-  --brand-600: #2563eb;
-  --brand-700: #1d4ed8;
-  --brand-soft: rgba(59, 130, 246, 0.14);
+  --brand: 59 130 246;
+  --brand-600: 37 99 235;
+  --brand-700: 29 78 216;
 }
 
 body {
