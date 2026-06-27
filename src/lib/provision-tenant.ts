@@ -16,7 +16,8 @@ export async function provisionTenant(tenantId: string) {
     data: {
       schema_name: schemaName,
       status: 'active',
-      plan: 'basic',
+      // preserva o plano escolhido no checkout (basic/pro); só normaliza 'trial'
+      ...(tenant.plan === 'trial' || !tenant.plan ? { plan: 'basic' } : {}),
       trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     }
   })

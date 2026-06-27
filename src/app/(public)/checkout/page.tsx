@@ -25,14 +25,16 @@ function CheckoutContent() {
   const [couponStatus, setCouponStatus] = useState<null | { valid: boolean; discount_type: string; discount_value: number; description?: string }>(null)
   const [checkingCoupon, setCheckingCoupon] = useState(false)
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  const [plan, setPlan] = useState<'basic' | 'pro'>('basic')
   const [config, setConfig] = useState<SaasConfig>({ price_basic: 97, price_pro: 197, annual_discount: 20 })
   const [brickReady, setBrickReady] = useState(false)
   const brickController = useRef<any>(null)
   const billingRef = useRef(billing)
+  const planRef = useRef(plan)
   const couponStatusRef = useRef(couponStatus)
   const couponCodeRef = useRef(couponCode)
 
-  const monthlyPrice = config.price_basic
+  const monthlyPrice = plan === 'pro' ? config.price_pro : config.price_basic
   const annualTotal = Math.round(monthlyPrice * 12 * (1 - config.annual_discount / 100))
   const annualMonthly = Math.round(annualTotal / 12)
   const displayedPrice = billing === 'annual' ? annualMonthly : monthlyPrice
@@ -45,11 +47,12 @@ function CheckoutContent() {
 
   // Keep refs in sync (avoid remounting Brick)
   useEffect(() => { billingRef.current = billing }, [billing])
+  useEffect(() => { planRef.current = plan }, [plan])
   useEffect(() => { couponStatusRef.current = couponStatus }, [couponStatus])
   useEffect(() => { couponCodeRef.current = couponCode }, [couponCode])
 
   useEffect(() => {
-    fetch('/api/admin/config').then(r => r.json()).then(d => {
+    fetch('/api/admin/config', { cache: 'no-store' }).then(r => r.json()).then(d => {
       setConfig({ price_basic: Number(d.price_basic), price_pro: Number(d.price_pro), annual_discount: d.annual_discount })
     }).catch(() => {})
   }, [])
@@ -65,6 +68,7 @@ function CheckoutContent() {
         body: JSON.stringify({
           tenantId,
           billing: billingRef.current,
+          plan: planRef.current,
           couponCode: couponStatusRef.current?.valid ? couponCodeRef.current : undefined,
           cardTokenId: data.token,
           payerEmail: data.payer?.email,
@@ -165,12 +169,19 @@ function CheckoutContent() {
       : couponStatus.discount_value * 12))
     : annualTotal
 
-  const PLAN_INCLUDES = [
-    'Inbox compartilhada do WhatsApp',
-    'Funil de vendas e contatos',
-    'Etiquetas, anotações e disparos',
-    'Conexão oficial Meta (sem ban)'
-  ]
+  const PLAN_INCLUDES = plan === 'pro'
+    ? [
+        'Tudo do plano Básico',
+        'Bot com IA (Claude) 24/7',
+        'Qualificação e captura de leads',
+        'Transcrição de áudios'
+      ]
+    : [
+        'Inbox compartilhada do WhatsApp',
+        'Funil de vendas e contatos',
+        'Etiquetas, anotações e disparos',
+        'Conexão oficial Meta (sem ban)'
+      ]
 
   return (
     <div className="min-h-screen bg-background text-fg">
@@ -195,11 +206,39 @@ function CheckoutContent() {
           <h1 className="text-2xl font-bold tracking-tight">Ative seu plano</h1>
           <p className="mt-1 text-sm text-muted">Comece a atender no WhatsApp em minutos.</p>
 
-          <div className="mt-6 rounded-2xl border border-line bg-surface p-6">
+          {/* Seletor de plano */}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            {([
+              { id: 'basic', name: 'Básico', price: config.price_basic, sub: 'Atendimento + CRM' },
+              { id: 'pro', name: 'Pro', price: config.price_pro, sub: 'Com bot de IA' }
+            ] as const).map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPlan(p.id)}
+                className={`relative rounded-xl border-2 p-4 text-left transition-colors ${
+                  plan === p.id ? 'border-brand bg-brand/5' : 'border-line bg-surface hover:border-brand/40'
+                }`}
+              >
+                {p.id === 'pro' && (
+                  <span className="absolute -top-2 right-3 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white">POPULAR</span>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-fg">{p.name}</span>
+                  <span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${plan === p.id ? 'border-brand' : 'border-line'}`}>
+                    {plan === p.id && <span className="h-2 w-2 rounded-full bg-brand" />}
+                  </span>
+                </div>
+                <div className="mt-1 text-lg font-bold text-fg">R$ {p.price}<span className="text-xs font-normal text-muted">/mês</span></div>
+                <div className="text-xs text-muted">{p.sub}</div>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-line bg-surface p-6">
             {/* Plano + toggle */}
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-brand">Plano Básico</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-brand">Plano {plan === 'pro' ? 'Pro' : 'Básico'}</div>
                 <div className="mt-0.5 text-sm text-muted">Assinatura {billing === 'annual' ? 'anual' : 'mensal'}</div>
               </div>
               <div className="flex overflow-hidden rounded-lg border border-line text-xs">

@@ -7,7 +7,8 @@ export async function POST(req: Request) {
   const { MercadoPagoConfig, PreApproval } = await import('mercadopago')
   const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
 
-  const { tenantId, couponCode, billing, cardTokenId, payerEmail, payerDocType, payerDocNumber } = await req.json()
+  const { tenantId, couponCode, billing, plan: rawPlan, cardTokenId, payerEmail, payerDocType, payerDocNumber } = await req.json()
+  const plan = rawPlan === 'pro' ? 'pro' : 'basic'
 
   const saasConfig = await globalPrisma.saasConfig.upsert({
     where: { id: 'singleton' },
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
     update: {}
   })
 
-  const monthlyPrice = Number(saasConfig.price_basic)
+  const monthlyPrice = plan === 'pro' ? Number(saasConfig.price_pro) : Number(saasConfig.price_basic)
   const BASE_PRICE = billing === 'annual'
     ? Math.round(monthlyPrice * 12 * (1 - saasConfig.annual_discount / 100))
     : monthlyPrice
@@ -24,6 +25,9 @@ export async function POST(req: Request) {
   if (!tenant) {
     return Response.json({ error: 'Tenant not found' }, { status: 404 })
   }
+
+  // Registra o plano escolhido para o provisionamento refletir corretamente
+  await globalPrisma.tenant.update({ where: { id: tenantId }, data: { plan } })
 
   let finalPrice = BASE_PRICE
 
