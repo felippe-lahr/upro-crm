@@ -30,6 +30,9 @@ model Tenant {
   menu_bot_greeting   String?
   menu_bot_options    Json?
 
+  handoff_pause              Boolean  @default(false)
+  keep_responding_after_human Boolean @default(false)
+
   mp_subscription_id  String?
   stripe_customer_id  String?
   trial_ends_at       DateTime?

@@ -76,6 +76,9 @@ const HUMAN_TAKEOVER_MINUTES = 30
 const HISTORY_LIMIT = 25
 // Marcador que o bot emite quando precisa encaminhar a um humano
 const ESCALATE_MARKER = '[ESCALAR]'
+// Aviso enviado quando o lead volta a falar numa conversa já escalada (pendente)
+const HANDOFF_NOTICE =
+  'Obrigado pela mensagem! Já encaminhei seu contato para um de nossos atendentes, que vai te responder por aqui em breve. 🙏'
 
 const GUARDRAIL = `\n\n---\nREGRAS IMPORTANTES (siga sempre):\n` +
   `- Responda APENAS com base nas informações fornecidas acima. NUNCA invente valores, datas, horários, regras ou disponibilidade.\n` +
@@ -90,6 +93,8 @@ export async function processBotResponse(
     phone_number_id: string
     whatsapp_token: string
     bot_prompt: string | null
+    handoff_pause?: boolean
+    keep_responding_after_human?: boolean
   },
   userText: string,
   contact: { id: string },
@@ -100,16 +105,48 @@ export async function processBotResponse(
   const tenantPrisma = getTenantPrisma(tenant.schema_name)
 
   // 1) Pausa por atendimento humano: se um humano respondeu recentemente, o bot silencia
-  const cutoff = new Date(Date.now() - HUMAN_TAKEOVER_MINUTES * 60 * 1000)
-  const recentHuman = await tenantPrisma.message.findFirst({
-    where: {
-      contact_id: contact.id,
-      direction: 'outbound',
-      sent_by_bot: false,
-      timestamp: { gte: cutoff }
+  // (a não ser que o cliente opte por manter o bot respondendo)
+  if (!tenant.keep_responding_after_human) {
+    const cutoff = new Date(Date.now() - HUMAN_TAKEOVER_MINUTES * 60 * 1000)
+    const recentHuman = await tenantPrisma.message.findFirst({
+      where: {
+        contact_id: contact.id,
+        direction: 'outbound',
+        sent_by_bot: false,
+        timestamp: { gte: cutoff }
+      }
+    })
+    if (recentHuman) return
+  }
+
+  // 1b) Pausa por handoff (opção do Pro): conversa já escalada e aguardando humano →
+  // não responde com IA; manda o aviso uma única vez.
+  if (tenant.handoff_pause) {
+    const conv = await tenantPrisma.conversation.findFirst({
+      where: { contact_id: contact.id },
+      orderBy: { created_at: 'desc' }
+    })
+    if (conv?.status === 'pending') {
+      const lastOutbound = await tenantPrisma.message.findFirst({
+        where: { contact_id: contact.id, direction: 'outbound' },
+        orderBy: { timestamp: 'desc' }
+      })
+      if (lastOutbound?.content !== HANDOFF_NOTICE) {
+        await sendWhatsAppMessage(tenant, from, HANDOFF_NOTICE)
+        await tenantPrisma.message.create({
+          data: {
+            contact_id: contact.id,
+            direction: 'outbound',
+            type: 'text',
+            content: HANDOFF_NOTICE,
+            sent_by_bot: true,
+            timestamp: new Date()
+          }
+        })
+      }
+      return
     }
-  })
-  if (recentHuman) return
+  }
 
   const history = await tenantPrisma.message.findMany({
     where: { contact_id: contact.id },

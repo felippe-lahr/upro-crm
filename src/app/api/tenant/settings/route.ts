@@ -16,7 +16,8 @@ export async function GET() {
       id: true, name: true, email: true, plan: true, status: true,
       whatsapp_connected: true, phone_number_id: true, waba_id: true,
       bot_enabled: true, bot_prompt: true, trial_ends_at: true,
-      menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true
+      menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
+      handoff_pause: true, keep_responding_after_human: true
     }
   })
 
@@ -31,7 +32,8 @@ export async function PATCH(req: Request) {
 
   const tenantId = (session!.user as any).tenantId
   const body = await req.json()
-  const { bot_enabled, bot_prompt, menu_bot_enabled, menu_bot_greeting, menu_bot_options } = body
+  const { bot_enabled, bot_prompt, menu_bot_enabled, menu_bot_greeting, menu_bot_options,
+    handoff_pause, keep_responding_after_human } = body
 
   // Bot com IA é exclusivo do plano Pro
   if (bot_enabled === true) {
@@ -67,11 +69,14 @@ export async function PATCH(req: Request) {
       ...(bot_prompt !== undefined && { bot_prompt }),
       ...(menu_bot_enabled !== undefined && { menu_bot_enabled }),
       ...(menu_bot_greeting !== undefined && { menu_bot_greeting }),
-      ...(normalizedOptions !== undefined && { menu_bot_options: normalizedOptions })
+      ...(normalizedOptions !== undefined && { menu_bot_options: normalizedOptions }),
+      ...(handoff_pause !== undefined && { handoff_pause }),
+      ...(keep_responding_after_human !== undefined && { keep_responding_after_human })
     },
     select: {
       id: true, bot_enabled: true, bot_prompt: true,
-      menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true
+      menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
+      handoff_pause: true, keep_responding_after_human: true
     }
   })
 

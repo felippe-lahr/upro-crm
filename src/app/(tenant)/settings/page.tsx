@@ -22,6 +22,8 @@ interface TenantSettings {
   menu_bot_enabled: boolean
   menu_bot_greeting: string | null
   menu_bot_options: MenuOption[] | null
+  handoff_pause: boolean
+  keep_responding_after_human: boolean
 }
 
 interface QuickReply {
@@ -37,6 +39,8 @@ export default function SettingsPage() {
   const [menuBotEnabled, setMenuBotEnabled] = useState(false)
   const [menuGreeting, setMenuGreeting] = useState('')
   const [menuOptions, setMenuOptions] = useState<MenuOption[]>([])
+  const [handoffPause, setHandoffPause] = useState(false)
+  const [keepResponding, setKeepResponding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -66,6 +70,8 @@ export default function SettingsPage() {
             ? data.menu_bot_options
             : [{ label: '', response: '' }]
         )
+        setHandoffPause(!!data.handoff_pause)
+        setKeepResponding(!!data.keep_responding_after_human)
       })
     loadReplies()
   }, [])
@@ -89,7 +95,9 @@ export default function SettingsPage() {
         bot_prompt: botPrompt,
         menu_bot_enabled: menuBotEnabled,
         menu_bot_greeting: menuGreeting,
-        menu_bot_options: menuOptions.filter((o) => o.label.trim())
+        menu_bot_options: menuOptions.filter((o) => o.label.trim()),
+        handoff_pause: handoffPause,
+        keep_responding_after_human: keepResponding
       })
     })
     setSaving(false)
@@ -356,6 +364,22 @@ export default function SettingsPage() {
               Quanto mais informação você colocar aqui (horários, valores, regras), melhor o bot
               responde. Ele usa tudo isso como base de conhecimento.
             </p>
+
+            {/* Opções de comportamento */}
+            <div className="mt-5 space-y-4 border-t border-line pt-5">
+              <ToggleRow
+                title="Pausar e avisar ao encaminhar para humano"
+                desc="Quando o bot escala um atendimento, ele para de responder e avisa o cliente que um atendente vai assumir."
+                checked={handoffPause}
+                onChange={() => setHandoffPause(!handoffPause)}
+              />
+              <ToggleRow
+                title="Continuar respondendo após atendimento humano"
+                desc="Por padrão, o bot fica em silêncio por 30 min quando um atendente responde. Ative para manter o bot respondendo mesmo assim."
+                checked={keepResponding}
+                onChange={() => setKeepResponding(!keepResponding)}
+              />
+            </div>
           </div>
         )}
       </section>
@@ -504,6 +528,39 @@ export default function SettingsPage() {
           </button>
         </div>
       </section>
+    </div>
+  )
+}
+
+function ToggleRow({
+  title,
+  desc,
+  checked,
+  onChange
+}: {
+  title: string
+  desc: string
+  checked: boolean
+  onChange: () => void
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="text-sm font-medium text-fg">{title}</p>
+        <p className="mt-0.5 text-xs text-faint">{desc}</p>
+      </div>
+      <button
+        onClick={onChange}
+        className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+          checked ? 'bg-green-500' : 'bg-surface2'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            checked ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
     </div>
   )
 }
