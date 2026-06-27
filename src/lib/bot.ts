@@ -1,5 +1,6 @@
 import { getTenantPrisma } from './prisma-tenant'
 import { decrypt } from './crypto'
+import { chatComplete } from './ai'
 
 /**
  * Lê o histórico da conversa e extrai dados estruturados do lead para o CRM:
@@ -31,12 +32,8 @@ export async function extractContactInfo(
 
     if (!transcript.trim()) return
 
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
+    const raw = await chatComplete({
+      maxTokens: 400,
       system:
         'Você extrai dados de um lead a partir de uma conversa de atendimento. ' +
         'Responda APENAS com um JSON válido, sem texto extra, no formato: ' +
@@ -49,7 +46,6 @@ export async function extractContactInfo(
       messages: [{ role: 'user', content: transcript }]
     })
 
-    const raw = response.content[0].type === 'text' ? response.content[0].text : ''
     const jsonMatch = raw.match(/\{[\s\S]*\}/)
     if (!jsonMatch) return
 
@@ -132,22 +128,15 @@ export async function processBotResponse(
 
   messages.push({ role: 'user', content: userText })
 
-  const Anthropic = (await import('@anthropic-ai/sdk')).default
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
   const basePrompt =
     tenant.bot_prompt ||
     'Você é um assistente de atendimento ao cliente. Seja sempre educado, claro e prestativo.'
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
+  let botReply = await chatComplete({
+    maxTokens: 1024,
     system: basePrompt + GUARDRAIL,
     messages
   })
-
-  let botReply =
-    response.content[0].type === 'text' ? response.content[0].text : ''
 
   if (!botReply) return
 
