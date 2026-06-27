@@ -1,0 +1,166 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
+
+export interface ConversationItem {
+  contactId: string
+  name: string | null
+  phone: string
+  tags: string[]
+  lastContent: string | null
+  lastDirection: string
+  lastTimestamp: string
+  unread: number
+}
+
+const DATE_PRESETS = [
+  { id: 'all', label: 'Todas' },
+  { id: 'today', label: 'Hoje' },
+  { id: '7d', label: '7 dias' },
+  { id: '30d', label: '30 dias' }
+]
+
+function withinPreset(iso: string, preset: string): boolean {
+  if (preset === 'all') return true
+  const d = new Date(iso).getTime()
+  const now = Date.now()
+  const days = preset === 'today' ? 1 : preset === '7d' ? 7 : 30
+  if (preset === 'today') {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    return d >= start.getTime()
+  }
+  return d >= now - days * 24 * 60 * 60 * 1000
+}
+
+export function ConversationsList({
+  conversations,
+  allTags
+}: {
+  conversations: ConversationItem[]
+  allTags: string[]
+}) {
+  const [search, setSearch] = useState('')
+  const [datePreset, setDatePreset] = useState('all')
+  const [activeTags, setActiveTags] = useState<string[]>([])
+
+  function toggleTag(t: string) {
+    setActiveTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
+  }
+
+  const filtered = useMemo(() => {
+    return conversations.filter((c) => {
+      if (search.trim()) {
+        const q = search.toLowerCase()
+        if (!(c.name || '').toLowerCase().includes(q) && !c.phone.includes(q)) return false
+      }
+      if (!withinPreset(c.lastTimestamp, datePreset)) return false
+      if (activeTags.length > 0 && !activeTags.some((t) => c.tags.includes(t))) return false
+      return true
+    })
+  }, [conversations, search, datePreset, activeTags])
+
+  return (
+    <div>
+      {/* Filtros */}
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome ou telefone..."
+            className="flex-1 min-w-[200px] rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-green-500 focus:outline-none"
+          />
+          <div className="flex overflow-hidden rounded-lg border border-line">
+            {DATE_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setDatePreset(p.id)}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${
+                  datePreset === p.id ? 'bg-green-500 text-white' : 'bg-surface text-muted hover:text-fg'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-faint">Etiquetas:</span>
+            {allTags.map((t) => (
+              <button
+                key={t}
+                onClick={() => toggleTag(t)}
+                className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                  activeTags.includes(t)
+                    ? 'bg-green-500 text-white'
+                    : 'bg-surface2 text-muted hover:text-fg'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+            {activeTags.length > 0 && (
+              <button onClick={() => setActiveTags([])} className="text-xs text-faint hover:text-red-400">
+                limpar
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      <p className="mb-3 text-sm text-muted">
+        {filtered.length} conversa{filtered.length !== 1 ? 's' : ''}
+      </p>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-2xl border border-line bg-surface p-12 text-center text-sm text-muted">
+          Nenhuma conversa com os filtros atuais.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+          {filtered.map((conv) => (
+            <Link
+              key={conv.contactId}
+              href={`/conversations/${conv.contactId}`}
+              className="flex items-center gap-4 border-b border-line px-6 py-4 transition-colors last:border-0 hover:bg-surface2"
+            >
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 font-medium text-green-400">
+                {(conv.name || conv.phone)[0].toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-medium text-fg">{conv.name || conv.phone}</span>
+                  <span className="flex-shrink-0 text-xs text-faint">
+                    {new Date(conv.lastTimestamp).toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-sm text-muted">
+                  {conv.lastDirection === 'outbound' && <span className="mr-1 text-green-400">↑</span>}
+                  {conv.lastContent || '[mídia]'}
+                </p>
+                {conv.tags.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {conv.tags.map((t) => (
+                      <span
+                        key={t}
+                        className="rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] text-green-400"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

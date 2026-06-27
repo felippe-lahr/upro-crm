@@ -23,7 +23,9 @@ export default async function FunnelPage() {
         phone: c.phone,
         stage: c.stage || 'novo_lead',
         deal_value: c.deal_value ? String(c.deal_value) : null,
-        lastMessage: c.messages?.[0]?.content || null
+        lastMessage: c.messages?.[0]?.content || null,
+        tags: c.tags || [],
+        createdAt: c.created_at.toISOString()
       }))
     } catch {
       // schema não provisionado

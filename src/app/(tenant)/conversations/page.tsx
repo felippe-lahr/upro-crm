@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { getTenantPrisma } from '@/lib/prisma-tenant'
 import Link from 'next/link'
+import { ConversationsList, type ConversationItem } from '@/components/ui/conversations-list'
 
 export default async function ConversationsPage() {
   const session = await auth()
@@ -12,16 +13,16 @@ export default async function ConversationsPage() {
     content: string | null
     direction: string
     timestamp: Date
-    contact: { name: string | null; phone: string }
+    contact: { name: string | null; phone: string; tags: string[] }
   }[] = []
 
   if (schemaName) {
     try {
       const db = getTenantPrisma(schemaName)
       messages = await db.message.findMany({
-        include: { contact: { select: { name: true, phone: true } } },
+        include: { contact: { select: { name: true, phone: true, tags: true } } },
         orderBy: { timestamp: 'desc' },
-        take: 200
+        take: 400
       })
     } catch {
       // schema not provisioned
@@ -34,20 +35,23 @@ export default async function ConversationsPage() {
     return acc
   }, {})
 
-  const conversations = Object.entries(grouped).map(([contactId, msgs]) => ({
+  const conversations: ConversationItem[] = Object.entries(grouped).map(([contactId, msgs]) => ({
     contactId,
-    contact: msgs[0].contact,
-    lastMessage: msgs[0],
+    name: msgs[0].contact.name,
+    phone: msgs[0].contact.phone,
+    tags: msgs[0].contact.tags || [],
+    lastContent: msgs[0].content,
+    lastDirection: msgs[0].direction,
+    lastTimestamp: msgs[0].timestamp.toISOString(),
     unread: msgs.filter((m) => m.direction === 'inbound').length
   }))
+
+  const allTags = Array.from(new Set(conversations.flatMap((c) => c.tags))).sort()
 
   return (
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-fg">Conversas</h1>
-        <p className="mt-1 text-sm text-muted">
-          {conversations.length} conversa{conversations.length !== 1 ? 's' : ''}
-        </p>
       </div>
 
       {conversations.length === 0 ? (
@@ -67,38 +71,7 @@ export default async function ConversationsPage() {
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-          {conversations.map((conv) => (
-            <Link
-              key={conv.contactId}
-              href={`/conversations/${conv.contactId}`}
-              className="flex items-center gap-4 border-b border-line px-6 py-4 transition-colors last:border-0 hover:bg-surface2"
-            >
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 font-medium text-green-400">
-                {(conv.contact.name || conv.contact.phone)[0].toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-fg">
-                    {conv.contact.name || conv.contact.phone}
-                  </span>
-                  <span className="text-xs text-faint">
-                    {new Date(conv.lastMessage.timestamp).toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </span>
-                </div>
-                <p className="mt-0.5 truncate text-sm text-muted">
-                  {conv.lastMessage.direction === 'outbound' && (
-                    <span className="mr-1 text-green-400">↑</span>
-                  )}
-                  {conv.lastMessage.content || '[mídia]'}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <ConversationsList conversations={conversations} allTags={allTags} />
       )}
     </div>
   )
