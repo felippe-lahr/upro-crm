@@ -119,11 +119,27 @@ async function processIncomingMessage(
     }
   })
 
+  console.log('[whatsapp webhook] routing', JSON.stringify({
+    plan: tenant.plan,
+    bot_enabled: tenant.bot_enabled,
+    menu_bot_enabled: tenant.menu_bot_enabled,
+    hasText: !!resolvedText,
+    type: message.type
+  }))
+
   // Bot com IA: exclusivo do plano Pro
   if (tenant.plan === 'pro' && tenant.bot_enabled) {
     if (resolvedText) {
-      await processBotResponse(tenant, resolvedText, dbContact, message.from)
-      await extractContactInfo(tenant, dbContact)
+      try {
+        await processBotResponse(tenant, resolvedText, dbContact, message.from)
+      } catch (err: any) {
+        console.error('[whatsapp webhook] processBotResponse failed', err?.message || String(err), err?.stack)
+      }
+      try {
+        await extractContactInfo(tenant, dbContact)
+      } catch (err: any) {
+        console.error('[whatsapp webhook] extractContactInfo failed', err?.message || String(err))
+      }
     }
     return
   }
