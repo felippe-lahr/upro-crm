@@ -64,7 +64,7 @@ export default function LandingPage() {
               <ShieldCheck className="h-4 w-4" />
               Conexão oficial WhatsApp Business API
             </div>
-            <h1 className="text-balance text-4xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
+            <h1 className="text-balance text-4xl font-bold leading-[1.2] tracking-tight md:text-6xl">
               Atenda no WhatsApp e venda mais com{' '}
               <span className="bg-gradient-to-r from-brand to-brand-700 bg-clip-text text-transparent">inteligência artificial</span>
             </h1>
