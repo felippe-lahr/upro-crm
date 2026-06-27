@@ -42,7 +42,8 @@ export async function POST(req: Request) {
     let referredBy: string | undefined
     if (ref) {
       const affiliate = await globalPrisma.affiliate.findUnique({ where: { code: String(ref).toLowerCase() } })
-      if (affiliate && affiliate.status === 'active') referredBy = affiliate.id
+      // vincula se o afiliado existe e não foi recusado (comissão valida 'active' depois)
+      if (affiliate && affiliate.status !== 'rejected') referredBy = affiliate.id
     }
 
     const tenant = await globalPrisma.tenant.create({

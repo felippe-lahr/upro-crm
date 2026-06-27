@@ -4,6 +4,7 @@ import {
   ArrowRight, Check, Plug2, Users, Workflow
 } from 'lucide-react'
 import { CrmPreview } from '@/components/landing/crm-preview'
+import { RefCapture } from '@/components/landing/ref-capture'
 
 const FEATURES = [
   { icon: MessageSquare, title: 'Inbox compartilhada', desc: 'Todas as conversas do WhatsApp num só lugar. Status, histórico completo e respostas em equipe sem pisar no pé um do outro.' },
@@ -31,6 +32,7 @@ const FAQ = [
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-fg">
+      <RefCapture />
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-line bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
