@@ -96,3 +96,19 @@ export async function PATCH(req: Request) {
   await globalPrisma.affiliate.update({ where: { id }, data })
   return Response.json({ ok: true })
 }
+
+// Exclui afiliado (desvincula os tenants indicados; comissões caem em cascata)
+export async function DELETE(req: Request) {
+  if (!(await requireSuperadmin())) return Response.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const { id } = await req.json()
+  if (!id) return Response.json({ error: 'id obrigatório' }, { status: 400 })
+
+  try {
+    await globalPrisma.tenant.updateMany({ where: { referred_by: id }, data: { referred_by: null } })
+    await globalPrisma.affiliate.delete({ where: { id } })
+    return Response.json({ ok: true })
+  } catch (e) {
+    return Response.json({ error: e instanceof Error ? e.message : 'Erro ao excluir' }, { status: 500 })
+  }
+}

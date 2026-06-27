@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ConfirmDelete } from './confirm-delete'
 
 interface Affiliate {
   id: string
@@ -150,6 +151,14 @@ export function AffiliatesPanel({ baseUrl }: { baseUrl: string }) {
                 {a.status === 'suspended' && (
                   <button onClick={() => patch(a.id, { status: 'active' })} className="rounded-lg border border-line px-3 py-1.5 text-xs text-brand">Reativar</button>
                 )}
+                <ConfirmDelete
+                  title={`Excluir afiliado "${a.name}"?`}
+                  description="O afiliado e todo o histórico de comissões serão apagados. Os clientes indicados deixam de ficar vinculados a ele."
+                  endpoint="/api/admin/affiliates"
+                  method="DELETE"
+                  payload={{ id: a.id }}
+                  onDeleted={load}
+                />
               </div>
             </div>
 

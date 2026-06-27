@@ -4,6 +4,7 @@ import { globalPrisma } from '@/lib/prisma-tenant'
 import { CouponsPanel } from './coupons-panel'
 import { PricingPanel } from './pricing-panel'
 import { AffiliatesPanel } from './affiliates-panel'
+import { ConfirmDelete } from './confirm-delete'
 
 export default async function AdminPage() {
   const session = await auth()
@@ -86,7 +87,7 @@ export default async function AdminPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-line">
-                  {['Empresa', 'Email', 'Plano', 'Status', 'WhatsApp', 'Criado em'].map((h) => (
+                  {['Empresa', 'Email', 'Plano', 'Status', 'WhatsApp', 'Criado em', ''].map((h) => (
                     <th key={h} className="text-left text-xs font-medium text-faint uppercase tracking-wider px-6 py-3">
                       {h}
                     </th>
@@ -125,6 +126,15 @@ export default async function AdminPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-faint">
                       {new Date(t.created_at).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <ConfirmDelete
+                        title={`Excluir "${t.name}"?`}
+                        description="O tenant, seus usuários, conversas, mensagens e o banco de dados dedicado serão apagados permanentemente."
+                        endpoint="/api/admin/tenants/delete"
+                        method="POST"
+                        payload={{ tenantId: t.id }}
+                      />
                     </td>
                   </tr>
                 ))}
