@@ -13,7 +13,7 @@ function slugify(text: string): string {
 }
 
 export async function POST(req: Request) {
-  const { name, email, password } = await req.json()
+  const { name, email, password, ref } = await req.json()
 
   if (!name || !email || !password) {
     return Response.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 })
@@ -38,6 +38,13 @@ export async function POST(req: Request) {
 
     const schemaName = `tenant_${slug.replace(/-/g, '_')}`
 
+    // Atribuição de afiliado (se veio por um link de indicação válido e ativo)
+    let referredBy: string | undefined
+    if (ref) {
+      const affiliate = await globalPrisma.affiliate.findUnique({ where: { code: String(ref).toLowerCase() } })
+      if (affiliate && affiliate.status === 'active') referredBy = affiliate.id
+    }
+
     const tenant = await globalPrisma.tenant.create({
       data: {
         name,
@@ -45,7 +52,8 @@ export async function POST(req: Request) {
         slug,
         schema_name: schemaName,
         status: 'pending_payment',
-        plan: 'trial'
+        plan: 'trial',
+        ...(referredBy && { referred_by: referredBy })
       }
     })
 

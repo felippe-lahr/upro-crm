@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -10,7 +10,18 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [ref, setRef] = useState<string | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('ref')
+    if (fromUrl) {
+      localStorage.setItem('aff_ref', fromUrl)
+      setRef(fromUrl)
+    } else {
+      setRef(localStorage.getItem('aff_ref'))
+    }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -21,7 +32,7 @@ export default function SignupPage() {
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, ref })
       })
 
       const data = await res.json()
@@ -47,9 +58,9 @@ export default function SignupPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand">
               <span className="text-xs font-bold text-white">UP</span>
             </div>
-            <span className="text-lg font-bold text-white">UProCRM</span>
+            <span className="text-lg font-bold text-fg">UProCRM</span>
           </Link>
-          <h1 className="mb-1 mt-6 text-2xl font-bold text-white">Criar sua conta</h1>
+          <h1 className="mb-1 mt-6 text-2xl font-bold text-fg">Criar sua conta</h1>
           <p className="text-sm text-muted">Configure em 2 minutos. Cancele quando quiser.</p>
         </div>
 

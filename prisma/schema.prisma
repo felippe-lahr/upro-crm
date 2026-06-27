@@ -37,12 +37,51 @@ model Tenant {
   stripe_customer_id  String?
   trial_ends_at       DateTime?
 
+  referred_by         String?  @db.Uuid
+
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
   users       TenantUser[]
+  affiliate   Affiliate? @relation(fields: [referred_by], references: [id])
 
   @@map("tenants")
+}
+
+model Affiliate {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  email            String   @unique
+  password_hash    String
+  code             String   @unique
+  commission_type  String   @default("percent")    // "percent" | "fixed"
+  commission_value Decimal  @default(30) @db.Decimal(10, 2)
+  recurrence       String   @default("lifetime")    // "lifetime" | "first" | "12m"
+  status           String   @default("pending")     // "pending" | "active" | "rejected" | "suspended"
+  pix_key          String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  tenants     Tenant[]
+  commissions AffiliateCommission[]
+
+  @@map("affiliates")
+}
+
+model AffiliateCommission {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  affiliate_id    String   @db.Uuid
+  tenant_id       String   @db.Uuid
+  amount          Decimal  @db.Decimal(10, 2)
+  base_amount     Decimal  @db.Decimal(10, 2)
+  reference_month String                            // "2026-06"
+  status          String   @default("pending")      // "pending" | "paid"
+  created_at      DateTime @default(now())
+
+  affiliate   Affiliate @relation(fields: [affiliate_id], references: [id], onDelete: Cascade)
+
+  @@unique([affiliate_id, tenant_id, reference_month])
+  @@map("affiliate_commissions")
 }
 
 model TenantUser {
