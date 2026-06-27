@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { CouponsPanel } from './coupons-panel'
 import { PricingPanel } from './pricing-panel'
+import { AffiliatesPanel } from './affiliates-panel'
 
 export default async function AdminPage() {
   const session = await auth()
@@ -72,6 +73,9 @@ export default async function AdminPage() {
 
         {/* Cupons */}
         <CouponsPanel initialCoupons={coupons as any[]} />
+
+        {/* Afiliados */}
+        <AffiliatesPanel baseUrl={process.env.NEXT_PUBLIC_URL || 'https://uprocrm.com.br'} />
 
         {/* Tenants table */}
         <div className="rounded-2xl border border-line bg-surface overflow-hidden">
