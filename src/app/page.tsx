@@ -234,6 +234,10 @@ export default function LandingPage() {
             </div>
             <span className="font-bold">UProCRM</span>
           </div>
+          <div className="flex items-center gap-5 text-sm">
+            <Link href="/afiliados" className="text-muted transition-colors hover:text-brand">Seja afiliado</Link>
+            <Link href="/login" className="text-muted transition-colors hover:text-brand">Entrar</Link>
+          </div>
           <p className="text-sm text-faint">© 2026 UProCRM · Todos os direitos reservados.</p>
         </div>
       </footer>
