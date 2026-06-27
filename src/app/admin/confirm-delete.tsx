@@ -42,7 +42,8 @@ export function ConfirmDelete({
       if (!res.ok) { setError(data.error || 'Erro ao excluir'); return }
       setOpen(false)
       setText('')
-      onDeleted ? onDeleted() : window.location.reload()
+      if (onDeleted) onDeleted()
+      else window.location.reload()
     } catch {
       setError('Erro de conexão.')
     } finally {
