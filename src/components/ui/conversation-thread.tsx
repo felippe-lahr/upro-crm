@@ -115,6 +115,21 @@ export function ConversationThread({
     setTimeout(() => setSavedNote(false), 2000)
   }
 
+  async function deleteContact() {
+    if (!confirm('Excluir este contato? Todas as mensagens e o histórico serão apagados permanentemente.')) return
+    try {
+      const res = await fetch('/api/contacts/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactId: contact.id })
+      })
+      if (!res.ok) throw new Error()
+      window.location.href = '/conversations'
+    } catch {
+      alert('Falha ao excluir o contato.')
+    }
+  }
+
   function addTag() {
     const t = tagInput.trim().toLowerCase()
     if (!t || tags.includes(t)) return
@@ -321,6 +336,15 @@ export function ConversationThread({
             className="mt-2 w-full rounded-lg bg-surface2 py-1.5 text-xs font-medium text-fg hover:bg-line"
           >
             {savedNote ? 'Salvo ✓' : 'Salvar anotações'}
+          </button>
+        </div>
+
+        <div className="border-t border-line pt-4">
+          <button
+            onClick={deleteContact}
+            className="w-full rounded-lg border border-red-500/30 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+          >
+            Excluir contato
           </button>
         </div>
       </aside>
