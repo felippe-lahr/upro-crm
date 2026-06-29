@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard, KanbanSquare, MessageSquare, Users, Megaphone, Settings, ShieldCheck,
-  type LucideIcon
+  CalendarDays, type LucideIcon
 } from 'lucide-react'
 import { SignOutButton } from '@/components/ui/sign-out-button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
@@ -53,6 +53,7 @@ export default async function TenantLayout({
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" />
           <NavItem href="/funnel" icon={KanbanSquare} label="Funil de Vendas" />
           <NavItem href="/conversations" icon={MessageSquare} label="Conversas" badge={unread} />
+          <NavItem href="/agenda" icon={CalendarDays} label="Agenda" />
           <NavItem href="/contacts" icon={Users} label="Contatos" />
           <NavItem href="/broadcasts" icon={Megaphone} label="Disparos" />
           <NavItem href="/settings" icon={Settings} label="Configurações" />
