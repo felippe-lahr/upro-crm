@@ -142,6 +142,7 @@ model Contact {
 
   messages     Message[]
   conversations Conversation[]
+  appointments Appointment[]
 
   @@map("contacts")
 }
@@ -209,4 +210,50 @@ model Agent {
   created_at DateTime @default(now())
 
   @@map("agents")
+}
+
+// ─── Agendamento (tenant-scoped) ─────────────────────────────────────────────
+
+model Service {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  duration_min Int      @default(60)
+  price        Decimal? @db.Decimal(10, 2)
+  active       Boolean  @default(true)
+  created_at   DateTime @default(now())
+
+  appointments Appointment[]
+
+  @@map("services")
+}
+
+model Availability {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weekday   Int    // 0=Domingo … 6=Sábado
+  start_min Int    // minutos desde 00:00 (ex: 480 = 08:00)
+  end_min   Int
+
+  @@map("availability")
+}
+
+model Appointment {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contact_id     String?  @db.Uuid
+  service_id     String?  @db.Uuid
+  customer_name  String?
+  customer_phone String?
+  title          String?
+  start_at       DateTime
+  end_at         DateTime
+  status         String   @default("scheduled") // scheduled|confirmed|cancelled|done|no_show
+  notes          String?
+  reminder_sent  Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  contact Contact? @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  service Service? @relation(fields: [service_id], references: [id], onDelete: SetNull)
+
+  @@index([start_at])
+  @@map("appointments")
 }
