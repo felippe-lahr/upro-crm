@@ -1,6 +1,7 @@
 import { getTenantPrisma } from './prisma-tenant'
 import { decrypt } from './crypto'
 import { chatComplete } from './ai'
+import { getAvailableSlots, brDateTime } from './scheduling'
 
 /**
  * Lê o histórico da conversa e extrai dados estruturados do lead para o CRM:
@@ -85,6 +86,117 @@ const GUARDRAIL = `\n\n---\nREGRAS IMPORTANTES (siga sempre):\n` +
   `- Se você não souber a resposta, ou se o cliente pedir para falar com um humano/atendente, ou se for um assunto sensível (reclamação, cancelamento, negociação), responda de forma breve e cordial avisando que vai encaminhar para um atendente, e inclua o marcador ${ESCALATE_MARKER} ao final da mensagem.\n` +
   `- Seja claro, objetivo e responda em português do Brasil.\n` +
   `- Se ainda não souber o nome e o e-mail do cliente, peça-os de forma natural ao longo da conversa (não tudo de uma vez, sem parecer um formulário), para que possamos dar continuidade ao atendimento.`
+
+// ─── Tool use (agendamento via Claude) ──────────────────────────────────────
+
+const SCHEDULING_TOOLS = [
+  {
+    name: 'verificar_horarios',
+    description: 'Lista os horários livres em uma data específica para um serviço.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'string', description: 'Data no formato AAAA-MM-DD' },
+        servico: { type: 'string', description: 'Nome do serviço (opcional)' }
+      },
+      required: ['data']
+    }
+  },
+  {
+    name: 'agendar',
+    description: 'Cria um agendamento confirmado em uma data e horário livres.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'string', description: 'Data AAAA-MM-DD' },
+        hora: { type: 'string', description: 'Horário HH:MM' },
+        servico: { type: 'string', description: 'Nome do serviço (opcional)' },
+        nome: { type: 'string', description: 'Nome do cliente (opcional)' }
+      },
+      required: ['data', 'hora']
+    }
+  }
+]
+
+async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: string | null; duration: number; label: string }> {
+  if (name) {
+    const all = await tenantPrisma.service.findMany({ where: { active: true } })
+    const found = all.find((s: any) => s.name.toLowerCase().includes(String(name).toLowerCase()))
+    if (found) return { id: found.id, duration: found.duration_min, label: found.name }
+  }
+  const first = await tenantPrisma.service.findFirst({ where: { active: true } })
+  if (first) return { id: first.id, duration: first.duration_min, label: first.name }
+  return { id: null, duration: 60, label: 'Atendimento' }
+}
+
+async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: any; contactId: string; contactName: string | null }): Promise<string> {
+  const { tenantPrisma } = ctx
+  try {
+    if (name === 'verificar_horarios') {
+      const svc = await resolveService(tenantPrisma, input.servico)
+      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration)
+      if (!slots.length) return JSON.stringify({ data: input.data, horarios: [], aviso: 'Sem horários livres nessa data.' })
+      return JSON.stringify({ data: input.data, servico: svc.label, horarios: slots })
+    }
+    if (name === 'agendar') {
+      const svc = await resolveService(tenantPrisma, input.servico)
+      const start = brDateTime(input.data, input.hora)
+      const end = new Date(start.getTime() + svc.duration * 60000)
+      if (start.getTime() < Date.now()) return JSON.stringify({ ok: false, erro: 'Esse horário já passou.' })
+      const conflict = await tenantPrisma.appointment.findFirst({
+        where: { status: { notIn: ['cancelled', 'no_show'] }, start_at: { lt: end }, end_at: { gt: start } }
+      })
+      if (conflict) return JSON.stringify({ ok: false, erro: 'Horário ocupado. Ofereça outro.' })
+      await tenantPrisma.appointment.create({
+        data: {
+          contact_id: ctx.contactId,
+          service_id: svc.id,
+          customer_name: input.nome || ctx.contactName || null,
+          title: svc.label,
+          start_at: start,
+          end_at: end,
+          status: 'scheduled'
+        }
+      })
+      return JSON.stringify({ ok: true, servico: svc.label, data: input.data, hora: input.hora })
+    }
+  } catch (err: any) {
+    return JSON.stringify({ ok: false, erro: err?.message || 'Falha na operação' })
+  }
+  return JSON.stringify({ ok: false, erro: 'Ferramenta desconhecida' })
+}
+
+async function aiReplyWithScheduling(
+  system: string,
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  ctx: { tenantPrisma: any; contactId: string; contactName: string | null }
+): Promise<string> {
+  const Anthropic = (await import('@anthropic-ai/sdk')).default
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
+
+  const convo: any[] = messages.map((m) => ({ role: m.role, content: m.content }))
+
+  for (let i = 0; i < 5; i++) {
+    const res: any = await anthropic.messages.create({
+      model, max_tokens: 1024, system, tools: SCHEDULING_TOOLS as any, messages: convo
+    })
+    if (res.stop_reason === 'tool_use') {
+      convo.push({ role: 'assistant', content: res.content })
+      const toolResults: any[] = []
+      for (const block of res.content) {
+        if (block.type === 'tool_use') {
+          const out = await runSchedulingTool(block.name, block.input, ctx)
+          toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: out })
+        }
+      }
+      convo.push({ role: 'user', content: toolResults })
+      continue
+    }
+    return (res.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n').trim()
+  }
+  return ''
+}
 
 export async function processBotResponse(
   tenant: {
@@ -179,11 +291,26 @@ export async function processBotResponse(
       ? `\n\nIMPORTANTE — PRIMEIRO CONTATO: ainda não sabemos quem é esta pessoa. Comece sua resposta com uma saudação calorosa e, de forma cordial e natural, pergunte o nome dela${current?.email ? '' : ' e o melhor e-mail para contato'}. Em seguida, responda à dúvida. Faça isso na mesma mensagem, sem parecer um formulário.`
       : ''
 
-  let botReply = await chatComplete({
-    maxTokens: 1024,
-    system: basePrompt + GUARDRAIL + welcome,
-    messages
-  })
+  // Agendamento: se o provedor é Claude e o tenant tem horários configurados,
+  // habilita o bot a consultar disponibilidade e agendar sozinho (tool use).
+  const useAnthropic =
+    (process.env.AI_PROVIDER || '').toLowerCase() === 'anthropic' ||
+    (process.env.ANTHROPIC_API_KEY || '').startsWith('sk-ant')
+  let schedulingOn = false
+  if (useAnthropic) {
+    try { schedulingOn = (await tenantPrisma.availability.count()) > 0 } catch { schedulingOn = false }
+  }
+
+  let botReply: string
+  if (schedulingOn) {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) // AAAA-MM-DD
+    const hint = `\n\nAGENDAMENTO: Você pode consultar horários livres e agendar usando as ferramentas disponíveis. Hoje é ${today} (fuso de São Paulo). Antes de agendar, confirme com o cliente o serviço, a data e o horário. Nunca agende em horário que não esteja livre.`
+    botReply = await aiReplyWithScheduling(basePrompt + GUARDRAIL + welcome + hint, messages, {
+      tenantPrisma, contactId: contact.id, contactName: current?.name || null
+    })
+  } else {
+    botReply = await chatComplete({ maxTokens: 1024, system: basePrompt + GUARDRAIL + welcome, messages })
+  }
 
   if (!botReply) return
 

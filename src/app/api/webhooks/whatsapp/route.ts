@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
-import { processBotResponse, processMenuBotResponse, extractContactInfo, type MenuOption } from '@/lib/bot'
+import { processBotResponse, processMenuBotResponse, extractContactInfo, sendWhatsAppMessage, type MenuOption } from '@/lib/bot'
 import { transcribeWhatsAppAudio } from '@/lib/transcribe'
 import crypto from 'crypto'
 
@@ -119,6 +119,13 @@ async function processIncomingMessage(
     }
   })
 
+  // Resposta a um lembrete de agendamento (botões Confirmar/Cancelar/Remarcar)
+  const buttonId: string | undefined = message?.interactive?.button_reply?.id
+  if (buttonId && buttonId.startsWith('appt_')) {
+    await handleAppointmentButton(tenant, tenantPrisma, buttonId, message.from)
+    return
+  }
+
   console.log('[whatsapp webhook] routing', JSON.stringify({
     plan: tenant.plan,
     bot_enabled: tenant.bot_enabled,
@@ -157,6 +164,48 @@ async function processIncomingMessage(
       message,
       dbContact
     )
+  }
+}
+
+async function handleAppointmentButton(
+  tenant: { phone_number_id: string; whatsapp_token: string },
+  tenantPrisma: any,
+  buttonId: string,
+  to: string
+) {
+  // appt_<action>_<uuid>
+  const m = buttonId.match(/^appt_(confirm|cancel|reschedule)_(.+)$/)
+  if (!m) return
+  const [, action, id] = m
+
+  const appt = await tenantPrisma.appointment.findUnique({ where: { id } }).catch(() => null)
+  if (!appt) {
+    await sendWhatsAppMessage(tenant, to, 'Não encontrei esse agendamento. Fale com a gente para ajudar. 🙏')
+    return
+  }
+
+  let reply = ''
+  if (action === 'confirm') {
+    await tenantPrisma.appointment.update({ where: { id }, data: { status: 'confirmed' } })
+    reply = 'Tudo certo! Seu horário está *confirmado*. Até lá! ✅'
+  } else if (action === 'cancel') {
+    await tenantPrisma.appointment.update({ where: { id }, data: { status: 'cancelled' } })
+    reply = 'Seu agendamento foi *cancelado*. Se quiser remarcar, é só nos chamar. 🙂'
+  } else {
+    // remarcar: marca a conversa como pendente para um humano/bot reabrir
+    const conv = await tenantPrisma.conversation.findFirst({ where: { contact_id: appt.contact_id }, orderBy: { created_at: 'desc' } }).catch(() => null)
+    if (appt.contact_id) {
+      if (conv) await tenantPrisma.conversation.update({ where: { id: conv.id }, data: { status: 'pending' } })
+      else await tenantPrisma.conversation.create({ data: { contact_id: appt.contact_id, status: 'pending' } })
+    }
+    reply = 'Sem problema! Me diga qual o melhor dia e horário para remarcar. 🔄'
+  }
+
+  await sendWhatsAppMessage(tenant, to, reply)
+  if (appt.contact_id) {
+    await tenantPrisma.message.create({
+      data: { contact_id: appt.contact_id, direction: 'outbound', type: 'text', content: reply, sent_by_bot: true, timestamp: new Date() }
+    })
   }
 }
 
