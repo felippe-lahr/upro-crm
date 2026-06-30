@@ -10,8 +10,9 @@ import { sendWhatsAppButtons } from '@/lib/bot'
  * que começam nas próximas 24h e ainda não foram lembrados.
  */
 export async function GET(req: Request) {
+  const expected = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET
   const token = new URL(req.url).searchParams.get('token')
-  if (!token || token !== process.env.NEXTAUTH_SECRET) {
+  if (!token || token !== expected) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
 
