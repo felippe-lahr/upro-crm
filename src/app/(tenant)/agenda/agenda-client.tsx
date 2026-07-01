@@ -38,6 +38,7 @@ export function AgendaClient() {
   const [showForm, setShowForm] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
   const [error, setError] = useState('')
+  const [view, setView] = useState<'day' | 'month'>('day')
 
   const loadAppts = useCallback(async () => {
     const from = new Date(day); const to = new Date(day); to.setHours(23, 59, 59)
@@ -75,6 +76,10 @@ export function AgendaClient() {
           <p className="mt-1 text-sm text-muted">Gerencie seus agendamentos.</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-line p-0.5 text-sm">
+            <button onClick={() => setView('day')} className={`rounded-md px-3 py-1.5 ${view === 'day' ? 'bg-brand text-white' : 'text-muted hover:text-fg'}`}>Dia</button>
+            <button onClick={() => setView('month')} className={`rounded-md px-3 py-1.5 ${view === 'month' ? 'bg-brand text-white' : 'text-muted hover:text-fg'}`}>Mês</button>
+          </div>
           <button onClick={() => setShowConfig(!showConfig)} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm text-muted hover:text-fg">
             <Settings className="h-4 w-4" /> Configurar
           </button>
@@ -97,6 +102,14 @@ export function AgendaClient() {
       )}
       {error && <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-500">{error}</div>}
 
+      {view === 'month' && (
+        <MonthCalendar
+          refDay={day}
+          onPickDay={(d) => { setDay(d); setView('day') }}
+        />
+      )}
+
+      {view === 'day' && <>
       {/* Navegação de dia */}
       <div className="mb-4 flex items-center justify-between rounded-xl border border-line bg-surface px-4 py-3">
         <button onClick={() => shift(-1)} className="rounded-lg p-1.5 text-muted hover:bg-surface2"><ChevronLeft className="h-5 w-5" /></button>
@@ -154,6 +167,75 @@ export function AgendaClient() {
           </div>
         )}
       </div>
+      </>}
+    </div>
+  )
+}
+
+const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+const WD_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+function MonthCalendar({ refDay, onPickDay }: { refDay: Date; onPickDay: (d: Date) => void }) {
+  const [cursor, setCursor] = useState(() => new Date(refDay.getFullYear(), refDay.getMonth(), 1))
+  const [byDay, setByDay] = useState<Record<string, Appt[]>>({})
+
+  useEffect(() => {
+    const from = new Date(cursor.getFullYear(), cursor.getMonth(), 1, 0, 0, 0)
+    const to = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 23, 59, 59)
+    fetch(`/api/scheduling/appointments?from=${from.toISOString()}&to=${to.toISOString()}`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: Appt[]) => {
+        const map: Record<string, Appt[]> = {}
+        for (const a of rows) { const k = ymd(new Date(a.start_at)); (map[k] ||= []).push(a) }
+        setByDay(map)
+      }).catch(() => setByDay({}))
+  }, [cursor])
+
+  function shiftMonth(n: number) { setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + n, 1)) }
+
+  const firstWeekday = cursor.getDay()
+  const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate()
+  const cells: (Date | null)[] = []
+  for (let i = 0; i < firstWeekday; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(cursor.getFullYear(), cursor.getMonth(), d))
+  while (cells.length % 7 !== 0) cells.push(null)
+  const todayStr = ymd(new Date())
+
+  return (
+    <div className="mb-4 rounded-2xl border border-line bg-surface p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <button onClick={() => shiftMonth(-1)} className="rounded-lg p-1.5 text-muted hover:bg-surface2"><ChevronLeft className="h-5 w-5" /></button>
+        <div className="text-sm font-semibold capitalize">{MONTHS[cursor.getMonth()]} {cursor.getFullYear()}</div>
+        <button onClick={() => shiftMonth(1)} className="rounded-lg p-1.5 text-muted hover:bg-surface2"><ChevronRight className="h-5 w-5" /></button>
+      </div>
+      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-faint">
+        {WD_SHORT.map((w) => <div key={w} className="py-1">{w}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} className="aspect-square rounded-lg" />
+          const key = ymd(d)
+          const list = byDay[key] || []
+          const active = list.filter((a) => a.status !== 'cancelled')
+          const isToday = key === todayStr
+          return (
+            <button key={i} onClick={() => onPickDay(d)}
+              className={`aspect-square rounded-lg border p-1 text-left transition hover:border-brand hover:bg-brand/5 ${isToday ? 'border-brand bg-brand/5' : 'border-line'}`}>
+              <div className={`text-xs font-semibold ${isToday ? 'text-brand' : 'text-fg'}`}>{d.getDate()}</div>
+              {active.length > 0 && (
+                <div className="mt-0.5 space-y-0.5">
+                  {active.slice(0, 2).map((a) => (
+                    <div key={a.id} className="truncate rounded bg-brand/15 px-1 text-[9px] leading-tight text-brand">
+                      {hm(a.start_at)} {a.customer_name || a.contact?.name || a.service?.name || ''}
+                    </div>
+                  ))}
+                  {active.length > 2 && <div className="px-1 text-[9px] text-muted">+{active.length - 2}</div>}
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -208,15 +290,18 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
   const [duration, setDuration] = useState(60)
   const [price, setPrice] = useState('')
   const [hours, setHours] = useState<Record<number, { on: boolean; start: string; end: string }>>({})
+  const [gap, setGap] = useState(0)
 
   useEffect(() => {
-    fetch('/api/scheduling/availability', { cache: 'no-store' }).then(r => r.json()).then((rules: any[]) => {
+    fetch('/api/scheduling/availability', { cache: 'no-store' }).then(r => r.json()).then((data: any) => {
+      const rules: any[] = Array.isArray(data) ? data : (data.rules || [])
       const h: any = {}
       for (let w = 0; w < 7; w++) {
         const rule = rules.find((r) => r.weekday === w)
         h[w] = rule ? { on: true, start: minToHM(rule.start_min), end: minToHM(rule.end_min) } : { on: false, start: '08:00', end: '18:00' }
       }
       setHours(h)
+      setGap(Number(data?.gap_min) || 0)
     }).catch(() => {})
   }, [])
 
@@ -237,7 +322,7 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
   }
   async function saveHours() {
     const rules = Object.entries(hours).filter(([, v]) => v.on).map(([w, v]) => ({ weekday: Number(w), start_min: hmToMin(v.start), end_min: hmToMin(v.end) }))
-    await fetch('/api/scheduling/availability', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules }) })
+    await fetch('/api/scheduling/availability', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules, gap_min: gap }) })
     alert('Horários salvos!')
   }
 
@@ -281,6 +366,13 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
               </div>
             )
           })}
+        </div>
+        <div className="mt-4 flex items-center gap-2 border-t border-line pt-3 text-sm">
+          <label className="flex-1 text-muted">Intervalo entre atendimentos
+            <span className="block text-xs text-faint">Tempo livre reservado antes/depois de cada agendamento (ex: consultas).</span>
+          </label>
+          <input type="number" min={0} max={240} step={5} value={gap} onChange={(e) => setGap(Math.max(0, Number(e.target.value) || 0))} className="w-16 rounded-lg border border-line bg-background px-2 py-1.5 text-sm" />
+          <span className="text-xs text-faint">min</span>
         </div>
         <button onClick={saveHours} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Salvar horários</button>
       </div>

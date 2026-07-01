@@ -20,7 +20,7 @@ function minToHM(m: number) {
  * Retorna os horários livres ("HH:MM") de um dia, dado a duração do serviço,
  * respeitando os horários de atendimento e os agendamentos já existentes.
  */
-export async function getAvailableSlots(prisma: any, dateStr: string, durationMin: number): Promise<string[]> {
+export async function getAvailableSlots(prisma: any, dateStr: string, durationMin: number, gapMin = 0): Promise<string[]> {
   const wd = weekdayOf(dateStr)
   const rules = await prisma.availability.findMany({ where: { weekday: wd } })
   if (!rules.length) return []
@@ -31,15 +31,19 @@ export async function getAvailableSlots(prisma: any, dateStr: string, durationMi
     where: { status: { notIn: ['cancelled', 'no_show'] }, start_at: { gte: dayStart, lte: dayEnd } }
   })
 
+  const gapMs = gapMin * 60000
   const now = Date.now()
   const slots: string[] = []
   for (const r of rules) {
-    for (let m = r.start_min; m + durationMin <= r.end_min; m += durationMin) {
+    // Passo de duração + intervalo (gap) entre atendimentos.
+    for (let m = r.start_min; m + durationMin <= r.end_min; m += durationMin + gapMin) {
       const hm = minToHM(m)
       const start = new Date(`${dateStr}T${hm}:00${TZ}`)
       const end = new Date(start.getTime() + durationMin * 60000)
       if (start.getTime() < now) continue
-      const overlap = existing.some((a: any) => start < a.end_at && end > a.start_at)
+      // Considera o gap como bloqueio antes/depois de cada agendamento existente.
+      const overlap = existing.some((a: any) =>
+        start.getTime() < a.end_at.getTime() + gapMs && end.getTime() + gapMs > a.start_at.getTime())
       if (!overlap) slots.push(hm)
     }
   }
