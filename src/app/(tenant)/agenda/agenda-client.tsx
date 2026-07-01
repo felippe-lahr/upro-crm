@@ -223,7 +223,12 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
   async function addService(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    await fetch('/api/scheduling/services', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, duration_min: duration, price }) })
+    const r = await fetch('/api/scheduling/services', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, duration_min: duration, price }) })
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}))
+      alert(d.error || 'Não foi possível cadastrar o serviço. Se o problema persistir, avise o suporte (pode ser necessário atualizar o banco).')
+      return
+    }
     setName(''); setDuration(60); setPrice(''); onServices()
   }
   async function delService(id: string) {
