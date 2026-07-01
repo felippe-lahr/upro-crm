@@ -91,9 +91,17 @@ export default function LandingPage() {
 
           {/* Mockup */}
           <div className="relative">
-            <div className="pointer-events-none absolute inset-0 -m-6 rounded-[2rem] bg-gradient-to-br from-brand-700 to-brand opacity-90 blur-[1px]" />
-            <div className="relative rounded-[2rem] bg-gradient-to-br from-brand-700 to-brand p-6 shadow-2xl shadow-brand/30">
-              <CrmPreview />
+            {/* halo suave atrás */}
+            <div className="pointer-events-none absolute -inset-8 rounded-[2.5rem] bg-brand/15 blur-3xl" />
+            {/* moldura fina com feixe de luz girando */}
+            <div className="relative overflow-hidden rounded-[1.15rem] p-[2px] shadow-2xl shadow-brand/20">
+              {/* feixe luminoso que gira ao redor da borda */}
+              <div className="animate-beam-sweep pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[200%] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_255deg,#3b82f6_310deg,#bfdbfe_335deg,#3b82f6_360deg)]" />
+              {/* borda sutil estática por cima do feixe */}
+              <div className="pointer-events-none absolute inset-0 rounded-[1.15rem] ring-1 ring-inset ring-white/10" />
+              <div className="relative">
+                <CrmPreview />
+              </div>
             </div>
           </div>
         </div>

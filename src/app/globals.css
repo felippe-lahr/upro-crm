@@ -69,6 +69,13 @@ body {
   70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
   100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
 }
+/* Feixe de luz que dá uma volta e pausa (a cada 10s). Mantém o translate de centralização. */
+@keyframes beam-sweep {
+  0%   { transform: translate(-50%, -50%) rotate(0deg); }
+  30%  { transform: translate(-50%, -50%) rotate(360deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+.animate-beam-sweep { animation: beam-sweep 10s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
 .animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
 .animate-msg-in { animation: msg-in 0.5s ease-out both; }
 .animate-pulse-ring { animation: pulse-ring 2s infinite; }
