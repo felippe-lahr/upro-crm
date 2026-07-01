@@ -206,6 +206,19 @@ async function handleAppointmentButton(
   } else if (action === 'cancel') {
     await tenantPrisma.appointment.update({ where: { id }, data: { status: 'cancelled' } })
     reply = 'Seu agendamento foi *cancelado*. Se quiser remarcar, é só nos chamar. 🙂'
+    if (appt.customer_email) {
+      const whenLabel = new Date(appt.start_at).toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      })
+      sendAppointmentEmail({
+        to: appt.customer_email,
+        businessName: tenant.name || 'Agendamento',
+        replyTo: tenant.email,
+        serviceName: appt.service?.name || appt.title || 'Atendimento',
+        whenLabel,
+        kind: 'cancelled'
+      }).catch((e) => console.error('[appointment email] cancel failed', e))
+    }
   } else {
     // remarcar: marca a conversa como pendente para um humano/bot reabrir
     const conv = await tenantPrisma.conversation.findFirst({ where: { contact_id: appt.contact_id }, orderBy: { created_at: 'desc' } }).catch(() => null)

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { sendWhatsAppButtons } from '@/lib/bot'
+import { sendAppointmentEmail } from '@/lib/email'
 
 /**
  * Cron de lembretes. Deve ser chamado periodicamente (ex: a cada 15 min) com
@@ -78,6 +79,17 @@ export async function GET(req: Request) {
           where: { id: a.id },
           data: kind === 'day' ? { day_reminder_sent: true } : { reminder_sent: true }
         })
+        // Lembrete também por e-mail, se tivermos o endereço.
+        if (a.customer_email) {
+          sendAppointmentEmail({
+            to: a.customer_email,
+            businessName: tenant.name || 'Agendamento',
+            replyTo: tenant.email,
+            serviceName: what,
+            whenLabel: when,
+            kind: 'reminder'
+          }).catch((err) => console.error('[cron reminders] email failed', tenant.slug, err))
+        }
         sent++
       } catch (err) {
         console.error('[cron reminders] send failed', tenant.slug, err)
