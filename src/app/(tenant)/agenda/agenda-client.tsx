@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Settings, Trash2, Check, X, CalendarDays } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Settings, Trash2, Check, X, CalendarDays, Pencil } from 'lucide-react'
 
-interface Service { id: string; name: string; duration_min: number; price: string | null }
+interface Service { id: string; name: string; duration_min: number; price: string | null; active?: boolean }
 interface Appt {
   id: string
   customer_name: string | null
@@ -242,6 +242,48 @@ function MonthCalendar({ refDay, onPickDay }: { refDay: Date; onPickDay: (d: Dat
   )
 }
 
+function ServiceRow({ service, onSave, onDelete }: {
+  service: Service
+  onSave: (id: string, patch: { name: string; duration_min: number; price: string }) => Promise<boolean>
+  onDelete: (id: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(service.name)
+  const [duration, setDuration] = useState(service.duration_min)
+  const [price, setPrice] = useState(service.price || '')
+  const [saving, setSaving] = useState(false)
+
+  function start() { setName(service.name); setDuration(service.duration_min); setPrice(service.price || ''); setEditing(true) }
+  async function save() {
+    setSaving(true)
+    const ok = await onSave(service.id, { name, duration_min: duration, price: String(price) })
+    setSaving(false)
+    if (ok) setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand/40 bg-background px-3 py-2 text-sm">
+        <input value={name} onChange={(e) => setName(e.target.value)} className="min-w-[8rem] flex-1 rounded border border-line bg-surface px-2 py-1 text-sm focus:border-brand focus:outline-none" />
+        <input type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-16 rounded border border-line bg-surface px-2 py-1 text-sm" />
+        <span className="text-xs text-faint">min</span>
+        <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="R$" className="w-16 rounded border border-line bg-surface px-2 py-1 text-sm" />
+        <button onClick={save} disabled={saving} className="rounded bg-brand p-1.5 text-white hover:bg-brand-600 disabled:opacity-50" title="Salvar"><Check className="h-3.5 w-3.5" /></button>
+        <button onClick={() => setEditing(false)} className="rounded border border-line p-1.5 text-muted hover:text-fg" title="Cancelar"><X className="h-3.5 w-3.5" /></button>
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-line bg-background px-3 py-2 text-sm">
+      <span>{service.name} <span className="text-faint">· {service.duration_min}min{service.price ? ` · R$ ${service.price}` : ''}</span></span>
+      <div className="flex items-center gap-1.5">
+        <button onClick={start} className="text-faint hover:text-brand" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={() => onDelete(service.id)} className="text-faint hover:text-red-500" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+      </div>
+    </div>
+  )
+}
+
 function NewAppointmentForm({ services, defaultDate, onClose, onCreated, onError }: {
   services: Service[]; defaultDate: string; onClose: () => void; onCreated: () => void; onError: (s: string) => void
 }) {
@@ -328,8 +370,14 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
     setName(''); setDuration(60); setPrice(''); onServices()
   }
   async function delService(id: string) {
+    if (!confirm('Excluir este serviço? Agendamentos já feitos continuam existindo.')) return
     await fetch('/api/scheduling/services', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     onServices()
+  }
+  async function editService(id: string, patch: { name: string; duration_min: number; price: string }) {
+    const r = await fetch('/api/scheduling/services', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...patch }) })
+    if (!r.ok) { alert((await r.json().catch(() => ({}))).error || 'Não foi possível salvar as alterações.'); return false }
+    onServices(); return true
   }
   async function saveHours() {
     const rules = Object.entries(hours).filter(([, v]) => v.on).map(([w, v]) => ({ weekday: Number(w), start_min: hmToMin(v.start), end_min: hmToMin(v.end) }))
@@ -344,10 +392,7 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
         <h3 className="mb-3 text-sm font-semibold">Serviços</h3>
         <div className="mb-3 space-y-2">
           {services.map((s) => (
-            <div key={s.id} className="flex items-center justify-between rounded-lg border border-line bg-background px-3 py-2 text-sm">
-              <span>{s.name} <span className="text-faint">· {s.duration_min}min{s.price ? ` · R$ ${s.price}` : ''}</span></span>
-              <button onClick={() => delService(s.id)} className="text-faint hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
-            </div>
+            <ServiceRow key={s.id} service={s} onSave={editService} onDelete={delService} />
           ))}
           {services.length === 0 && <p className="text-xs text-faint">Nenhum serviço cadastrado.</p>}
         </div>
