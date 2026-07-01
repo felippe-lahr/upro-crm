@@ -4,6 +4,10 @@ function getResend(): Resend {
   return new Resend(process.env.RESEND_API_KEY)
 }
 
+// Endereço remetente. Padrão: domínio próprio (precisa estar verificado no Resend).
+// Para testar antes de verificar o domínio, defina EMAIL_FROM_ADDRESS=onboarding@resend.dev
+const FROM_ADDRESS = process.env.EMAIL_FROM_ADDRESS || 'noreply@uprocrm.com.br'
+
 export async function sendWelcomeEmail({
   to,
   name,
@@ -14,7 +18,7 @@ export async function sendWelcomeEmail({
   loginUrl: string
 }) {
   await getResend().emails.send({
-    from: 'UProCRM <noreply@uprocrm.com.br>',
+    from: `UProCRM <${FROM_ADDRESS}>`,
     to,
     subject: 'Bem-vindo ao UProCRM! Seu CRM está pronto.',
     html: `
@@ -58,7 +62,7 @@ export async function sendAppointmentEmail({
     : 'Recebemos seu agendamento. Veja os detalhes abaixo.'
 
   await getResend().emails.send({
-    from: `${businessName} <noreply@uprocrm.com.br>`,
+    from: `${businessName} <${FROM_ADDRESS}>`,
     to,
     replyTo: replyTo || undefined,
     subject: `${title} — ${businessName}`,
@@ -86,7 +90,7 @@ export async function sendPasswordResetEmail({
   resetUrl: string
 }) {
   await getResend().emails.send({
-    from: 'UProCRM <noreply@uprocrm.com.br>',
+    from: `UProCRM <${FROM_ADDRESS}>`,
     to,
     subject: 'Redefinir senha — UProCRM',
     html: `
