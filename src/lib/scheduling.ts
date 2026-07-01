@@ -20,7 +20,7 @@ function minToHM(m: number) {
  * Retorna os horários livres ("HH:MM") de um dia, dado a duração do serviço,
  * respeitando os horários de atendimento e os agendamentos já existentes.
  */
-export async function getAvailableSlots(prisma: any, dateStr: string, durationMin: number, gapMin = 0): Promise<string[]> {
+export async function getAvailableSlots(prisma: any, dateStr: string, durationMin: number, gapMin = 0, minNoticeMin = 0): Promise<string[]> {
   const wd = weekdayOf(dateStr)
   const rules = await prisma.availability.findMany({ where: { weekday: wd } })
   if (!rules.length) return []
@@ -32,7 +32,8 @@ export async function getAvailableSlots(prisma: any, dateStr: string, durationMi
   })
 
   const gapMs = gapMin * 60000
-  const now = Date.now()
+  // Antecedência mínima: não permite agendar antes de "agora + minNotice".
+  const now = Date.now() + minNoticeMin * 60000
   const slots: string[] = []
   for (const r of rules) {
     // Passo de duração + intervalo (gap) entre atendimentos.

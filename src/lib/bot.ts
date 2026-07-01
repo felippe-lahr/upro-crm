@@ -129,12 +129,12 @@ async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: s
   return { id: null, duration: 60, label: 'Atendimento' }
 }
 
-async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: any; contactId: string; contactName: string | null; gapMin: number }): Promise<string> {
-  const { tenantPrisma, gapMin } = ctx
+async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: any; contactId: string; contactName: string | null; gapMin: number; minNoticeMin: number }): Promise<string> {
+  const { tenantPrisma, gapMin, minNoticeMin } = ctx
   try {
     if (name === 'verificar_horarios') {
       const svc = await resolveService(tenantPrisma, input.servico)
-      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration, gapMin)
+      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration, gapMin, minNoticeMin)
       const dia = weekdayName(input.data)
       if (!slots.length) return JSON.stringify({ data: input.data, dia_semana: dia, horarios: [], aviso: `Não há horários de atendimento em ${dia} (${input.data}). Sugira outro dia.` })
       return JSON.stringify({ data: input.data, dia_semana: dia, servico: svc.label, horarios: slots })
@@ -146,7 +146,7 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
       const end = new Date(start.getTime() + svc.duration * 60000)
       if (start.getTime() < Date.now()) return JSON.stringify({ ok: false, erro: 'Esse horário já passou.' })
       // Valida contra a disponibilidade real (dias de atendimento + conflitos + horário)
-      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration, gapMin)
+      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration, gapMin, minNoticeMin)
       if (!slots.includes(input.hora)) {
         return JSON.stringify({
           ok: false,
@@ -177,7 +177,7 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
 async function aiReplyWithScheduling(
   system: string,
   messages: { role: 'user' | 'assistant'; content: string }[],
-  ctx: { tenantPrisma: any; contactId: string; contactName: string | null; gapMin: number }
+  ctx: { tenantPrisma: any; contactId: string; contactName: string | null; gapMin: number; minNoticeMin: number }
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -216,6 +216,7 @@ export async function processBotResponse(
     handoff_pause?: boolean
     keep_responding_after_human?: boolean
     booking_gap_min?: number
+    booking_min_notice_min?: number
   },
   userText: string,
   contact: { id: string },
@@ -321,7 +322,7 @@ export async function processBotResponse(
       `- Só use agendar com data e hora que apareceram em verificar_horarios. Se a ferramenta retornar erro ou lista vazia, informe o cliente e sugira outro dia. Nunca invente disponibilidade.\n` +
       `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.`
     botReply = await aiReplyWithScheduling(basePrompt + GUARDRAIL + welcome + hint, messages, {
-      tenantPrisma, contactId: contact.id, contactName: current?.name || null, gapMin: tenant.booking_gap_min || 0
+      tenantPrisma, contactId: contact.id, contactName: current?.name || null, gapMin: tenant.booking_gap_min || 0, minNoticeMin: tenant.booking_min_notice_min || 0
     })
   } else {
     botReply = await chatComplete({ maxTokens: 1024, system: basePrompt + GUARDRAIL + welcome, messages })

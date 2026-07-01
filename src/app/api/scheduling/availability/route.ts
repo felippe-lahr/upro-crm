@@ -15,15 +15,15 @@ export async function GET() {
   const c = await ctx()
   if (!c) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const rules = await c.prisma.availability.findMany({ orderBy: [{ weekday: 'asc' }, { start_min: 'asc' }] })
-  const tenant = await globalPrisma.tenant.findUnique({ where: { id: c.tenantId }, select: { booking_gap_min: true } })
-  return Response.json({ rules, gap_min: tenant?.booking_gap_min ?? 0 })
+  const tenant = await globalPrisma.tenant.findUnique({ where: { id: c.tenantId }, select: { booking_gap_min: true, booking_min_notice_min: true } })
+  return Response.json({ rules, gap_min: tenant?.booking_gap_min ?? 0, min_notice_min: tenant?.booking_min_notice_min ?? 0 })
 }
 
 // Substitui todas as regras de uma vez: { rules: [{ weekday, start_min, end_min }], gap_min }
 export async function PUT(req: Request) {
   const c = await ctx()
   if (!c) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const { rules, gap_min } = await req.json()
+  const { rules, gap_min, min_notice_min } = await req.json()
   if (!Array.isArray(rules)) return Response.json({ error: 'rules deve ser array' }, { status: 400 })
 
   const clean = rules
@@ -33,9 +33,9 @@ export async function PUT(req: Request) {
   await c.prisma.availability.deleteMany({})
   if (clean.length) await c.prisma.availability.createMany({ data: clean })
 
-  if (gap_min !== undefined) {
-    const gap = Math.max(0, Math.min(240, Number(gap_min) || 0))
-    await globalPrisma.tenant.update({ where: { id: c.tenantId }, data: { booking_gap_min: gap } })
-  }
+  const data: any = {}
+  if (gap_min !== undefined) data.booking_gap_min = Math.max(0, Math.min(240, Number(gap_min) || 0))
+  if (min_notice_min !== undefined) data.booking_min_notice_min = Math.max(0, Math.min(43200, Number(min_notice_min) || 0))
+  if (Object.keys(data).length) await globalPrisma.tenant.update({ where: { id: c.tenantId }, data })
   return Response.json({ ok: true })
 }

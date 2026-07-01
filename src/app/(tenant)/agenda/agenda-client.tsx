@@ -291,6 +291,7 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
   const [price, setPrice] = useState('')
   const [hours, setHours] = useState<Record<number, { on: boolean; start: string; end: string }>>({})
   const [gap, setGap] = useState(0)
+  const [minNotice, setMinNotice] = useState(0)
 
   useEffect(() => {
     fetch('/api/scheduling/availability', { cache: 'no-store' }).then(r => r.json()).then((data: any) => {
@@ -302,6 +303,7 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
       }
       setHours(h)
       setGap(Number(data?.gap_min) || 0)
+      setMinNotice(Number(data?.min_notice_min) || 0)
     }).catch(() => {})
   }, [])
 
@@ -322,7 +324,7 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
   }
   async function saveHours() {
     const rules = Object.entries(hours).filter(([, v]) => v.on).map(([w, v]) => ({ weekday: Number(w), start_min: hmToMin(v.start), end_min: hmToMin(v.end) }))
-    await fetch('/api/scheduling/availability', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules, gap_min: gap }) })
+    await fetch('/api/scheduling/availability', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules, gap_min: gap, min_notice_min: minNotice }) })
     alert('Horários salvos!')
   }
 
@@ -372,6 +374,13 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
             <span className="block text-xs text-faint">Tempo livre reservado antes/depois de cada agendamento (ex: consultas).</span>
           </label>
           <input type="number" min={0} max={240} step={5} value={gap} onChange={(e) => setGap(Math.max(0, Number(e.target.value) || 0))} className="w-16 rounded-lg border border-line bg-background px-2 py-1.5 text-sm" />
+          <span className="text-xs text-faint">min</span>
+        </div>
+        <div className="mt-3 flex items-center gap-2 text-sm">
+          <label className="flex-1 text-muted">Antecedência mínima
+            <span className="block text-xs text-faint">O cliente/bot só pode agendar com pelo menos esse tempo de antecedência (em minutos). Ex: 120 = 2h.</span>
+          </label>
+          <input type="number" min={0} step={30} value={minNotice} onChange={(e) => setMinNotice(Math.max(0, Number(e.target.value) || 0))} className="w-20 rounded-lg border border-line bg-background px-2 py-1.5 text-sm" />
           <span className="text-xs text-faint">min</span>
         </div>
         <button onClick={saveHours} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Salvar horários</button>

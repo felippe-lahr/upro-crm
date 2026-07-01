@@ -10,12 +10,12 @@ async function db() {
   return getTenantPrisma(schemaName)
 }
 
-async function bookingGap(): Promise<number> {
+async function bookingRules(): Promise<{ gap: number; minNotice: number }> {
   const session = await auth()
   const tenantId = (session?.user as any)?.tenantId
-  if (!tenantId) return 0
-  const t = await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { booking_gap_min: true } })
-  return t?.booking_gap_min ?? 0
+  if (!tenantId) return { gap: 0, minNotice: 0 }
+  const t = await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { booking_gap_min: true, booking_min_notice_min: true } })
+  return { gap: t?.booking_gap_min ?? 0, minNotice: t?.booking_min_notice_min ?? 0 }
 }
 
 export async function GET(req: Request) {
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   const end = new Date(start.getTime() + duration * 60 * 1000)
 
   // Conflito: agendamento que se sobrepõe, considerando o intervalo (gap) configurado.
-  const gapMs = (await bookingGap()) * 60 * 1000
+  const gapMs = (await bookingRules()).gap * 60 * 1000
   const conflict = await prisma.appointment.findFirst({
     where: {
       status: { notIn: ['cancelled', 'no_show'] },

@@ -33,7 +33,8 @@ model Tenant {
   handoff_pause              Boolean  @default(false)
   keep_responding_after_human Boolean @default(false)
 
-  booking_gap_min     Int      @default(0)
+  booking_gap_min        Int   @default(0)
+  booking_min_notice_min Int   @default(0)
 
   mp_subscription_id  String?
   stripe_customer_id  String?
