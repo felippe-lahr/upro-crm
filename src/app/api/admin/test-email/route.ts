@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { sendAppointmentEmail } from '@/lib/email'
+import { Resend } from 'resend'
 
 /**
  * Teste de envio de e-mail via Resend.
@@ -15,27 +15,25 @@ export async function GET(req: Request) {
   const to = searchParams.get('to')
   if (!to) return Response.json({ error: 'Informe ?to=email' }, { status: 400 })
 
+  const from = `UProCRM (teste) <${process.env.EMAIL_FROM_ADDRESS || 'noreply@uprocrm.com.br'}>`
   try {
-    await sendAppointmentEmail({
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    const result = await resend.emails.send({
+      from,
       to,
-      businessName: 'UProCRM (teste)',
-      replyTo: null,
-      serviceName: 'Aula Experimental',
-      whenLabel: 'quinta-feira, 03/07/2026 15:00',
-      kind: 'created'
+      subject: 'Teste de e-mail — UProCRM',
+      html: '<p>Se você recebeu este e-mail, o Resend está funcionando. ✅</p>'
     })
+    // O SDK do Resend retorna { data, error } — o erro NÃO é lançado.
     return Response.json({
-      ok: true,
+      ok: !result.error,
+      from,
       sent_to: to,
-      from_address: process.env.EMAIL_FROM_ADDRESS || 'noreply@uprocrm.com.br',
+      resend_id: result.data?.id || null,
+      resend_error: result.error || null,
       has_api_key: !!process.env.RESEND_API_KEY
-    })
+    }, { status: result.error ? 502 : 200 })
   } catch (e: any) {
-    return Response.json({
-      ok: false,
-      error: e?.message || String(e),
-      from_address: process.env.EMAIL_FROM_ADDRESS || 'noreply@uprocrm.com.br',
-      has_api_key: !!process.env.RESEND_API_KEY
-    }, { status: 500 })
+    return Response.json({ ok: false, from, error: e?.message || String(e), has_api_key: !!process.env.RESEND_API_KEY }, { status: 500 })
   }
 }
