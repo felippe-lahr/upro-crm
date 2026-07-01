@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "prisma db push && next start",
+    "start": "prisma db push && node scripts/migrate-tenant-schemas.js && next start",
     "lint": "next lint"
   },
   "dependencies": {
