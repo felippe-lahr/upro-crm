@@ -120,8 +120,8 @@ const SCHEDULING_TOOLS = [
   }
 ]
 
-async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: string | null; duration: number; label: string; gap: number; minNotice: number }> {
-  const toObj = (s: any) => ({ id: s.id, duration: s.duration_min, label: s.name, gap: s.gap_min || 0, minNotice: s.min_notice_min || 0 })
+async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: string | null; duration: number; label: string; gap: number; minNotice: number; chargeMode: string; chargeValue: number; holdMinutes: number; price: number }> {
+  const toObj = (s: any) => ({ id: s.id, duration: s.duration_min, label: s.name, gap: s.gap_min || 0, minNotice: s.min_notice_min || 0, chargeMode: s.charge_mode || 'none', chargeValue: Number(s.charge_value) || 0, holdMinutes: s.hold_minutes || 30, price: Number(s.price) || 0 })
   if (name) {
     const all = await tenantPrisma.service.findMany({ where: { active: true } })
     const found = all.find((s: any) => s.name.toLowerCase().includes(String(name).toLowerCase()))
@@ -129,10 +129,31 @@ async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: s
   }
   const first = await tenantPrisma.service.findFirst({ where: { active: true } })
   if (first) return toObj(first)
-  return { id: null, duration: 60, label: 'Atendimento', gap: 0, minNotice: 0 }
+  return { id: null, duration: 60, label: 'Atendimento', gap: 0, minNotice: 0, chargeMode: 'none', chargeValue: 0, holdMinutes: 30, price: 0 }
 }
 
-async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: any; contactId: string; contactName: string | null; businessName?: string; replyTo?: string | null }): Promise<string> {
+/** Calcula o valor do sinal a cobrar conforme o modo de cobrança do serviço. */
+function computeChargeAmount(svc: { chargeMode: string; chargeValue: number; price: number }): number {
+  if (svc.chargeMode === 'fixed') return svc.chargeValue
+  if (svc.chargeMode === 'percent') return Math.round(svc.price * svc.chargeValue) / 100
+  if (svc.chargeMode === 'full') return svc.price
+  return 0
+}
+
+interface SchedulingCtx {
+  tenantPrisma: any
+  contactId: string
+  contactName: string | null
+  businessName?: string
+  replyTo?: string | null
+  tenantId?: string
+  schemaName?: string
+  mpAccessToken?: string | null
+  waTenant?: { phone_number_id: string; whatsapp_token: string }
+  contactPhone?: string
+}
+
+async function runSchedulingTool(name: string, input: any, ctx: SchedulingCtx): Promise<string> {
   const { tenantPrisma } = ctx
   try {
     if (name === 'verificar_horarios') {
@@ -159,34 +180,75 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
         })
       }
       const email = typeof input.email === 'string' && input.email.includes('@') ? input.email.trim() : null
-      await tenantPrisma.appointment.create({
-        data: {
-          contact_id: ctx.contactId,
-          service_id: svc.id,
-          customer_name: input.nome || ctx.contactName || null,
-          customer_email: email,
-          title: svc.label,
-          start_at: start,
-          end_at: end,
-          status: 'scheduled'
-        }
+      const whenLabel = start.toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
       })
+
       // Guarda o e-mail no contato para reaproveitar em futuros agendamentos.
       if (email && ctx.contactId) {
         await tenantPrisma.contact.update({ where: { id: ctx.contactId }, data: { email } }).catch(() => {})
       }
-      // Envia e-mail de confirmação do agendamento (não bloqueia a resposta ao cliente).
-      if (email) {
-        const whenLabel = start.toLocaleString('pt-BR', {
-          timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+
+      // ── Cobrança de sinal (pré-reserva com prazo) ──
+      const chargeAmount = computeChargeAmount(svc)
+      const requiresPayment = svc.chargeMode !== 'none' && chargeAmount > 0 && !!ctx.mpAccessToken
+      if (requiresPayment) {
+        if (!email) {
+          return JSON.stringify({ ok: false, erro: 'Para reservar este serviço é necessário um pagamento. Peça o e-mail do cliente para enviar a cobrança Pix e chame agendar novamente com o email.' })
+        }
+        const holdExpires = new Date(Date.now() + svc.holdMinutes * 60000)
+        const appt = await tenantPrisma.appointment.create({
+          data: {
+            contact_id: ctx.contactId, service_id: svc.id,
+            customer_name: input.nome || ctx.contactName || null, customer_email: email,
+            title: svc.label, start_at: start, end_at: end,
+            status: 'pending_payment', amount_due: chargeAmount, payment_status: 'pending', hold_expires_at: holdExpires
+          }
         })
+        try {
+          const { createPixCharge } = await import('./pix')
+          const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://uprocrm.com.br'
+          const pix = await createPixCharge({
+            accessToken: ctx.mpAccessToken!,
+            amount: chargeAmount,
+            description: `Sinal - ${svc.label}`,
+            payerEmail: email,
+            externalReference: `appt:${ctx.schemaName}:${appt.id}`,
+            notificationUrl: `${baseUrl}/api/webhooks/mercadopago`,
+            expiresMinutes: svc.holdMinutes
+          })
+          await tenantPrisma.appointment.update({ where: { id: appt.id }, data: { payment_id: pix.paymentId } })
+          // Mapeamento global para o webhook rotear a confirmação.
+          const { globalPrisma } = await import('./prisma-tenant')
+          await globalPrisma.appointmentPayment.create({
+            data: { payment_id: pix.paymentId, tenant_id: ctx.tenantId!, schema_name: ctx.schemaName!, appointment_id: appt.id, amount: chargeAmount }
+          })
+          // Envia o Pix "copia e cola" + link ao cliente.
+          if (ctx.waTenant) {
+            const money = chargeAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+            const msg = `Para *garantir* seu horário (${svc.label} — ${whenLabel}), pague o sinal de *${money}* via Pix em até *${svc.holdMinutes} min*:\n\n*Pix copia e cola:*\n${pix.qrCode}\n\nOu pague pelo link:\n${pix.ticketUrl}\n\nAssim que o pagamento for confirmado, seu horário fica garantido. ✅`
+            await sendWhatsAppMessage(ctx.waTenant, ctx.contactPhone || '', msg).catch((e) => console.error('[pix] send failed', e))
+          }
+          return JSON.stringify({ ok: true, aguardando_pagamento: true, valor: chargeAmount, prazo_min: svc.holdMinutes, servico: svc.label, data: input.data, hora: input.hora, aviso: 'A cobrança Pix já foi enviada ao cliente pelo WhatsApp. Informe que o horário será garantido assim que o pagamento for confirmado, dentro do prazo.' })
+        } catch (e: any) {
+          // Falhou gerar o Pix: remove a pré-reserva para não travar o horário.
+          await tenantPrisma.appointment.delete({ where: { id: appt.id } }).catch(() => {})
+          return JSON.stringify({ ok: false, erro: 'Não consegui gerar a cobrança Pix agora. Peça para o cliente tentar novamente em instantes.' })
+        }
+      }
+
+      // ── Sem cobrança: agendamento direto ──
+      await tenantPrisma.appointment.create({
+        data: {
+          contact_id: ctx.contactId, service_id: svc.id,
+          customer_name: input.nome || ctx.contactName || null, customer_email: email,
+          title: svc.label, start_at: start, end_at: end, status: 'scheduled'
+        }
+      })
+      if (email) {
         sendAppointmentEmail({
-          to: email,
-          businessName: ctx.businessName || 'Agendamento',
-          replyTo: ctx.replyTo,
-          serviceName: svc.label,
-          whenLabel,
-          kind: 'created'
+          to: email, businessName: ctx.businessName || 'Agendamento', replyTo: ctx.replyTo,
+          serviceName: svc.label, whenLabel, kind: 'created'
         }).catch((e) => console.error('[appointment email] created failed', e))
       }
       return JSON.stringify({ ok: true, servico: svc.label, data: input.data, hora: input.hora, email_registrado: !!email })
@@ -200,7 +262,7 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
 async function aiReplyWithScheduling(
   system: string,
   messages: { role: 'user' | 'assistant'; content: string }[],
-  ctx: { tenantPrisma: any; contactId: string; contactName: string | null; businessName?: string; replyTo?: string | null }
+  ctx: SchedulingCtx
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -242,6 +304,7 @@ export async function processBotResponse(
     keep_responding_after_human?: boolean
     booking_gap_min?: number
     booking_min_notice_min?: number
+    mp_access_token?: string | null
   },
   userText: string,
   contact: { id: string },
@@ -346,9 +409,14 @@ export async function processBotResponse(
       `- SEMPRE chame verificar_horarios antes de oferecer ou agendar qualquer horário. Ofereça apenas os horários que ela retornar.\n` +
       `- Só use agendar com data e hora que apareceram em verificar_horarios. Se a ferramenta retornar erro ou lista vazia, informe o cliente e sugira outro dia. Nunca invente disponibilidade.\n` +
       `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.\n` +
-      `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".`
+      `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".\n` +
+      `- Alguns serviços exigem um sinal via Pix. Se agendar retornar "aguardando_pagamento", NÃO diga que está confirmado: informe o valor e o prazo, e explique que a cobrança Pix foi enviada e o horário será garantido após o pagamento.`
+    let mpToken: string | null = null
+    if (tenant.mp_access_token) { try { mpToken = decrypt(tenant.mp_access_token) } catch { mpToken = null } }
     botReply = await aiReplyWithScheduling(basePrompt + GUARDRAIL + welcome + hint, messages, {
-      tenantPrisma, contactId: contact.id, contactName: current?.name || null, businessName: tenant.name, replyTo: tenant.email
+      tenantPrisma, contactId: contact.id, contactName: current?.name || null, businessName: tenant.name, replyTo: tenant.email,
+      tenantId: tenant.id, schemaName: tenant.schema_name, mpAccessToken: mpToken,
+      waTenant: { phone_number_id: tenant.phone_number_id, whatsapp_token: tenant.whatsapp_token }, contactPhone: from
     })
   } else {
     botReply = await chatComplete({ maxTokens: 1024, system: basePrompt + GUARDRAIL + welcome, messages })

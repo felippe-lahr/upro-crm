@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Settings, Trash2, Check, X, CalendarDays, Pencil } from 'lucide-react'
 
-interface Service { id: string; name: string; duration_min: number; price: string | null; active?: boolean; gap_min?: number; min_notice_min?: number }
+interface Service { id: string; name: string; duration_min: number; price: string | null; active?: boolean; gap_min?: number; min_notice_min?: number; charge_mode?: string; charge_value?: string | null; hold_minutes?: number }
 interface Appt {
   id: string
   customer_name: string | null
@@ -21,6 +21,7 @@ interface Appt {
 const WD = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const STATUS: Record<string, { label: string; cls: string }> = {
   scheduled: { label: 'Agendado', cls: 'bg-brand/15 text-brand' },
+  pending_payment: { label: 'Aguardando pagamento', cls: 'bg-amber-500/15 text-amber-600' },
   confirmed: { label: 'Confirmado', cls: 'bg-green-500/15 text-green-600' },
   cancelled: { label: 'Cancelado', cls: 'bg-red-500/15 text-red-500' },
   done: { label: 'Concluído', cls: 'bg-surface2 text-muted' },
@@ -263,6 +264,9 @@ function ServiceEditor({ service, onChanged, onDelete }: {
   const [noticeVal, setNoticeVal] = useState(() => initialNotice / (initialNotice > 0 && initialNotice % 1440 === 0 ? 1440 : initialNotice > 0 && initialNotice % 60 === 0 ? 60 : 1))
   const [noticeUnit, setNoticeUnit] = useState(() => initialNotice > 0 && initialNotice % 1440 === 0 ? 1440 : initialNotice > 0 && initialNotice % 60 === 0 ? 60 : 1)
   const [hours, setHours] = useState<HoursMap>(emptyHours())
+  const [chargeMode, setChargeMode] = useState(service.charge_mode || 'none')
+  const [chargeValue, setChargeValue] = useState(service.charge_value || '')
+  const [holdMinutes, setHoldMinutes] = useState(service.hold_minutes || 30)
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -279,7 +283,7 @@ function ServiceEditor({ service, onChanged, onDelete }: {
     setSaving(true)
     const svcRes = await fetch('/api/scheduling/services', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: service.id, name, duration_min: duration, price: String(price), gap_min: gap, min_notice_min: noticeVal * noticeUnit })
+      body: JSON.stringify({ id: service.id, name, duration_min: duration, price: String(price), gap_min: gap, min_notice_min: noticeVal * noticeUnit, charge_mode: chargeMode, charge_value: String(chargeValue), hold_minutes: holdMinutes })
     })
     const rules = Object.entries(hours).filter(([, v]) => v.on).map(([w, v]) => ({ weekday: Number(w), start_min: hmToMin(v.start), end_min: hmToMin(v.end) }))
     const avRes = await fetch('/api/scheduling/availability', {
@@ -345,6 +349,32 @@ function ServiceEditor({ service, onChanged, onDelete }: {
               <option value={60}>horas</option>
               <option value={1440}>dias</option>
             </select>
+          </div>
+
+          <div className="border-t border-line pt-3">
+            <p className="mb-1.5 text-xs font-medium text-muted">Cobrança de sinal (Pix)</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <select value={chargeMode} onChange={(e) => setChargeMode(e.target.value)} className="rounded border border-line bg-surface px-2 py-1">
+                <option value="none">Sem cobrança</option>
+                <option value="fixed">Sinal fixo (R$)</option>
+                <option value="percent">% do preço</option>
+                <option value="full">Valor cheio</option>
+              </select>
+              {(chargeMode === 'fixed' || chargeMode === 'percent') && (
+                <>
+                  <input type="number" min={0} value={chargeValue} onChange={(e) => setChargeValue(e.target.value)} placeholder={chargeMode === 'percent' ? '%' : 'R$'} className="w-20 rounded border border-line bg-surface px-2 py-1" />
+                  <span className="text-xs text-faint">{chargeMode === 'percent' ? '%' : 'R$'}</span>
+                </>
+              )}
+            </div>
+            {chargeMode !== 'none' && (
+              <div className="mt-2 flex items-center gap-2">
+                <label className="flex-1 text-muted">Prazo para pagar (pré-reserva)</label>
+                <input type="number" min={5} max={1440} step={5} value={holdMinutes} onChange={(e) => setHoldMinutes(Math.max(5, Number(e.target.value) || 30))} className="w-20 rounded border border-line bg-surface px-2 py-1" />
+                <span className="text-xs text-faint">min</span>
+              </div>
+            )}
+            {chargeMode !== 'none' && <p className="mt-1.5 text-xs text-faint">Requer o Mercado Pago do seu negócio conectado em Configurações. O horário fica reservado até o pagamento ou o fim do prazo.</p>}
           </div>
 
           <div className="flex gap-2">

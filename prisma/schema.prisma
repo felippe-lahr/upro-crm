@@ -37,6 +37,7 @@ model Tenant {
   booking_min_notice_min Int   @default(0)
 
   mp_subscription_id  String?
+  mp_access_token     String?  // token MP do lojista (recebe os sinais de agendamento) — criptografado
   stripe_customer_id  String?
   trial_ends_at       DateTime?
 
@@ -85,6 +86,21 @@ model AffiliateCommission {
 
   @@unique([affiliate_id, tenant_id, reference_month])
   @@map("affiliate_commissions")
+}
+
+// Mapeamento global de pagamentos Pix de agendamento -> tenant/agendamento.
+// Permite ao webhook do Mercado Pago rotear a confirmação para o schema correto.
+model AppointmentPayment {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payment_id     String   @unique // id do pagamento no Mercado Pago
+  tenant_id      String   @db.Uuid
+  schema_name    String
+  appointment_id String   @db.Uuid
+  amount         Decimal  @db.Decimal(10, 2)
+  status         String   @default("pending") // pending | approved | expired
+  created_at     DateTime @default(now())
+
+  @@map("appointment_payments")
 }
 
 model TenantUser {
@@ -225,6 +241,9 @@ model Service {
   active         Boolean  @default(true)
   gap_min        Int      @default(0) // intervalo entre atendimentos deste serviço
   min_notice_min Int      @default(0) // antecedência mínima para agendar este serviço
+  charge_mode    String   @default("none") // none | fixed | percent | full
+  charge_value   Decimal? @db.Decimal(10, 2) // valor do sinal (fixed) ou porcentagem (percent)
+  hold_minutes   Int      @default(30) // prazo para pagar o sinal antes de liberar o horário
   created_at     DateTime @default(now())
 
   appointments Appointment[]
@@ -256,8 +275,12 @@ model Appointment {
   title          String?
   start_at       DateTime
   end_at         DateTime
-  status         String   @default("scheduled") // scheduled|confirmed|cancelled|done|no_show
+  status         String   @default("scheduled") // scheduled|confirmed|cancelled|done|no_show|pending_payment
   notes          String?
+  amount_due     Decimal? @db.Decimal(10, 2) // valor a pagar (sinal) quando exige pagamento
+  payment_id     String?  // id do pagamento Pix no Mercado Pago
+  payment_status String?  // pending | approved | expired
+  hold_expires_at DateTime? // prazo da pré-reserva aguardando pagamento
   reminder_sent     Boolean  @default(false) // lembrete de 1 dia antes
   day_reminder_sent Boolean  @default(false) // lembrete no dia do agendamento
   created_at     DateTime @default(now())

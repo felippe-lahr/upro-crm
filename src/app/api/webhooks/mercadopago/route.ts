@@ -1,9 +1,60 @@
 export const dynamic = 'force-dynamic'
 
 import { provisionTenant } from '@/lib/provision-tenant'
-import { globalPrisma } from '@/lib/prisma-tenant'
+import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { generateAffiliateCommission } from '@/lib/affiliate'
+import { decrypt } from '@/lib/crypto'
+import { getPixPaymentStatus } from '@/lib/pix'
+import { sendAppointmentEmail } from '@/lib/email'
+import { sendWhatsAppMessage } from '@/lib/bot'
 import crypto from 'crypto'
+
+// Confirma (ou expira) uma pré-reserva de agendamento a partir de um pagamento Pix.
+async function handleAppointmentPayment(paymentId: string) {
+  const map = await globalPrisma.appointmentPayment.findUnique({ where: { payment_id: paymentId } })
+  if (!map || map.status === 'approved') return
+
+  const tenant = await globalPrisma.tenant.findUnique({ where: { id: map.tenant_id } })
+  if (!tenant?.mp_access_token) return
+
+  let status = 'pending'
+  try {
+    status = await getPixPaymentStatus(decrypt(tenant.mp_access_token), paymentId)
+  } catch (e) {
+    console.error('[MP webhook] failed to fetch pix payment', e)
+    return
+  }
+  if (status !== 'approved') return
+
+  const db = getTenantPrisma(map.schema_name)
+  const appt: any = await db.appointment.findUnique({ where: { id: map.appointment_id }, include: { service: true } }).catch(() => null)
+  if (!appt || appt.status === 'confirmed') return
+
+  await db.appointment.update({ where: { id: map.appointment_id }, data: { status: 'confirmed', payment_status: 'approved', hold_expires_at: null } })
+  await globalPrisma.appointmentPayment.update({ where: { payment_id: paymentId }, data: { status: 'approved' } })
+
+  const whenLabel = new Date(appt.start_at).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  })
+  const serviceName = appt.service?.name || appt.title || 'Atendimento'
+
+  // Avisa o cliente no WhatsApp.
+  const to = (appt.customer_phone || '').replace(/\D/g, '')
+  if (to && tenant.phone_number_id && tenant.whatsapp_token) {
+    await sendWhatsAppMessage(
+      { phone_number_id: tenant.phone_number_id, whatsapp_token: tenant.whatsapp_token },
+      to,
+      `Pagamento confirmado! ✅ Seu horário (${serviceName} — ${whenLabel}) está *garantido*. Até lá! 🙌`
+    ).catch((e) => console.error('[MP webhook] wa confirm failed', e))
+  }
+  // E-mail de confirmação.
+  if (appt.customer_email) {
+    sendAppointmentEmail({
+      to: appt.customer_email, businessName: tenant.name, replyTo: tenant.email,
+      serviceName, whenLabel, kind: 'confirmed'
+    }).catch((e) => console.error('[MP webhook] email confirm failed', e))
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function verifyMPSignature(req: Request, body: string): boolean {
@@ -69,6 +120,12 @@ export async function POST(req: Request) {
         data: { status: subscription.status === 'paused' ? 'suspended' : 'cancelled' }
       })
     }
+  }
+
+  // Pagamento Pix de sinal de agendamento → confirma a pré-reserva
+  if (body.type === 'payment' && body.data?.id) {
+    try { await handleAppointmentPayment(String(body.data.id)) }
+    catch (err) { console.error('[MP webhook] appointment payment failed', err) }
   }
 
   // Pagamento recorrente mensal da assinatura → comissão do mês

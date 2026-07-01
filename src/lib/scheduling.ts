@@ -28,9 +28,13 @@ export async function getAvailableSlots(prisma: any, dateStr: string, durationMi
 
   const dayStart = new Date(`${dateStr}T00:00:00${TZ}`)
   const dayEnd = new Date(`${dateStr}T23:59:59${TZ}`)
-  const existing = await prisma.appointment.findMany({
+  const nowDate = new Date()
+  const existingRaw = await prisma.appointment.findMany({
     where: { status: { notIn: ['cancelled', 'no_show'] }, start_at: { gte: dayStart, lte: dayEnd } }
   })
+  // Pré-reservas aguardando pagamento cujo prazo expirou não ocupam o horário.
+  const existing = existingRaw.filter((a: any) =>
+    !(a.status === 'pending_payment' && a.hold_expires_at && new Date(a.hold_expires_at) < nowDate))
 
   const gapMs = gapMin * 60000
   // Antecedência mínima: não permite agendar antes de "agora + minNotice".

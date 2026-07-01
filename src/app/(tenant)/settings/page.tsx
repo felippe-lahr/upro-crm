@@ -24,6 +24,51 @@ interface TenantSettings {
   menu_bot_options: MenuOption[] | null
   handoff_pause: boolean
   keep_responding_after_human: boolean
+  mp_connected?: boolean
+}
+
+function MercadoPagoConnect({ connected }: { connected: boolean }) {
+  const [token, setToken] = useState('')
+  const [isConnected, setIsConnected] = useState(connected)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => { setIsConnected(connected) }, [connected])
+
+  async function save(newToken: string | null) {
+    setSaving(true); setMsg('')
+    const res = await fetch('/api/tenant/settings', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mp_access_token: newToken })
+    })
+    setSaving(false)
+    if (!res.ok) { setMsg('Erro ao salvar.'); return }
+    setIsConnected(!!newToken); setToken('')
+    setMsg(newToken ? 'Mercado Pago conectado!' : 'Mercado Pago desconectado.')
+    setTimeout(() => setMsg(''), 3000)
+  }
+
+  return (
+    <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+      <h2 className="mb-1 font-semibold text-fg">Mercado Pago (cobrança de agendamentos)</h2>
+      <p className="mb-4 text-sm text-muted">
+        Conecte a conta Mercado Pago do seu negócio para receber os sinais/pagamentos de agendamento via Pix.
+        Cole o <strong>Access Token</strong> de produção (Mercado Pago → Suas integrações → Credenciais de produção).
+      </p>
+      {isConnected ? (
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-3 py-1 text-sm font-medium text-green-600">● Conectado</span>
+          <button onClick={() => save(null)} disabled={saving} className="text-sm text-muted hover:text-red-500">Desconectar</button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="APP_USR-..." className="min-w-[16rem] flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+          <button onClick={() => token.trim() && save(token.trim())} disabled={saving || !token.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50">Conectar</button>
+        </div>
+      )}
+      {msg && <p className="mt-2 text-sm text-brand">{msg}</p>}
+    </section>
+  )
 }
 
 interface QuickReply {
@@ -305,6 +350,9 @@ export default function SettingsPage() {
           </a>
         )}
       </section>
+
+      {/* Mercado Pago (recebe os sinais de agendamento) */}
+      <MercadoPagoConnect connected={!!(settings as any)?.mp_connected} />
 
       {/* Bot com IA — exclusivo do Pro */}
       <section className="mb-6 rounded-2xl border border-line bg-surface p-6">

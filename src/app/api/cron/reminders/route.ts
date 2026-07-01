@@ -31,6 +31,14 @@ export async function GET(req: Request) {
     let db: any
     try { db = getTenantPrisma(tenant.schema_name) } catch { continue }
 
+    // Expira pré-reservas cujo prazo de pagamento passou (libera o horário).
+    try {
+      await db.appointment.updateMany({
+        where: { status: 'pending_payment', hold_expires_at: { lt: now } },
+        data: { status: 'cancelled', payment_status: 'expired' }
+      })
+    } catch { /* schema pode não ter as colunas ainda */ }
+
     let appts: any[] = []
     try {
       appts = await db.appointment.findMany({
