@@ -187,7 +187,7 @@ async function handleAppointmentButton(
   let reply = ''
   if (action === 'confirm') {
     await tenantPrisma.appointment.update({ where: { id }, data: { status: 'confirmed' } })
-    reply = 'Tudo certo! Seu horário está *confirmado*. Até lá! ✅'
+    reply = 'Tudo certo! Seu horário está *confirmado*. ✅\n\nVocê vai receber um lembrete *um dia antes* e outro *no dia* do agendamento. Até lá! 🙌'
   } else if (action === 'cancel') {
     await tenantPrisma.appointment.update({ where: { id }, data: { status: 'cancelled' } })
     reply = 'Seu agendamento foi *cancelado*. Se quiser remarcar, é só nos chamar. 🙂'

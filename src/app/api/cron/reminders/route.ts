@@ -18,6 +18,7 @@ export async function GET(req: Request) {
 
   const now = new Date()
   const limit = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  const todayBR = now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 
   const tenants = await globalPrisma.tenant.findMany({
     where: { status: 'active', whatsapp_connected: true, phone_number_id: { not: null }, whatsapp_token: { not: null } }
@@ -32,7 +33,11 @@ export async function GET(req: Request) {
     let appts: any[] = []
     try {
       appts = await db.appointment.findMany({
-        where: { status: { in: ['scheduled', 'confirmed'] }, reminder_sent: false, start_at: { gte: now, lte: limit } },
+        where: {
+          status: { in: ['scheduled', 'confirmed'] },
+          start_at: { gte: now, lte: limit },
+          OR: [{ reminder_sent: false }, { day_reminder_sent: false }]
+        },
         include: { service: true, contact: { select: { name: true, phone: true } } }
       })
     } catch { continue }
@@ -41,12 +46,22 @@ export async function GET(req: Request) {
       const to = (a.customer_phone || a.contact?.phone || '').replace(/\D/g, '')
       if (!to) { continue }
 
+      const startDateBR = new Date(a.start_at).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+      const isSameDay = startDateBR === todayBR
+      // No dia -> lembrete "no dia"; caso contrário (véspera, dentro de 24h) -> lembrete "1 dia antes".
+      const kind: 'day' | 'before' = isSameDay ? 'day' : 'before'
+      if (kind === 'day' && a.day_reminder_sent) continue
+      if (kind === 'before' && a.reminder_sent) continue
+
       const when = new Date(a.start_at).toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
       })
       const who = a.customer_name || a.contact?.name || ''
       const what = a.service?.name || a.title || 'seu atendimento'
-      const body = `Olá${who ? ` ${who.split(' ')[0]}` : ''}! 👋 Lembrete do seu agendamento:\n\n📅 *${what}*\n🕒 ${when}\n\nPodemos confirmar?`
+      const intro = kind === 'day'
+        ? `Olá${who ? ` ${who.split(' ')[0]}` : ''}! 👋 Seu agendamento é *hoje*:`
+        : `Olá${who ? ` ${who.split(' ')[0]}` : ''}! 👋 Lembrete do seu agendamento:`
+      const body = `${intro}\n\n📅 *${what}*\n🕒 ${when}\n\nPodemos confirmar?`
 
       try {
         await sendWhatsAppButtons(
@@ -59,7 +74,10 @@ export async function GET(req: Request) {
             { id: `appt_reschedule_${a.id}`, label: '🔄 Remarcar', response: '' }
           ]
         )
-        await db.appointment.update({ where: { id: a.id }, data: { reminder_sent: true } })
+        await db.appointment.update({
+          where: { id: a.id },
+          data: kind === 'day' ? { day_reminder_sent: true } : { reminder_sent: true }
+        })
         sent++
       } catch (err) {
         console.error('[cron reminders] send failed', tenant.slug, err)

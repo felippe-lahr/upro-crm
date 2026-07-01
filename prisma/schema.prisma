@@ -250,7 +250,8 @@ model Appointment {
   end_at         DateTime
   status         String   @default("scheduled") // scheduled|confirmed|cancelled|done|no_show
   notes          String?
-  reminder_sent  Boolean  @default(false)
+  reminder_sent     Boolean  @default(false) // lembrete de 1 dia antes
+  day_reminder_sent Boolean  @default(false) // lembrete no dia do agendamento
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
