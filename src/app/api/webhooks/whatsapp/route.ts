@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { processBotResponse, processMenuBotResponse, extractContactInfo, sendWhatsAppMessage, type MenuOption } from '@/lib/bot'
 import { transcribeWhatsAppAudio } from '@/lib/transcribe'
+import { sendAppointmentEmail } from '@/lib/email'
 import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string | null): boolean {
@@ -168,7 +169,7 @@ async function processIncomingMessage(
 }
 
 async function handleAppointmentButton(
-  tenant: { phone_number_id: string; whatsapp_token: string },
+  tenant: { phone_number_id: string; whatsapp_token: string; name?: string; email?: string | null },
   tenantPrisma: any,
   buttonId: string,
   to: string
@@ -178,7 +179,7 @@ async function handleAppointmentButton(
   if (!m) return
   const [, action, id] = m
 
-  const appt = await tenantPrisma.appointment.findUnique({ where: { id } }).catch(() => null)
+  const appt = await tenantPrisma.appointment.findUnique({ where: { id }, include: { service: true } }).catch(() => null)
   if (!appt) {
     await sendWhatsAppMessage(tenant, to, 'Não encontrei esse agendamento. Fale com a gente para ajudar. 🙏')
     return
@@ -188,6 +189,20 @@ async function handleAppointmentButton(
   if (action === 'confirm') {
     await tenantPrisma.appointment.update({ where: { id }, data: { status: 'confirmed' } })
     reply = 'Tudo certo! Seu horário está *confirmado*. ✅\n\nVocê vai receber um lembrete *um dia antes* e outro *no dia* do agendamento. Até lá! 🙌'
+    // Envia confirmação por e-mail, se tivermos o endereço.
+    if (appt.customer_email) {
+      const whenLabel = new Date(appt.start_at).toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      })
+      sendAppointmentEmail({
+        to: appt.customer_email,
+        businessName: tenant.name || 'Agendamento',
+        replyTo: tenant.email,
+        serviceName: appt.service?.name || appt.title || 'Atendimento',
+        whenLabel,
+        kind: 'confirmed'
+      }).catch((e) => console.error('[appointment email] confirm failed', e))
+    }
   } else if (action === 'cancel') {
     await tenantPrisma.appointment.update({ where: { id }, data: { status: 'cancelled' } })
     reply = 'Seu agendamento foi *cancelado*. Se quiser remarcar, é só nos chamar. 🙂'

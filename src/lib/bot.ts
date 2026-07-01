@@ -2,6 +2,7 @@ import { getTenantPrisma } from './prisma-tenant'
 import { decrypt } from './crypto'
 import { chatComplete } from './ai'
 import { getAvailableSlots, brDateTime, weekdayName } from './scheduling'
+import { sendAppointmentEmail } from './email'
 
 /**
  * Lê o histórico da conversa e extrai dados estruturados do lead para o CRM:
@@ -131,7 +132,7 @@ async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: s
   return { id: null, duration: 60, label: 'Atendimento', gap: 0, minNotice: 0 }
 }
 
-async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: any; contactId: string; contactName: string | null }): Promise<string> {
+async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: any; contactId: string; contactName: string | null; businessName?: string; replyTo?: string | null }): Promise<string> {
   const { tenantPrisma } = ctx
   try {
     if (name === 'verificar_horarios') {
@@ -174,6 +175,20 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
       if (email && ctx.contactId) {
         await tenantPrisma.contact.update({ where: { id: ctx.contactId }, data: { email } }).catch(() => {})
       }
+      // Envia e-mail de confirmação do agendamento (não bloqueia a resposta ao cliente).
+      if (email) {
+        const whenLabel = start.toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        })
+        sendAppointmentEmail({
+          to: email,
+          businessName: ctx.businessName || 'Agendamento',
+          replyTo: ctx.replyTo,
+          serviceName: svc.label,
+          whenLabel,
+          kind: 'created'
+        }).catch((e) => console.error('[appointment email] created failed', e))
+      }
       return JSON.stringify({ ok: true, servico: svc.label, data: input.data, hora: input.hora, email_registrado: !!email })
     }
   } catch (err: any) {
@@ -185,7 +200,7 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
 async function aiReplyWithScheduling(
   system: string,
   messages: { role: 'user' | 'assistant'; content: string }[],
-  ctx: { tenantPrisma: any; contactId: string; contactName: string | null }
+  ctx: { tenantPrisma: any; contactId: string; contactName: string | null; businessName?: string; replyTo?: string | null }
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -217,6 +232,8 @@ async function aiReplyWithScheduling(
 export async function processBotResponse(
   tenant: {
     id: string
+    name?: string
+    email?: string | null
     schema_name: string
     phone_number_id: string
     whatsapp_token: string
@@ -331,7 +348,7 @@ export async function processBotResponse(
       `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.\n` +
       `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".`
     botReply = await aiReplyWithScheduling(basePrompt + GUARDRAIL + welcome + hint, messages, {
-      tenantPrisma, contactId: contact.id, contactName: current?.name || null
+      tenantPrisma, contactId: contact.id, contactName: current?.name || null, businessName: tenant.name, replyTo: tenant.email
     })
   } else {
     botReply = await chatComplete({ maxTokens: 1024, system: basePrompt + GUARDRAIL + welcome, messages })

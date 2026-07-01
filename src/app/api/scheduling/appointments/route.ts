@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { auth } from '@/lib/auth'
-import { getTenantPrisma } from '@/lib/prisma-tenant'
+import { getTenantPrisma, globalPrisma } from '@/lib/prisma-tenant'
+import { sendAppointmentEmail } from '@/lib/email'
 
 async function db() {
   const session = await auth()
@@ -73,8 +74,27 @@ export async function POST(req: Request) {
       start_at: start,
       end_at: end,
       notes: notes || null
-    }
+    },
+    include: { service: true }
   })
+
+  // E-mail de confirmação para agendamentos manuais com e-mail informado.
+  if (customer_email) {
+    const session = await auth()
+    const tenantId = (session?.user as any)?.tenantId
+    const tenant = tenantId ? await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, email: true } }) : null
+    const whenLabel = start.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    })
+    sendAppointmentEmail({
+      to: customer_email,
+      businessName: tenant?.name || 'Agendamento',
+      replyTo: tenant?.email,
+      serviceName: appointment.service?.name || appointment.title || 'Atendimento',
+      whenLabel,
+      kind: 'created'
+    }).catch((e) => console.error('[appointment email] manual failed', e))
+  }
   return Response.json(appointment)
 }
 
