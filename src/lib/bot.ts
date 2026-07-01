@@ -111,7 +111,8 @@ const SCHEDULING_TOOLS = [
         data: { type: 'string', description: 'Data AAAA-MM-DD' },
         hora: { type: 'string', description: 'Horário HH:MM' },
         servico: { type: 'string', description: 'Nome do serviço (opcional)' },
-        nome: { type: 'string', description: 'Nome do cliente (opcional)' }
+        nome: { type: 'string', description: 'Nome do cliente' },
+        email: { type: 'string', description: 'E-mail do cliente para envio da confirmação' }
       },
       required: ['data', 'hora']
     }
@@ -155,18 +156,24 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
           horarios_livres: slots
         })
       }
+      const email = typeof input.email === 'string' && input.email.includes('@') ? input.email.trim() : null
       await tenantPrisma.appointment.create({
         data: {
           contact_id: ctx.contactId,
           service_id: svc.id,
           customer_name: input.nome || ctx.contactName || null,
+          customer_email: email,
           title: svc.label,
           start_at: start,
           end_at: end,
           status: 'scheduled'
         }
       })
-      return JSON.stringify({ ok: true, servico: svc.label, data: input.data, hora: input.hora })
+      // Guarda o e-mail no contato para reaproveitar em futuros agendamentos.
+      if (email && ctx.contactId) {
+        await tenantPrisma.contact.update({ where: { id: ctx.contactId }, data: { email } }).catch(() => {})
+      }
+      return JSON.stringify({ ok: true, servico: svc.label, data: input.data, hora: input.hora, email_registrado: !!email })
     }
   } catch (err: any) {
     return JSON.stringify({ ok: false, erro: err?.message || 'Falha na operação' })
@@ -320,7 +327,8 @@ export async function processBotResponse(
       `- NUNCA calcule o dia da semana de uma data você mesmo. Sempre use o campo "dia_semana" retornado pelas ferramentas e repita esse valor ao cliente.\n` +
       `- SEMPRE chame verificar_horarios antes de oferecer ou agendar qualquer horário. Ofereça apenas os horários que ela retornar.\n` +
       `- Só use agendar com data e hora que apareceram em verificar_horarios. Se a ferramenta retornar erro ou lista vazia, informe o cliente e sugira outro dia. Nunca invente disponibilidade.\n` +
-      `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.`
+      `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.\n` +
+      `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".`
     botReply = await aiReplyWithScheduling(basePrompt + GUARDRAIL + welcome + hint, messages, {
       tenantPrisma, contactId: contact.id, contactName: current?.name || null, gapMin: tenant.booking_gap_min || 0, minNoticeMin: tenant.booking_min_notice_min || 0
     })

@@ -245,6 +245,7 @@ model Appointment {
   service_id     String?  @db.Uuid
   customer_name  String?
   customer_phone String?
+  customer_email String?
   title          String?
   start_at       DateTime
   end_at         DateTime

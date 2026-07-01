@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   if (!prisma) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { contact_id, service_id, customer_name, customer_phone, title, start_at, notes } = body
+  const { contact_id, service_id, customer_name, customer_phone, customer_email, title, start_at, notes } = body
   if (!start_at) return Response.json({ error: 'start_at obrigatório' }, { status: 400 })
 
   // Duração: do serviço, ou explícita, ou 60min
@@ -75,6 +75,7 @@ export async function POST(req: Request) {
       service_id: service_id || null,
       customer_name: customer_name || null,
       customer_phone: customer_phone || null,
+      customer_email: customer_email || null,
       title: title || null,
       start_at: start,
       end_at: end,

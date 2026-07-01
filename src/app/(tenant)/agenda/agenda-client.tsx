@@ -8,6 +8,7 @@ interface Appt {
   id: string
   customer_name: string | null
   customer_phone: string | null
+  customer_email?: string | null
   title: string | null
   start_at: string
   end_at: string
@@ -146,6 +147,7 @@ export function AgendaClient() {
                     <div className="text-xs text-muted">
                       {a.service?.name || a.title || 'Agendamento'}
                       {(a.customer_phone || a.contact?.phone) && <> · {a.customer_phone || a.contact?.phone}</>}
+                      {a.customer_email && <> · {a.customer_email}</>}
                     </div>
                     {a.notes && <div className="mt-0.5 text-xs text-faint">{a.notes}</div>}
                   </div>
@@ -245,6 +247,7 @@ function NewAppointmentForm({ services, defaultDate, onClose, onCreated, onError
 }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [serviceId, setServiceId] = useState('')
   const [date, setDate] = useState(defaultDate)
   const [time, setTime] = useState('09:00')
@@ -257,7 +260,7 @@ function NewAppointmentForm({ services, defaultDate, onClose, onCreated, onError
     const start = new Date(`${date}T${time}:00`)
     const r = await fetch('/api/scheduling/appointments', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_name: name, customer_phone: phone, service_id: serviceId || undefined, start_at: start.toISOString(), notes })
+      body: JSON.stringify({ customer_name: name, customer_phone: phone, customer_email: email || undefined, service_id: serviceId || undefined, start_at: start.toISOString(), notes })
     })
     setSaving(false)
     if (r.ok) onCreated()
@@ -268,6 +271,7 @@ function NewAppointmentForm({ services, defaultDate, onClose, onCreated, onError
     <form onSubmit={submit} className="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-2">
       <input required placeholder="Nome do cliente" value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
       <input placeholder="Telefone (opcional)" value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+      <input type="email" placeholder="E-mail (para confirmação)" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none sm:col-span-2" />
       <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none">
         <option value="">Serviço (opcional)</option>
         {services.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.duration_min}min)</option>)}
