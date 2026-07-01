@@ -119,23 +119,24 @@ const SCHEDULING_TOOLS = [
   }
 ]
 
-async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: string | null; duration: number; label: string }> {
+async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: string | null; duration: number; label: string; gap: number; minNotice: number }> {
+  const toObj = (s: any) => ({ id: s.id, duration: s.duration_min, label: s.name, gap: s.gap_min || 0, minNotice: s.min_notice_min || 0 })
   if (name) {
     const all = await tenantPrisma.service.findMany({ where: { active: true } })
     const found = all.find((s: any) => s.name.toLowerCase().includes(String(name).toLowerCase()))
-    if (found) return { id: found.id, duration: found.duration_min, label: found.name }
+    if (found) return toObj(found)
   }
   const first = await tenantPrisma.service.findFirst({ where: { active: true } })
-  if (first) return { id: first.id, duration: first.duration_min, label: first.name }
-  return { id: null, duration: 60, label: 'Atendimento' }
+  if (first) return toObj(first)
+  return { id: null, duration: 60, label: 'Atendimento', gap: 0, minNotice: 0 }
 }
 
-async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: any; contactId: string; contactName: string | null; gapMin: number; minNoticeMin: number }): Promise<string> {
-  const { tenantPrisma, gapMin, minNoticeMin } = ctx
+async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: any; contactId: string; contactName: string | null }): Promise<string> {
+  const { tenantPrisma } = ctx
   try {
     if (name === 'verificar_horarios') {
       const svc = await resolveService(tenantPrisma, input.servico)
-      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration, gapMin, minNoticeMin)
+      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration, svc.gap, svc.minNotice, svc.id)
       const dia = weekdayName(input.data)
       if (!slots.length) return JSON.stringify({ data: input.data, dia_semana: dia, horarios: [], aviso: `Não há horários de atendimento em ${dia} (${input.data}). Sugira outro dia.` })
       return JSON.stringify({ data: input.data, dia_semana: dia, servico: svc.label, horarios: slots })
@@ -147,7 +148,7 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
       const end = new Date(start.getTime() + svc.duration * 60000)
       if (start.getTime() < Date.now()) return JSON.stringify({ ok: false, erro: 'Esse horário já passou.' })
       // Valida contra a disponibilidade real (dias de atendimento + conflitos + horário)
-      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration, gapMin, minNoticeMin)
+      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration, svc.gap, svc.minNotice, svc.id)
       if (!slots.includes(input.hora)) {
         return JSON.stringify({
           ok: false,
@@ -184,7 +185,7 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
 async function aiReplyWithScheduling(
   system: string,
   messages: { role: 'user' | 'assistant'; content: string }[],
-  ctx: { tenantPrisma: any; contactId: string; contactName: string | null; gapMin: number; minNoticeMin: number }
+  ctx: { tenantPrisma: any; contactId: string; contactName: string | null }
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -330,7 +331,7 @@ export async function processBotResponse(
       `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.\n` +
       `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".`
     botReply = await aiReplyWithScheduling(basePrompt + GUARDRAIL + welcome + hint, messages, {
-      tenantPrisma, contactId: contact.id, contactName: current?.name || null, gapMin: tenant.booking_gap_min || 0, minNoticeMin: tenant.booking_min_notice_min || 0
+      tenantPrisma, contactId: contact.id, contactName: current?.name || null
     })
   } else {
     botReply = await chatComplete({ maxTokens: 1024, system: basePrompt + GUARDRAIL + welcome, messages })

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Settings, Trash2, Check, X, CalendarDays, Pencil } from 'lucide-react'
 
-interface Service { id: string; name: string; duration_min: number; price: string | null; active?: boolean }
+interface Service { id: string; name: string; duration_min: number; price: string | null; active?: boolean; gap_min?: number; min_notice_min?: number }
 interface Appt {
   id: string
   customer_name: string | null
@@ -242,44 +242,117 @@ function MonthCalendar({ refDay, onPickDay }: { refDay: Date; onPickDay: (d: Dat
   )
 }
 
-function ServiceRow({ service, onSave, onDelete }: {
+type HoursMap = Record<number, { on: boolean; start: string; end: string }>
+function emptyHours(): HoursMap {
+  const h: HoursMap = {}
+  for (let w = 0; w < 7; w++) h[w] = { on: false, start: '08:00', end: '18:00' }
+  return h
+}
+
+function ServiceEditor({ service, onChanged, onDelete }: {
   service: Service
-  onSave: (id: string, patch: { name: string; duration_min: number; price: string }) => Promise<boolean>
+  onChanged: () => void
   onDelete: (id: string) => void
 }) {
-  const [editing, setEditing] = useState(false)
+  const [open, setOpen] = useState(false)
   const [name, setName] = useState(service.name)
   const [duration, setDuration] = useState(service.duration_min)
   const [price, setPrice] = useState(service.price || '')
+  const [gap, setGap] = useState(service.gap_min || 0)
+  const initialNotice = service.min_notice_min || 0
+  const [noticeVal, setNoticeVal] = useState(() => initialNotice / (initialNotice > 0 && initialNotice % 1440 === 0 ? 1440 : initialNotice > 0 && initialNotice % 60 === 0 ? 60 : 1))
+  const [noticeUnit, setNoticeUnit] = useState(() => initialNotice > 0 && initialNotice % 1440 === 0 ? 1440 : initialNotice > 0 && initialNotice % 60 === 0 ? 60 : 1)
+  const [hours, setHours] = useState<HoursMap>(emptyHours())
+  const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  function start() { setName(service.name); setDuration(service.duration_min); setPrice(service.price || ''); setEditing(true) }
+  async function loadHours() {
+    const r = await fetch(`/api/scheduling/availability?service_id=${service.id}`, { cache: 'no-store' })
+    const rules: any[] = r.ok ? await r.json() : []
+    const h = emptyHours()
+    for (const rule of rules) h[rule.weekday] = { on: true, start: minToHM(rule.start_min), end: minToHM(rule.end_min) }
+    setHours(h); setLoaded(true)
+  }
+  function toggle() { const next = !open; setOpen(next); if (next && !loaded) loadHours() }
+
   async function save() {
     setSaving(true)
-    const ok = await onSave(service.id, { name, duration_min: duration, price: String(price) })
+    const svcRes = await fetch('/api/scheduling/services', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: service.id, name, duration_min: duration, price: String(price), gap_min: gap, min_notice_min: noticeVal * noticeUnit })
+    })
+    const rules = Object.entries(hours).filter(([, v]) => v.on).map(([w, v]) => ({ weekday: Number(w), start_min: hmToMin(v.start), end_min: hmToMin(v.end) }))
+    const avRes = await fetch('/api/scheduling/availability', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service_id: service.id, rules })
+    })
     setSaving(false)
-    if (ok) setEditing(false)
+    if (!svcRes.ok || !avRes.ok) { alert('Não foi possível salvar. Tente novamente.'); return }
+    onChanged(); setOpen(false)
   }
 
-  if (editing) {
-    return (
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand/40 bg-background px-3 py-2 text-sm">
-        <input value={name} onChange={(e) => setName(e.target.value)} className="min-w-[8rem] flex-1 rounded border border-line bg-surface px-2 py-1 text-sm focus:border-brand focus:outline-none" />
-        <input type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-16 rounded border border-line bg-surface px-2 py-1 text-sm" />
-        <span className="text-xs text-faint">min</span>
-        <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="R$" className="w-16 rounded border border-line bg-surface px-2 py-1 text-sm" />
-        <button onClick={save} disabled={saving} className="rounded bg-brand p-1.5 text-white hover:bg-brand-600 disabled:opacity-50" title="Salvar"><Check className="h-3.5 w-3.5" /></button>
-        <button onClick={() => setEditing(false)} className="rounded border border-line p-1.5 text-muted hover:text-fg" title="Cancelar"><X className="h-3.5 w-3.5" /></button>
-      </div>
-    )
-  }
   return (
-    <div className="flex items-center justify-between rounded-lg border border-line bg-background px-3 py-2 text-sm">
-      <span>{service.name} <span className="text-faint">· {service.duration_min}min{service.price ? ` · R$ ${service.price}` : ''}</span></span>
-      <div className="flex items-center gap-1.5">
-        <button onClick={start} className="text-faint hover:text-brand" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
-        <button onClick={() => onDelete(service.id)} className="text-faint hover:text-red-500" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+    <div className="rounded-lg border border-line bg-background text-sm">
+      <div className="flex items-center justify-between px-3 py-2">
+        <button onClick={toggle} className="flex-1 text-left">
+          {service.name} <span className="text-faint">· {service.duration_min}min{service.price ? ` · R$ ${service.price}` : ''}</span>
+        </button>
+        <div className="flex items-center gap-1.5">
+          <button onClick={toggle} className="text-faint hover:text-brand" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+          <button onClick={() => onDelete(service.id)} className="text-faint hover:text-red-500" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+        </div>
       </div>
+
+      {open && (
+        <div className="space-y-3 border-t border-line px-3 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome" className="min-w-[8rem] flex-1 rounded border border-line bg-surface px-2 py-1 focus:border-brand focus:outline-none" />
+            <input type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-16 rounded border border-line bg-surface px-2 py-1" />
+            <span className="text-xs text-faint">min</span>
+            <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="R$" className="w-16 rounded border border-line bg-surface px-2 py-1" />
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-muted">Horários de atendimento</p>
+            <div className="space-y-1.5">
+              {WD.map((label, w) => {
+                const h = hours[w]
+                return (
+                  <div key={w} className="flex items-center gap-2">
+                    <label className="flex w-24 items-center gap-1.5">
+                      <input type="checkbox" checked={h.on} onChange={(e) => setHours({ ...hours, [w]: { ...h, on: e.target.checked } })} />
+                      {label.slice(0, 3)}
+                    </label>
+                    <input type="time" value={h.start} disabled={!h.on} onChange={(e) => setHours({ ...hours, [w]: { ...h, start: e.target.value } })} className="rounded border border-line bg-surface px-2 py-1 text-xs disabled:opacity-40" />
+                    <span className="text-faint">–</span>
+                    <input type="time" value={h.end} disabled={!h.on} onChange={(e) => setHours({ ...hours, [w]: { ...h, end: e.target.value } })} className="rounded border border-line bg-surface px-2 py-1 text-xs disabled:opacity-40" />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 border-t border-line pt-3">
+            <label className="flex-1 text-muted">Intervalo entre atendimentos</label>
+            <input type="number" min={0} max={240} step={5} value={gap} onChange={(e) => setGap(Math.max(0, Number(e.target.value) || 0))} className="w-16 rounded border border-line bg-surface px-2 py-1" />
+            <span className="text-xs text-faint">min</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="flex-1 text-muted">Antecedência mínima</label>
+            <input type="number" min={0} value={noticeVal} onChange={(e) => setNoticeVal(Math.max(0, Number(e.target.value) || 0))} className="w-16 rounded border border-line bg-surface px-2 py-1" />
+            <select value={noticeUnit} onChange={(e) => setNoticeUnit(Number(e.target.value))} className="rounded border border-line bg-surface px-2 py-1">
+              <option value={1}>min</option>
+              <option value={60}>horas</option>
+              <option value={1440}>dias</option>
+            </select>
+          </div>
+
+          <div className="flex gap-2">
+            <button onClick={save} disabled={saving} className="rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50">{saving ? 'Salvando…' : 'Salvar'}</button>
+            <button onClick={() => setOpen(false)} className="rounded-lg border border-line px-4 py-1.5 text-sm text-muted hover:text-fg">Fechar</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -335,28 +408,6 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
   const [name, setName] = useState('')
   const [duration, setDuration] = useState(60)
   const [price, setPrice] = useState('')
-  const [hours, setHours] = useState<Record<number, { on: boolean; start: string; end: string }>>({})
-  const [gap, setGap] = useState(0)
-  const [noticeVal, setNoticeVal] = useState(0)
-  const [noticeUnit, setNoticeUnit] = useState(60) // fator em minutos: 1=min, 60=horas, 1440=dias
-
-  useEffect(() => {
-    fetch('/api/scheduling/availability', { cache: 'no-store' }).then(r => r.json()).then((data: any) => {
-      const rules: any[] = Array.isArray(data) ? data : (data.rules || [])
-      const h: any = {}
-      for (let w = 0; w < 7; w++) {
-        const rule = rules.find((r) => r.weekday === w)
-        h[w] = rule ? { on: true, start: minToHM(rule.start_min), end: minToHM(rule.end_min) } : { on: false, start: '08:00', end: '18:00' }
-      }
-      setHours(h)
-      setGap(Number(data?.gap_min) || 0)
-      const mn = Number(data?.min_notice_min) || 0
-      // Escolhe a maior unidade que divide o valor exatamente (dias > horas > min).
-      const unit = mn > 0 && mn % 1440 === 0 ? 1440 : mn > 0 && mn % 60 === 0 ? 60 : 1
-      setNoticeUnit(unit)
-      setNoticeVal(mn / unit)
-    }).catch(() => {})
-  }, [])
 
   async function addService(e: React.FormEvent) {
     e.preventDefault()
@@ -374,75 +425,23 @@ function ConfigPanel({ services, onServices }: { services: Service[]; onServices
     await fetch('/api/scheduling/services', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     onServices()
   }
-  async function editService(id: string, patch: { name: string; duration_min: number; price: string }) {
-    const r = await fetch('/api/scheduling/services', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...patch }) })
-    if (!r.ok) { alert((await r.json().catch(() => ({}))).error || 'Não foi possível salvar as alterações.'); return false }
-    onServices(); return true
-  }
-  async function saveHours() {
-    const rules = Object.entries(hours).filter(([, v]) => v.on).map(([w, v]) => ({ weekday: Number(w), start_min: hmToMin(v.start), end_min: hmToMin(v.end) }))
-    await fetch('/api/scheduling/availability', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules, gap_min: gap, min_notice_min: noticeVal * noticeUnit }) })
-    alert('Horários salvos!')
-  }
 
   return (
-    <div className="mb-4 grid grid-cols-1 gap-4 rounded-2xl border border-line bg-surface p-5 lg:grid-cols-2">
-      {/* Serviços */}
-      <div>
-        <h3 className="mb-3 text-sm font-semibold">Serviços</h3>
-        <div className="mb-3 space-y-2">
-          {services.map((s) => (
-            <ServiceRow key={s.id} service={s} onSave={editService} onDelete={delService} />
-          ))}
-          {services.length === 0 && <p className="text-xs text-faint">Nenhum serviço cadastrado.</p>}
-        </div>
-        <form onSubmit={addService} className="flex flex-wrap gap-2">
-          <input placeholder="Nome do serviço" value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-lg border border-line bg-background px-3 py-1.5 text-sm focus:border-brand focus:outline-none" />
-          <input type="number" placeholder="min" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-16 rounded-lg border border-line bg-background px-2 py-1.5 text-sm" />
-          <input placeholder="R$" value={price} onChange={(e) => setPrice(e.target.value)} className="w-16 rounded-lg border border-line bg-background px-2 py-1.5 text-sm" />
-          <button className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600">+</button>
-        </form>
+    <div className="mb-4 rounded-2xl border border-line bg-surface p-5">
+      <h3 className="mb-1 text-sm font-semibold">Serviços</h3>
+      <p className="mb-3 text-xs text-muted">Cada serviço tem seus próprios horários de atendimento, intervalo e antecedência mínima. Clique em um serviço para configurar.</p>
+      <div className="mb-3 space-y-2">
+        {services.map((s) => (
+          <ServiceEditor key={s.id} service={s} onChanged={onServices} onDelete={delService} />
+        ))}
+        {services.length === 0 && <p className="text-xs text-faint">Nenhum serviço cadastrado.</p>}
       </div>
-
-      {/* Horários */}
-      <div>
-        <h3 className="mb-3 text-sm font-semibold">Horários de atendimento</h3>
-        <div className="space-y-1.5">
-          {WD.map((label, w) => {
-            const h = hours[w] || { on: false, start: '08:00', end: '18:00' }
-            return (
-              <div key={w} className="flex items-center gap-2 text-sm">
-                <label className="flex w-24 items-center gap-1.5">
-                  <input type="checkbox" checked={h.on} onChange={(e) => setHours({ ...hours, [w]: { ...h, on: e.target.checked } })} />
-                  {label.slice(0, 3)}
-                </label>
-                <input type="time" value={h.start} disabled={!h.on} onChange={(e) => setHours({ ...hours, [w]: { ...h, start: e.target.value } })} className="rounded border border-line bg-background px-2 py-1 text-xs disabled:opacity-40" />
-                <span className="text-faint">–</span>
-                <input type="time" value={h.end} disabled={!h.on} onChange={(e) => setHours({ ...hours, [w]: { ...h, end: e.target.value } })} className="rounded border border-line bg-background px-2 py-1 text-xs disabled:opacity-40" />
-              </div>
-            )
-          })}
-        </div>
-        <div className="mt-4 flex items-center gap-2 border-t border-line pt-3 text-sm">
-          <label className="flex-1 text-muted">Intervalo entre atendimentos
-            <span className="block text-xs text-faint">Tempo livre reservado antes/depois de cada agendamento (ex: consultas).</span>
-          </label>
-          <input type="number" min={0} max={240} step={5} value={gap} onChange={(e) => setGap(Math.max(0, Number(e.target.value) || 0))} className="w-16 rounded-lg border border-line bg-background px-2 py-1.5 text-sm" />
-          <span className="text-xs text-faint">min</span>
-        </div>
-        <div className="mt-3 flex items-center gap-2 text-sm">
-          <label className="flex-1 text-muted">Antecedência mínima
-            <span className="block text-xs text-faint">O cliente/bot só pode agendar com pelo menos esse tempo de antecedência. Ex: 2 horas, 1 dia.</span>
-          </label>
-          <input type="number" min={0} step={1} value={noticeVal} onChange={(e) => setNoticeVal(Math.max(0, Number(e.target.value) || 0))} className="w-16 rounded-lg border border-line bg-background px-2 py-1.5 text-sm" />
-          <select value={noticeUnit} onChange={(e) => setNoticeUnit(Number(e.target.value))} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm">
-            <option value={1}>min</option>
-            <option value={60}>horas</option>
-            <option value={1440}>dias</option>
-          </select>
-        </div>
-        <button onClick={saveHours} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Salvar horários</button>
-      </div>
+      <form onSubmit={addService} className="flex flex-wrap gap-2">
+        <input placeholder="Nome do novo serviço" value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-lg border border-line bg-background px-3 py-1.5 text-sm focus:border-brand focus:outline-none" />
+        <input type="number" placeholder="min" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-16 rounded-lg border border-line bg-background px-2 py-1.5 text-sm" />
+        <input placeholder="R$" value={price} onChange={(e) => setPrice(e.target.value)} className="w-16 rounded-lg border border-line bg-background px-2 py-1.5 text-sm" />
+        <button className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600">+</button>
+      </form>
     </div>
   )
 }

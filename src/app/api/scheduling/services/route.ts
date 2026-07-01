@@ -20,13 +20,15 @@ export async function GET() {
 export async function POST(req: Request) {
   const prisma = await db()
   if (!prisma) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const { name, duration_min, price } = await req.json()
+  const { name, duration_min, price, gap_min, min_notice_min } = await req.json()
   if (!name?.trim()) return Response.json({ error: 'Nome obrigatório' }, { status: 400 })
   const service = await prisma.service.create({
     data: {
       name: name.trim(),
       duration_min: Number(duration_min) || 60,
-      price: price !== undefined && price !== '' ? Number(price) : null
+      price: price !== undefined && price !== '' ? Number(price) : null,
+      gap_min: Math.max(0, Math.min(240, Number(gap_min) || 0)),
+      min_notice_min: Math.max(0, Math.min(43200, Number(min_notice_min) || 0))
     }
   })
   return Response.json(service)
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   const prisma = await db()
   if (!prisma) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id, name, duration_min, price, active } = await req.json()
+  const { id, name, duration_min, price, active, gap_min, min_notice_min } = await req.json()
   if (!id) return Response.json({ error: 'id obrigatório' }, { status: 400 })
 
   // Edita o serviço; afeta apenas agendamentos futuros (os existentes já têm start/end gravados).
@@ -47,6 +49,8 @@ export async function PATCH(req: Request) {
   if (duration_min !== undefined) data.duration_min = Number(duration_min) || 60
   if (price !== undefined) data.price = price !== '' && price !== null ? Number(price) : null
   if (active !== undefined) data.active = !!active
+  if (gap_min !== undefined) data.gap_min = Math.max(0, Math.min(240, Number(gap_min) || 0))
+  if (min_notice_min !== undefined) data.min_notice_min = Math.max(0, Math.min(43200, Number(min_notice_min) || 0))
   if (Object.keys(data).length === 0) return Response.json({ error: 'Nada para atualizar' }, { status: 400 })
 
   const service = await prisma.service.update({ where: { id }, data })

@@ -20,9 +20,10 @@ function minToHM(m: number) {
  * Retorna os horários livres ("HH:MM") de um dia, dado a duração do serviço,
  * respeitando os horários de atendimento e os agendamentos já existentes.
  */
-export async function getAvailableSlots(prisma: any, dateStr: string, durationMin: number, gapMin = 0, minNoticeMin = 0): Promise<string[]> {
+export async function getAvailableSlots(prisma: any, dateStr: string, durationMin: number, gapMin = 0, minNoticeMin = 0, serviceId: string | null = null): Promise<string[]> {
   const wd = weekdayOf(dateStr)
-  const rules = await prisma.availability.findMany({ where: { weekday: wd } })
+  // Horário do próprio serviço (ou o padrão do tenant quando serviceId é null).
+  const rules = await prisma.availability.findMany({ where: { weekday: wd, service_id: serviceId } })
   if (!rules.length) return []
 
   const dayStart = new Date(`${dateStr}T00:00:00${TZ}`)

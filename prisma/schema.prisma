@@ -218,24 +218,31 @@ model Agent {
 // ─── Agendamento (tenant-scoped) ─────────────────────────────────────────────
 
 model Service {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name         String
-  duration_min Int      @default(60)
-  price        Decimal? @db.Decimal(10, 2)
-  active       Boolean  @default(true)
-  created_at   DateTime @default(now())
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  duration_min   Int      @default(60)
+  price          Decimal? @db.Decimal(10, 2)
+  active         Boolean  @default(true)
+  gap_min        Int      @default(0) // intervalo entre atendimentos deste serviço
+  min_notice_min Int      @default(0) // antecedência mínima para agendar este serviço
+  created_at     DateTime @default(now())
 
   appointments Appointment[]
+  availability Availability[]
 
   @@map("services")
 }
 
 model Availability {
-  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  weekday   Int    // 0=Domingo … 6=Sábado
-  start_min Int    // minutos desde 00:00 (ex: 480 = 08:00)
-  end_min   Int
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  service_id String? @db.Uuid // horário específico de um serviço (null = padrão do tenant)
+  weekday    Int     // 0=Domingo … 6=Sábado
+  start_min  Int     // minutos desde 00:00 (ex: 480 = 08:00)
+  end_min    Int
 
+  service Service? @relation(fields: [service_id], references: [id], onDelete: Cascade)
+
+  @@index([service_id, weekday])
   @@map("availability")
 }
 

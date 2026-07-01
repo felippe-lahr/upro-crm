@@ -1,21 +1,13 @@
 export const dynamic = 'force-dynamic'
 
 import { auth } from '@/lib/auth'
-import { getTenantPrisma, globalPrisma } from '@/lib/prisma-tenant'
+import { getTenantPrisma } from '@/lib/prisma-tenant'
 
 async function db() {
   const session = await auth()
   const schemaName = (session?.user as any)?.schemaName
   if (!schemaName) return null
   return getTenantPrisma(schemaName)
-}
-
-async function bookingRules(): Promise<{ gap: number; minNotice: number }> {
-  const session = await auth()
-  const tenantId = (session?.user as any)?.tenantId
-  if (!tenantId) return { gap: 0, minNotice: 0 }
-  const t = await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { booking_gap_min: true, booking_min_notice_min: true } })
-  return { gap: t?.booking_gap_min ?? 0, minNotice: t?.booking_min_notice_min ?? 0 }
 }
 
 export async function GET(req: Request) {
@@ -47,17 +39,18 @@ export async function POST(req: Request) {
   const { contact_id, service_id, customer_name, customer_phone, customer_email, title, start_at, notes } = body
   if (!start_at) return Response.json({ error: 'start_at obrigatório' }, { status: 400 })
 
-  // Duração: do serviço, ou explícita, ou 60min
+  // Duração e intervalo (gap): do serviço, ou explícito, ou padrão
   let duration = Number(body.duration_min) || 60
+  let gapMin = 0
   if (service_id) {
     const svc = await prisma.service.findUnique({ where: { id: service_id } })
-    if (svc) duration = svc.duration_min
+    if (svc) { duration = svc.duration_min; gapMin = svc.gap_min || 0 }
   }
   const start = new Date(start_at)
   const end = new Date(start.getTime() + duration * 60 * 1000)
 
-  // Conflito: agendamento que se sobrepõe, considerando o intervalo (gap) configurado.
-  const gapMs = (await bookingRules()).gap * 60 * 1000
+  // Conflito: agendamento que se sobrepõe, considerando o intervalo (gap) do serviço.
+  const gapMs = gapMin * 60 * 1000
   const conflict = await prisma.appointment.findFirst({
     where: {
       status: { notIn: ['cancelled', 'no_show'] },
