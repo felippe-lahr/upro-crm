@@ -7,6 +7,11 @@ export function weekdayOf(dateStr: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay()
 }
 
+const WD_NAMES = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
+export function weekdayName(dateStr: string): string {
+  return WD_NAMES[weekdayOf(dateStr)] || ''
+}
+
 function minToHM(m: number) {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 }

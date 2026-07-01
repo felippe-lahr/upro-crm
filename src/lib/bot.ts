@@ -1,7 +1,7 @@
 import { getTenantPrisma } from './prisma-tenant'
 import { decrypt } from './crypto'
 import { chatComplete } from './ai'
-import { getAvailableSlots, brDateTime } from './scheduling'
+import { getAvailableSlots, brDateTime, weekdayName } from './scheduling'
 
 /**
  * Lê o histórico da conversa e extrai dados estruturados do lead para o CRM:
@@ -135,18 +135,26 @@ async function runSchedulingTool(name: string, input: any, ctx: { tenantPrisma: 
     if (name === 'verificar_horarios') {
       const svc = await resolveService(tenantPrisma, input.servico)
       const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration)
-      if (!slots.length) return JSON.stringify({ data: input.data, horarios: [], aviso: 'Sem horários livres nessa data.' })
-      return JSON.stringify({ data: input.data, servico: svc.label, horarios: slots })
+      const dia = weekdayName(input.data)
+      if (!slots.length) return JSON.stringify({ data: input.data, dia_semana: dia, horarios: [], aviso: `Não há horários de atendimento em ${dia} (${input.data}). Sugira outro dia.` })
+      return JSON.stringify({ data: input.data, dia_semana: dia, servico: svc.label, horarios: slots })
     }
     if (name === 'agendar') {
       const svc = await resolveService(tenantPrisma, input.servico)
+      const dia = weekdayName(input.data)
       const start = brDateTime(input.data, input.hora)
       const end = new Date(start.getTime() + svc.duration * 60000)
       if (start.getTime() < Date.now()) return JSON.stringify({ ok: false, erro: 'Esse horário já passou.' })
-      const conflict = await tenantPrisma.appointment.findFirst({
-        where: { status: { notIn: ['cancelled', 'no_show'] }, start_at: { lt: end }, end_at: { gt: start } }
-      })
-      if (conflict) return JSON.stringify({ ok: false, erro: 'Horário ocupado. Ofereça outro.' })
+      // Valida contra a disponibilidade real (dias de atendimento + conflitos + horário)
+      const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration)
+      if (!slots.includes(input.hora)) {
+        return JSON.stringify({
+          ok: false,
+          dia_semana: dia,
+          erro: `O horário ${input.hora} de ${dia} (${input.data}) não está disponível. Ofereça apenas horários retornados por verificar_horarios.`,
+          horarios_livres: slots
+        })
+      }
       await tenantPrisma.appointment.create({
         data: {
           contact_id: ctx.contactId,
@@ -303,8 +311,14 @@ export async function processBotResponse(
 
   let botReply: string
   if (schedulingOn) {
+    const todayName = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long' })
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) // AAAA-MM-DD
-    const hint = `\n\nAGENDAMENTO: Você pode consultar horários livres e agendar usando as ferramentas disponíveis. Hoje é ${today} (fuso de São Paulo). Antes de agendar, confirme com o cliente o serviço, a data e o horário. Nunca agende em horário que não esteja livre.`
+    const hint = `\n\nAGENDAMENTO (regras rígidas):\n` +
+      `- Hoje é ${todayName}, ${today} (fuso de São Paulo, UTC-3).\n` +
+      `- NUNCA calcule o dia da semana de uma data você mesmo. Sempre use o campo "dia_semana" retornado pelas ferramentas e repita esse valor ao cliente.\n` +
+      `- SEMPRE chame verificar_horarios antes de oferecer ou agendar qualquer horário. Ofereça apenas os horários que ela retornar.\n` +
+      `- Só use agendar com data e hora que apareceram em verificar_horarios. Se a ferramenta retornar erro ou lista vazia, informe o cliente e sugira outro dia. Nunca invente disponibilidade.\n` +
+      `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.`
     botReply = await aiReplyWithScheduling(basePrompt + GUARDRAIL + welcome + hint, messages, {
       tenantPrisma, contactId: contact.id, contactName: current?.name || null
     })
