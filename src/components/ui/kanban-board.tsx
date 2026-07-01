@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { FUNNEL_STAGES } from '@/lib/funnel'
+import { FUNNEL_STAGES, LOST_STAGE_ID, type Stage } from '@/lib/funnel'
 
 export interface LeadCard {
   id: string
@@ -11,6 +11,7 @@ export interface LeadCard {
   deal_value: string | null
   lastMessage: string | null
   tags: string[]
+  lossReason?: string | null
   createdAt: string
 }
 
@@ -33,12 +34,24 @@ function withinPreset(iso: string, preset: string): boolean {
   return d >= Date.now() - days * 24 * 60 * 60 * 1000
 }
 
-export function KanbanBoard({ initialLeads }: { initialLeads: LeadCard[] }) {
+export function KanbanBoard({
+  initialLeads,
+  stages = FUNNEL_STAGES,
+  lossReasons = [],
+  isPro = false
+}: {
+  initialLeads: LeadCard[]
+  stages?: Stage[]
+  lossReasons?: string[]
+  isPro?: boolean
+}) {
   const [leads, setLeads] = useState<LeadCard[]>(initialLeads)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overStage, setOverStage] = useState<string | null>(null)
   const [datePreset, setDatePreset] = useState('all')
   const [activeTags, setActiveTags] = useState<string[]>([])
+  const [pendingLost, setPendingLost] = useState<string | null>(null) // contactId aguardando motivo
+  const [config, setConfig] = useState(false)
 
   const allTags = useMemo(
     () => Array.from(new Set(leads.flatMap((l) => l.tags))).sort(),
@@ -59,14 +72,14 @@ export function KanbanBoard({ initialLeads }: { initialLeads: LeadCard[] }) {
     setActiveTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
   }
 
-  async function moveLead(contactId: string, stage: string) {
+  async function moveLead(contactId: string, stage: string, lossReason?: string | null) {
     const prev = leads
-    setLeads((ls) => ls.map((l) => (l.id === contactId ? { ...l, stage } : l)))
+    setLeads((ls) => ls.map((l) => (l.id === contactId ? { ...l, stage, lossReason: stage === LOST_STAGE_ID ? (lossReason || null) : null } : l)))
     try {
       const res = await fetch('/api/leads/stage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactId, stage })
+        body: JSON.stringify({ contactId, stage, loss_reason: lossReason })
       })
       if (!res.ok) throw new Error('falhou')
     } catch {
@@ -75,9 +88,16 @@ export function KanbanBoard({ initialLeads }: { initialLeads: LeadCard[] }) {
   }
 
   function onDrop(stage: string) {
-    if (dragId) moveLead(dragId, stage)
+    const id = dragId
     setDragId(null)
     setOverStage(null)
+    if (!id) return
+    // Ao soltar em "perdido" com motivos configurados, pede o motivo antes de mover.
+    if (stage === LOST_STAGE_ID && lossReasons.length > 0) {
+      setPendingLost(id)
+      return
+    }
+    moveLead(id, stage)
   }
 
   function formatBRL(v: string | null) {
@@ -125,10 +145,31 @@ export function KanbanBoard({ initialLeads }: { initialLeads: LeadCard[] }) {
             )}
           </div>
         )}
+        {isPro && (
+          <button onClick={() => setConfig(true)} className="ml-auto rounded-lg border border-line px-3 py-2 text-xs font-medium text-muted hover:text-fg">
+            Personalizar funil
+          </button>
+        )}
       </div>
 
+      {config && (
+        <FunnelConfig
+          stages={stages}
+          lossReasons={lossReasons}
+          onClose={() => setConfig(false)}
+        />
+      )}
+
+      {pendingLost && (
+        <LossReasonModal
+          reasons={lossReasons}
+          onCancel={() => setPendingLost(null)}
+          onPick={(reason) => { moveLead(pendingLost, LOST_STAGE_ID, reason); setPendingLost(null) }}
+        />
+      )}
+
       <div className="flex gap-4 overflow-x-auto pb-4">
-      {FUNNEL_STAGES.map((stage) => {
+      {stages.map((stage) => {
         const stageLeads = visibleLeads.filter((l) => l.stage === stage.id)
         const total = stageLeads.reduce((sum, l) => sum + Number(l.deal_value || 0), 0)
         return (
@@ -191,6 +232,11 @@ export function KanbanBoard({ initialLeads }: { initialLeads: LeadCard[] }) {
                       ))}
                     </div>
                   )}
+                  {stage.id === LOST_STAGE_ID && lead.lossReason && (
+                    <div className="mt-2 pl-9">
+                      <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] text-red-500">Motivo: {lead.lossReason}</span>
+                    </div>
+                  )}
                   <div className="mt-2 flex items-center justify-between pl-9">
                     <span className="text-xs text-faint">{lead.phone}</span>
                     {formatBRL(lead.deal_value) && (
@@ -210,6 +256,97 @@ export function KanbanBoard({ initialLeads }: { initialLeads: LeadCard[] }) {
           </div>
         )
       })}
+      </div>
+    </div>
+  )
+}
+
+function LossReasonModal({ reasons, onPick, onCancel }: {
+  reasons: string[]
+  onPick: (reason: string) => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5" onClick={(e) => e.stopPropagation()}>
+        <h3 className="mb-1 text-base font-semibold text-fg">Motivo da perda</h3>
+        <p className="mb-4 text-sm text-muted">Selecione por que este lead foi perdido.</p>
+        <div className="space-y-2">
+          {reasons.map((r) => (
+            <button key={r} onClick={() => onPick(r)} className="block w-full rounded-lg border border-line bg-background px-3 py-2 text-left text-sm hover:border-brand hover:bg-brand/5">
+              {r}
+            </button>
+          ))}
+        </div>
+        <button onClick={onCancel} className="mt-4 w-full rounded-lg px-3 py-2 text-sm text-muted hover:text-fg">Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
+function FunnelConfig({ stages, lossReasons, onClose }: {
+  stages: Stage[]
+  lossReasons: string[]
+  onClose: () => void
+}) {
+  const [labels, setLabels] = useState<Record<string, string>>(() => Object.fromEntries(stages.map((s) => [s.id, s.label])))
+  const [reasons, setReasons] = useState<string[]>(() => (lossReasons.length ? [...lossReasons] : ['']))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  function setReason(i: number, v: string) { setReasons((rs) => rs.map((r, idx) => (idx === i ? v : r))) }
+  function addReason() { setReasons((rs) => (rs.length >= 10 ? rs : [...rs, ''])) }
+  function delReason(i: number) { setReasons((rs) => rs.filter((_, idx) => idx !== i)) }
+
+  async function save() {
+    setSaving(true); setError('')
+    const res = await fetch('/api/funnel/config', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ funnel_labels: labels, loss_reasons: reasons.filter((r) => r.trim()) })
+    })
+    setSaving(false)
+    if (!res.ok) { setError((await res.json().catch(() => ({}))).error || 'Erro ao salvar.'); return }
+    window.location.reload()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-surface p-5" onClick={(e) => e.stopPropagation()}>
+        <h3 className="mb-4 text-base font-semibold text-fg">Personalizar funil</h3>
+
+        <div className="mb-5">
+          <p className="mb-2 text-sm font-medium text-fg">Nomes das etapas</p>
+          <div className="space-y-2">
+            {stages.map((s) => (
+              <div key={s.id} className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${s.color}`} />
+                <input value={labels[s.id] || ''} onChange={(e) => setLabels({ ...labels, [s.id]: e.target.value })} className="flex-1 rounded-lg border border-line bg-background px-3 py-1.5 text-sm focus:border-brand focus:outline-none" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-5">
+          <p className="mb-1 text-sm font-medium text-fg">Motivos de perda (até 10)</p>
+          <p className="mb-2 text-xs text-muted">Ao arrastar um lead para a etapa de perdido, você escolhe um destes motivos.</p>
+          <div className="space-y-2">
+            {reasons.map((r, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input value={r} onChange={(e) => setReason(i, e.target.value)} placeholder={`Motivo ${i + 1}`} className="flex-1 rounded-lg border border-line bg-background px-3 py-1.5 text-sm focus:border-brand focus:outline-none" />
+                <button onClick={() => delReason(i)} className="text-faint hover:text-red-500 text-sm px-2">✕</button>
+              </div>
+            ))}
+          </div>
+          {reasons.length < 10 && (
+            <button onClick={addReason} className="mt-2 text-sm text-brand hover:underline">+ Adicionar motivo</button>
+          )}
+        </div>
+
+        {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
+        <div className="flex gap-2">
+          <button onClick={save} disabled={saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50">{saving ? 'Salvando…' : 'Salvar'}</button>
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">Cancelar</button>
+        </div>
       </div>
     </div>
   )

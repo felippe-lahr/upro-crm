@@ -1,10 +1,12 @@
 import { auth } from '@/lib/auth'
-import { getTenantPrisma } from '@/lib/prisma-tenant'
+import { getTenantPrisma, globalPrisma } from '@/lib/prisma-tenant'
 import { KanbanBoard, type LeadCard } from '@/components/ui/kanban-board'
+import { resolveStages } from '@/lib/funnel'
 
 export default async function FunnelPage() {
   const session = await auth()
   const schemaName = (session!.user as any).schemaName
+  const tenantId = (session!.user as any).tenantId
 
   let leads: LeadCard[] = []
 
@@ -25,12 +27,20 @@ export default async function FunnelPage() {
         deal_value: c.deal_value ? String(c.deal_value) : null,
         lastMessage: c.messages?.[0]?.content || null,
         tags: c.tags || [],
+        lossReason: c.loss_reason || null,
         createdAt: c.created_at.toISOString()
       }))
     } catch {
       // schema não provisionado
     }
   }
+
+  const tenant = tenantId
+    ? await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true, funnel_labels: true, loss_reasons: true } })
+    : null
+  const isPro = tenant?.plan === 'pro'
+  const stages = resolveStages(tenant?.funnel_labels as Record<string, string> | null)
+  const lossReasons = Array.isArray(tenant?.loss_reasons) ? (tenant!.loss_reasons as string[]) : []
 
   return (
     <div className="p-8">
@@ -41,16 +51,11 @@ export default async function FunnelPage() {
         </p>
       </div>
 
-      {leads.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-surface p-16 text-center">
-          <div className="mb-4 text-5xl">📊</div>
-          <h2 className="mb-2 text-lg font-semibold text-fg">Nenhum lead ainda</h2>
-          <p className="text-sm text-muted">
-            Os contatos do WhatsApp aparecem aqui automaticamente como leads.
-          </p>
-        </div>
-      ) : (
-        <KanbanBoard initialLeads={leads} />
+      <KanbanBoard initialLeads={leads} stages={stages} lossReasons={lossReasons} isPro={isPro} />
+      {leads.length === 0 && (
+        <p className="mt-4 text-center text-sm text-faint">
+          Os contatos do WhatsApp aparecem aqui automaticamente como leads.
+        </p>
       )}
     </div>
   )

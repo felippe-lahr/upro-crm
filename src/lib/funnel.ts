@@ -14,3 +14,15 @@ export const FUNNEL_STAGES: Stage[] = [
 ]
 
 export const STAGE_IDS = FUNNEL_STAGES.map((s) => s.id)
+
+// Id da etapa de "lead perdido" (onde se aplicam os motivos de perda).
+export const LOST_STAGE_ID = 'perdido'
+
+/** Mescla os rótulos padrão com os personalizados do tenant. */
+export function resolveStages(labels?: Record<string, string> | null): Stage[] {
+  if (!labels) return FUNNEL_STAGES
+  return FUNNEL_STAGES.map((s) => ({
+    ...s,
+    label: typeof labels[s.id] === 'string' && labels[s.id].trim() ? labels[s.id].trim() : s.label
+  }))
+}
