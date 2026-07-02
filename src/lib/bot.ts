@@ -105,12 +105,27 @@ const SCHEDULING_TOOLS = [
   },
   {
     name: 'agendar',
-    description: 'Cria um agendamento confirmado em uma data e horário livres.',
+    description: 'Cria um NOVO agendamento em uma data e horário livres. Use apenas quando o cliente não tem um agendamento anterior para alterar.',
     input_schema: {
       type: 'object',
       properties: {
         data: { type: 'string', description: 'Data AAAA-MM-DD' },
         hora: { type: 'string', description: 'Horário HH:MM' },
+        servico: { type: 'string', description: 'Nome do serviço (opcional)' },
+        nome: { type: 'string', description: 'Nome do cliente' },
+        email: { type: 'string', description: 'E-mail do cliente para envio da confirmação' }
+      },
+      required: ['data', 'hora']
+    }
+  },
+  {
+    name: 'reagendar',
+    description: 'Remarca o agendamento do cliente: cancela o(s) agendamento(s) futuro(s) existente(s) dele e cria um novo na nova data/horário. Use sempre que o cliente quiser mudar/remarcar um horário já agendado.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'string', description: 'Nova data AAAA-MM-DD' },
+        hora: { type: 'string', description: 'Novo horário HH:MM' },
         servico: { type: 'string', description: 'Nome do serviço (opcional)' },
         nome: { type: 'string', description: 'Nome do cliente' },
         email: { type: 'string', description: 'E-mail do cliente para envio da confirmação' }
@@ -163,7 +178,7 @@ async function runSchedulingTool(name: string, input: any, ctx: SchedulingCtx): 
       if (!slots.length) return JSON.stringify({ data: input.data, dia_semana: dia, horarios: [], aviso: `Não há horários de atendimento em ${dia} (${input.data}). Sugira outro dia.` })
       return JSON.stringify({ data: input.data, dia_semana: dia, servico: svc.label, horarios: slots })
     }
-    if (name === 'agendar') {
+    if (name === 'agendar' || name === 'reagendar') {
       const svc = await resolveService(tenantPrisma, input.servico)
       const dia = weekdayName(input.data)
       const start = brDateTime(input.data, input.hora)
@@ -183,6 +198,18 @@ async function runSchedulingTool(name: string, input: any, ctx: SchedulingCtx): 
       const whenLabel = start.toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
       })
+
+      // Remarcação: cancela os agendamentos futuros ativos do cliente antes de criar o novo.
+      if (name === 'reagendar' && ctx.contactId) {
+        await tenantPrisma.appointment.updateMany({
+          where: {
+            contact_id: ctx.contactId,
+            status: { in: ['scheduled', 'confirmed', 'pending_payment'] },
+            start_at: { gte: new Date() }
+          },
+          data: { status: 'cancelled' }
+        }).catch(() => {})
+      }
 
       // Guarda o e-mail no contato para reaproveitar em futuros agendamentos.
       if (email && ctx.contactId) {
@@ -410,7 +437,8 @@ export async function processBotResponse(
       `- Só use agendar com data e hora que apareceram em verificar_horarios. Se a ferramenta retornar erro ou lista vazia, informe o cliente e sugira outro dia. Nunca invente disponibilidade.\n` +
       `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.\n` +
       `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".\n` +
-      `- Alguns serviços exigem um sinal via Pix. Se agendar retornar "aguardando_pagamento", NÃO diga que está confirmado: informe o valor e o prazo, e explique que a cobrança Pix foi enviada e o horário será garantido após o pagamento.`
+      `- Alguns serviços exigem um sinal via Pix. Se agendar retornar "aguardando_pagamento", NÃO diga que está confirmado: informe o valor e o prazo, e explique que a cobrança Pix foi enviada e o horário será garantido após o pagamento.\n` +
+      `- Se o cliente já tem um agendamento e quer mudar de dia/horário (remarcar), use a ferramenta "reagendar" (ela cancela o horário anterior e cria o novo). NUNCA use "agendar" para uma remarcação, senão o horário antigo fica duplicado na agenda.`
     let mpToken: string | null = null
     if (tenant.mp_access_token) { try { mpToken = decrypt(tenant.mp_access_token) } catch { mpToken = null } }
     botReply = await aiReplyWithScheduling(basePrompt + GUARDRAIL + welcome + hint, messages, {
