@@ -83,17 +83,40 @@ async function processIncomingMessage(
 ) {
   const tenantPrisma = getTenantPrisma(tenant.schema_name)
 
-  const dbContact = await tenantPrisma.contact.upsert({
-    where: { whatsapp_id: message.from },
-    update: {
-      name: contactInfo?.profile?.name || undefined
-    },
-    create: {
-      whatsapp_id: message.from,
-      phone: message.from,
-      name: contactInfo?.profile?.name || null
-    }
-  })
+  // Identificadores do WhatsApp:
+  // - senderId (message.from): id endereçável para responder (telefone ou BSUID)
+  // - bsuid (contacts[].user_id): identificador estável por empresa (usernames)
+  // - waId (contacts[].wa_id): telefone, quando disponível
+  const senderId: string = message.from
+  const bsuid: string | null = contactInfo?.user_id || null
+  const waId: string | null = contactInfo?.wa_id || null
+  const profileName: string | null = contactInfo?.profile?.name || null
+
+  // Resolve o contato por BSUID > id endereçável > telefone (evita duplicar quando o telefone é ocultado).
+  let dbContact =
+    (bsuid ? await tenantPrisma.contact.findFirst({ where: { bsuid } }) : null) ||
+    (await tenantPrisma.contact.findFirst({ where: { whatsapp_id: senderId } })) ||
+    (waId ? await tenantPrisma.contact.findFirst({ where: { phone: waId } }) : null)
+
+  if (dbContact) {
+    dbContact = await tenantPrisma.contact.update({
+      where: { id: dbContact.id },
+      data: {
+        ...(profileName ? { name: profileName } : {}),
+        ...(bsuid && !dbContact.bsuid ? { bsuid } : {}),
+        ...(waId && (!dbContact.phone || dbContact.phone === dbContact.whatsapp_id) ? { phone: waId } : {})
+      }
+    })
+  } else {
+    dbContact = await tenantPrisma.contact.create({
+      data: {
+        whatsapp_id: senderId,
+        bsuid: bsuid || undefined,
+        phone: waId || senderId,
+        name: profileName
+      }
+    })
+  }
 
   // Resolve o texto da mensagem (transcreve áudio quando possível)
   let resolvedText = ''
