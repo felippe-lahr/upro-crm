@@ -273,9 +273,10 @@ model Appointment {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   contact_id     String?  @db.Uuid
   service_id     String?  @db.Uuid
-  customer_name  String?
+  customer_name  String?  // para quem é o atendimento (participante: aluno/paciente/próprio)
   customer_phone String?
   customer_email String?
+  booked_by      String?  // quem agendou (responsável), quando diferente do participante
   title          String?
   start_at       DateTime
   end_at         DateTime

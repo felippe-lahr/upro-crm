@@ -47,7 +47,9 @@ export async function sendAppointmentEmail({
   replyTo,
   serviceName,
   whenLabel,
-  kind
+  kind,
+  attendeeName,
+  bookedBy
 }: {
   to: string
   businessName: string
@@ -55,6 +57,8 @@ export async function sendAppointmentEmail({
   serviceName: string
   whenLabel: string
   kind: 'created' | 'confirmed' | 'cancelled' | 'reminder'
+  attendeeName?: string | null
+  bookedBy?: string | null
 }) {
   const COPY: Record<typeof kind, { title: string; intro: string; footer: string; accent: string }> = {
     created: { title: 'Agendamento realizado 📅', intro: 'Recebemos seu agendamento. Veja os detalhes abaixo.', footer: 'Você receberá um lembrete um dia antes e no dia do agendamento.', accent: '#2563eb' },
@@ -75,6 +79,8 @@ export async function sendAppointmentEmail({
         <p style="margin:0 0 16px;color:#334155">${c.intro}</p>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:8px">
           <tr><td style="padding:12px 16px;color:#64748b">Serviço</td><td style="padding:12px 16px;font-weight:bold;text-align:right">${serviceName}</td></tr>
+          ${attendeeName ? `<tr><td style="padding:12px 16px;color:#64748b;border-top:1px solid #e2e8f0">Para</td><td style="padding:12px 16px;font-weight:bold;text-align:right;border-top:1px solid #e2e8f0">${attendeeName}</td></tr>` : ''}
+          ${bookedBy ? `<tr><td style="padding:12px 16px;color:#64748b;border-top:1px solid #e2e8f0">Agendado por</td><td style="padding:12px 16px;font-weight:bold;text-align:right;border-top:1px solid #e2e8f0">${bookedBy}</td></tr>` : ''}
           <tr><td style="padding:12px 16px;color:#64748b;border-top:1px solid #e2e8f0">Data e horário</td><td style="padding:12px 16px;font-weight:bold;text-align:right;border-top:1px solid #e2e8f0">${whenLabel}</td></tr>
         </table>
         ${c.footer ? `<p style="margin:16px 0 0;color:#64748b;font-size:13px">${c.footer}</p>` : ''}

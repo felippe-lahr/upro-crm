@@ -200,7 +200,9 @@ async function handleAppointmentButton(
         replyTo: tenant.email,
         serviceName: appt.service?.name || appt.title || 'Atendimento',
         whenLabel,
-        kind: 'confirmed'
+        kind: 'confirmed',
+        attendeeName: appt.customer_name,
+        bookedBy: appt.booked_by
       }).catch((e) => console.error('[appointment email] confirm failed', e))
     }
   } else if (action === 'cancel') {
@@ -216,7 +218,9 @@ async function handleAppointmentButton(
         replyTo: tenant.email,
         serviceName: appt.service?.name || appt.title || 'Atendimento',
         whenLabel,
-        kind: 'cancelled'
+        kind: 'cancelled',
+        attendeeName: appt.customer_name,
+        bookedBy: appt.booked_by
       }).catch((e) => console.error('[appointment email] cancel failed', e))
     }
   } else {

@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   if (!prisma) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { contact_id, service_id, customer_name, customer_phone, customer_email, title, start_at, notes } = body
+  const { contact_id, service_id, customer_name, customer_phone, customer_email, booked_by, title, start_at, notes } = body
   if (!start_at) return Response.json({ error: 'start_at obrigatório' }, { status: 400 })
 
   // Duração e intervalo (gap): do serviço, ou explícito, ou padrão
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
       customer_name: customer_name || null,
       customer_phone: customer_phone || null,
       customer_email: customer_email || null,
+      booked_by: booked_by || null,
       title: title || null,
       start_at: start,
       end_at: end,
@@ -92,7 +93,9 @@ export async function POST(req: Request) {
       replyTo: tenant?.email,
       serviceName: appointment.service?.name || appointment.title || 'Atendimento',
       whenLabel,
-      kind: 'created'
+      kind: 'created',
+      attendeeName: appointment.customer_name,
+      bookedBy: appointment.booked_by
     }).catch((e) => console.error('[appointment email] manual failed', e))
   }
   return Response.json(appointment)

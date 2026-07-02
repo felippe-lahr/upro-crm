@@ -9,6 +9,7 @@ interface Appt {
   customer_name: string | null
   customer_phone: string | null
   customer_email?: string | null
+  booked_by?: string | null
   title: string | null
   start_at: string
   end_at: string
@@ -143,6 +144,7 @@ export function AgendaClient() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-fg">{who}</span>
+                      {a.booked_by && <span className="text-xs text-faint">· agendado por {a.booked_by}</span>}
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${st.cls}`}>{st.label}</span>
                     </div>
                     <div className="text-xs text-muted">
@@ -391,6 +393,7 @@ function NewAppointmentForm({ services, defaultDate, onClose, onCreated, onError
   services: Service[]; defaultDate: string; onClose: () => void; onCreated: () => void; onError: (s: string) => void
 }) {
   const [name, setName] = useState('')
+  const [bookedBy, setBookedBy] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [serviceId, setServiceId] = useState('')
@@ -405,7 +408,7 @@ function NewAppointmentForm({ services, defaultDate, onClose, onCreated, onError
     const start = new Date(`${date}T${time}:00`)
     const r = await fetch('/api/scheduling/appointments', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_name: name, customer_phone: phone, customer_email: email || undefined, service_id: serviceId || undefined, start_at: start.toISOString(), notes })
+      body: JSON.stringify({ customer_name: name, booked_by: bookedBy || undefined, customer_phone: phone, customer_email: email || undefined, service_id: serviceId || undefined, start_at: start.toISOString(), notes })
     })
     setSaving(false)
     if (r.ok) onCreated()
@@ -414,7 +417,8 @@ function NewAppointmentForm({ services, defaultDate, onClose, onCreated, onError
 
   return (
     <form onSubmit={submit} className="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-2">
-      <input required placeholder="Nome do cliente / aluno (quem será atendido)" value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+      <input required placeholder="Para quem é (aluno/paciente/cliente)" value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+      <input placeholder="Agendado por / responsável (opcional)" value={bookedBy} onChange={(e) => setBookedBy(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
       <input placeholder="Telefone (opcional)" value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
       <input type="email" placeholder="E-mail (para confirmação)" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none sm:col-span-2" />
       <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none">

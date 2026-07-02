@@ -95,7 +95,9 @@ export async function GET(req: Request) {
             replyTo: tenant.email,
             serviceName: what,
             whenLabel: when,
-            kind: 'reminder'
+            kind: 'reminder',
+            attendeeName: a.customer_name,
+            bookedBy: a.booked_by
           }).catch((err) => console.error('[cron reminders] email failed', tenant.slug, err))
         }
         sent++

@@ -51,7 +51,7 @@ async function handleAppointmentPayment(paymentId: string) {
   if (appt.customer_email) {
     sendAppointmentEmail({
       to: appt.customer_email, businessName: tenant.name, replyTo: tenant.email,
-      serviceName, whenLabel, kind: 'confirmed'
+      serviceName, whenLabel, kind: 'confirmed', attendeeName: appt.customer_name, bookedBy: appt.booked_by
     }).catch((e) => console.error('[MP webhook] email confirm failed', e))
   }
 }

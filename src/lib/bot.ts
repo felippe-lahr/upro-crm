@@ -112,7 +112,8 @@ const SCHEDULING_TOOLS = [
         data: { type: 'string', description: 'Data AAAA-MM-DD' },
         hora: { type: 'string', description: 'Horário HH:MM' },
         servico: { type: 'string', description: 'Nome do serviço (opcional)' },
-        nome: { type: 'string', description: 'Nome de quem vai ao atendimento (ex.: o aluno/paciente). Pode ser diferente de quem está falando no WhatsApp. Sempre preencha.' },
+        nome: { type: 'string', description: 'Nome de quem vai ao atendimento (o participante: aluno/paciente/próprio). Pode ser diferente de quem está falando no WhatsApp. Sempre preencha.' },
+        agendado_por: { type: 'string', description: 'Nome de quem está fazendo o agendamento (responsável), quando for diferente do participante. Se o agendamento for para a própria pessoa, deixe vazio.' },
         email: { type: 'string', description: 'E-mail do cliente para envio da confirmação' }
       },
       required: ['data', 'hora']
@@ -127,7 +128,8 @@ const SCHEDULING_TOOLS = [
         data: { type: 'string', description: 'Nova data AAAA-MM-DD' },
         hora: { type: 'string', description: 'Novo horário HH:MM' },
         servico: { type: 'string', description: 'Nome do serviço (opcional)' },
-        nome: { type: 'string', description: 'Nome de quem vai ao atendimento (ex.: o aluno/paciente). Pode ser diferente de quem está falando no WhatsApp. Sempre preencha.' },
+        nome: { type: 'string', description: 'Nome de quem vai ao atendimento (o participante: aluno/paciente/próprio). Pode ser diferente de quem está falando no WhatsApp. Sempre preencha.' },
+        agendado_por: { type: 'string', description: 'Nome de quem está fazendo o agendamento (responsável), quando for diferente do participante. Se o agendamento for para a própria pessoa, deixe vazio.' },
         email: { type: 'string', description: 'E-mail do cliente para envio da confirmação' }
       },
       required: ['data', 'hora']
@@ -195,6 +197,11 @@ async function runSchedulingTool(name: string, input: any, ctx: SchedulingCtx): 
         })
       }
       const email = typeof input.email === 'string' && input.email.includes('@') ? input.email.trim() : null
+      const attendee = (typeof input.nome === 'string' && input.nome.trim()) ? input.nome.trim() : (ctx.contactName || null)
+      // Quem agendou (responsável): informado pelo bot, ou o próprio contato quando difere do participante.
+      const bookedBy = (typeof input.agendado_por === 'string' && input.agendado_por.trim())
+        ? input.agendado_por.trim()
+        : (attendee && ctx.contactName && attendee !== ctx.contactName ? ctx.contactName : null)
       const whenLabel = start.toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
       })
@@ -227,7 +234,7 @@ async function runSchedulingTool(name: string, input: any, ctx: SchedulingCtx): 
         const appt = await tenantPrisma.appointment.create({
           data: {
             contact_id: ctx.contactId, service_id: svc.id,
-            customer_name: input.nome || ctx.contactName || null, customer_email: email,
+            customer_name: attendee, customer_email: email, booked_by: bookedBy,
             title: svc.label, start_at: start, end_at: end,
             status: 'pending_payment', amount_due: chargeAmount, payment_status: 'pending', hold_expires_at: holdExpires
           }
@@ -268,14 +275,14 @@ async function runSchedulingTool(name: string, input: any, ctx: SchedulingCtx): 
       await tenantPrisma.appointment.create({
         data: {
           contact_id: ctx.contactId, service_id: svc.id,
-          customer_name: input.nome || ctx.contactName || null, customer_email: email,
+          customer_name: attendee, customer_email: email, booked_by: bookedBy,
           title: svc.label, start_at: start, end_at: end, status: 'scheduled'
         }
       })
       if (email) {
         sendAppointmentEmail({
           to: email, businessName: ctx.businessName || 'Agendamento', replyTo: ctx.replyTo,
-          serviceName: svc.label, whenLabel, kind: 'created'
+          serviceName: svc.label, whenLabel, kind: 'created', attendeeName: attendee, bookedBy
         }).catch((e) => console.error('[appointment email] created failed', e))
       }
       return JSON.stringify({ ok: true, servico: svc.label, data: input.data, hora: input.hora, email_registrado: !!email })
@@ -437,7 +444,7 @@ export async function processBotResponse(
       `- Só use agendar com data e hora que apareceram em verificar_horarios. Se a ferramenta retornar erro ou lista vazia, informe o cliente e sugira outro dia. Nunca invente disponibilidade.\n` +
       `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.\n` +
       `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".\n` +
-      `- No campo "nome" passe SEMPRE o nome de QUEM VAI AO ATENDIMENTO (ex.: o aluno/paciente), que pode ser diferente de quem está no WhatsApp. É esse nome que aparece na agenda. Se ainda não souber, pergunte.\n` +
+      `- Descubra PARA QUEM é o atendimento: pergunte se é para a própria pessoa ou para outra (ex.: filho, parente). No campo "nome" passe SEMPRE o participante (quem será atendido) — é o nome que aparece na agenda. Se for para outra pessoa, passe também "agendado_por" com o nome de quem está agendando. Se for para a própria pessoa, deixe "agendado_por" vazio.\n` +
       `- Alguns serviços exigem um sinal via Pix. Se agendar retornar "aguardando_pagamento", NÃO diga que está confirmado: informe o valor e o prazo, e explique que a cobrança Pix foi enviada e o horário será garantido após o pagamento.\n` +
       `- Se o cliente já tem um agendamento e quer mudar de dia/horário (remarcar), use a ferramenta "reagendar" (ela cancela o horário anterior e cria o novo). NUNCA use "agendar" para uma remarcação, senão o horário antigo fica duplicado na agenda.`
     let mpToken: string | null = null
