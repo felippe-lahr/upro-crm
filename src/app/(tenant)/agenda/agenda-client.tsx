@@ -414,7 +414,7 @@ function NewAppointmentForm({ services, defaultDate, onClose, onCreated, onError
 
   return (
     <form onSubmit={submit} className="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-2">
-      <input required placeholder="Nome do cliente" value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+      <input required placeholder="Nome do cliente / aluno (quem será atendido)" value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
       <input placeholder="Telefone (opcional)" value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
       <input type="email" placeholder="E-mail (para confirmação)" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none sm:col-span-2" />
       <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none">
