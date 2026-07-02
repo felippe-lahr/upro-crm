@@ -112,7 +112,7 @@ const SCHEDULING_TOOLS = [
         data: { type: 'string', description: 'Data AAAA-MM-DD' },
         hora: { type: 'string', description: 'Horário HH:MM' },
         servico: { type: 'string', description: 'Nome do serviço (opcional)' },
-        nome: { type: 'string', description: 'Nome do cliente' },
+        nome: { type: 'string', description: 'Nome de quem vai ao atendimento (ex.: o aluno/paciente). Pode ser diferente de quem está falando no WhatsApp. Sempre preencha.' },
         email: { type: 'string', description: 'E-mail do cliente para envio da confirmação' }
       },
       required: ['data', 'hora']
@@ -127,7 +127,7 @@ const SCHEDULING_TOOLS = [
         data: { type: 'string', description: 'Nova data AAAA-MM-DD' },
         hora: { type: 'string', description: 'Novo horário HH:MM' },
         servico: { type: 'string', description: 'Nome do serviço (opcional)' },
-        nome: { type: 'string', description: 'Nome do cliente' },
+        nome: { type: 'string', description: 'Nome de quem vai ao atendimento (ex.: o aluno/paciente). Pode ser diferente de quem está falando no WhatsApp. Sempre preencha.' },
         email: { type: 'string', description: 'E-mail do cliente para envio da confirmação' }
       },
       required: ['data', 'hora']
@@ -437,6 +437,7 @@ export async function processBotResponse(
       `- Só use agendar com data e hora que apareceram em verificar_horarios. Se a ferramenta retornar erro ou lista vazia, informe o cliente e sugira outro dia. Nunca invente disponibilidade.\n` +
       `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.\n` +
       `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".\n` +
+      `- No campo "nome" passe SEMPRE o nome de QUEM VAI AO ATENDIMENTO (ex.: o aluno/paciente), que pode ser diferente de quem está no WhatsApp. É esse nome que aparece na agenda. Se ainda não souber, pergunte.\n` +
       `- Alguns serviços exigem um sinal via Pix. Se agendar retornar "aguardando_pagamento", NÃO diga que está confirmado: informe o valor e o prazo, e explique que a cobrança Pix foi enviada e o horário será garantido após o pagamento.\n` +
       `- Se o cliente já tem um agendamento e quer mudar de dia/horário (remarcar), use a ferramenta "reagendar" (ela cancela o horário anterior e cria o novo). NUNCA use "agendar" para uma remarcação, senão o horário antigo fica duplicado na agenda.`
     let mpToken: string | null = null
