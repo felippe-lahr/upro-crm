@@ -151,7 +151,7 @@ model Coupon {
 model Contact {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   whatsapp_id  String   @unique // id endereçável do webhook (telefone/wa_id ou BSUID) — usado para responder
-  bsuid        String?  @unique // Business-Scoped User ID (identificador estável por empresa)
+  bsuid        String?  // Business-Scoped User ID (identificador estável por empresa)
   name         String?
   phone        String
   email        String?
@@ -168,6 +168,7 @@ model Contact {
   conversations Conversation[]
   appointments Appointment[]
 
+  @@index([bsuid])
   @@map("contacts")
 }
 
