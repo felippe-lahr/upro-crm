@@ -244,11 +244,13 @@ export default function LandingPage() {
             </div>
             <span className="font-bold">UProCRM</span>
           </div>
-          <div className="flex items-center gap-5 text-sm">
+          <div className="flex flex-wrap items-center gap-5 text-sm">
             <Link href="/afiliados" className="text-muted transition-colors hover:text-brand">Seja afiliado</Link>
+            <Link href="/privacidade" className="text-muted transition-colors hover:text-brand">Privacidade</Link>
+            <Link href="/termos" className="text-muted transition-colors hover:text-brand">Termos</Link>
             <Link href="/login" className="text-muted transition-colors hover:text-brand">Entrar</Link>
           </div>
-          <p className="text-sm text-faint">© 2026 UProCRM · Todos os direitos reservados.</p>
+          <p className="text-sm text-faint">© 2026 UProCRM · Studio44 Vendas e Marketing No Digital LTDA · CNPJ 23.192.161/0001-20</p>
         </div>
       </footer>
     </div>
