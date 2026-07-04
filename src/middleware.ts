@@ -30,5 +30,7 @@ export default auth((req) => {
 
 export const config = {
   // /api fica de fora — cada rota valida auth internamente
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
+  // Exclui API, assets internos do Next e QUALQUER arquivo estático com extensão
+  // (ex.: /logo.svg, imagens) — senão o middleware redireciona os assets para /login.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)']
 }
