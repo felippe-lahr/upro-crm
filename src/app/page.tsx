@@ -246,6 +246,7 @@ export default function LandingPage() {
             <Link href="/afiliados" className="text-muted transition-colors hover:text-brand">Seja afiliado</Link>
             <Link href="/privacidade" className="text-muted transition-colors hover:text-brand">Privacidade</Link>
             <Link href="/termos" className="text-muted transition-colors hover:text-brand">Termos</Link>
+            <Link href="/exclusao-de-dados" className="text-muted transition-colors hover:text-brand">Exclusão de dados</Link>
             <Link href="/login" className="text-muted transition-colors hover:text-brand">Entrar</Link>
           </div>
           <p className="text-sm text-faint">© 2026 UProCRM · Studio44 Vendas e Marketing No Digital LTDA · CNPJ 23.192.161/0001-20</p>

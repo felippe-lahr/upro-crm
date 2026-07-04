@@ -42,6 +42,7 @@ export function LegalShell({ title, children }: { title: string; children: React
           <div className="mt-2 flex gap-4">
             <Link href="/privacidade" className="hover:text-brand">Privacidade</Link>
             <Link href="/termos" className="hover:text-brand">Termos</Link>
+            <Link href="/exclusao-de-dados" className="hover:text-brand">Exclusão de dados</Link>
             <a href={`mailto:${COMPANY.email}`} className="hover:text-brand">{COMPANY.email}</a>
           </div>
         </div>

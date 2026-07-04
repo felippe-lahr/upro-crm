@@ -9,7 +9,7 @@ export default auth((req) => {
   const session = req.auth
   const user = session?.user as any
 
-  const publicPrefixes = ['/login', '/signup', '/checkout', '/afiliado', '/afiliados', '/privacidade', '/termos']
+  const publicPrefixes = ['/login', '/signup', '/checkout', '/afiliado', '/afiliados', '/privacidade', '/termos', '/exclusao-de-dados']
   const isPublic =
     pathname === '/' || publicPrefixes.some((p) => pathname.startsWith(p))
 
