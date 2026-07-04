@@ -43,7 +43,7 @@ export default async function TenantLayout({
         <div className="border-b border-line p-6">
           <Link href="/dashboard" className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="UProCRM" className="h-8 w-8 rounded-lg" />
+            <img src="/logo.png" alt="UProCRM" className="h-8 w-8 rounded-lg" />
             <span className="font-bold tracking-tight text-fg">UProCRM</span>
           </Link>
         </div>
