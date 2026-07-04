@@ -38,7 +38,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="UProCRM" className="h-9 w-9 rounded-xl" />
+            <img src="/logo.svg" alt="UProCRM" className="h-9 w-9 rounded-xl" />
             <span className="text-lg font-bold tracking-tight">UProCRM</span>
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
@@ -239,7 +239,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="UProCRM" className="h-8 w-8 rounded-lg" />
+            <img src="/logo.svg" alt="UProCRM" className="h-8 w-8 rounded-lg" />
             <span className="font-bold">UProCRM</span>
           </div>
           <div className="flex flex-wrap items-center gap-5 text-sm">

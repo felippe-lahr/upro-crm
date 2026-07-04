@@ -19,7 +19,7 @@ export function LegalShell({ title, children }: { title: string; children: React
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="UProCRM" className="h-8 w-8 rounded-lg" />
+            <img src="/logo.svg" alt="UProCRM" className="h-8 w-8 rounded-lg" />
             <span className="font-bold">UProCRM</span>
           </Link>
           <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand">
