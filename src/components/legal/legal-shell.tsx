@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MessageSquare, ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 // Dados da empresa detentora (controladora) — usados nas páginas legais.
 export const COMPANY = {
@@ -18,9 +18,8 @@ export function LegalShell({ title, children }: { title: string; children: React
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
-              <MessageSquare className="h-4 w-4" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="UProCRM" className="h-8 w-8 rounded-lg" />
             <span className="font-bold">UProCRM</span>
           </Link>
           <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand">

@@ -37,9 +37,8 @@ export default function LandingPage() {
       <header className="sticky top-0 z-20 border-b border-line bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white shadow-lg shadow-brand/30">
-              <MessageSquare className="h-5 w-5" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="UProCRM" className="h-9 w-9 rounded-xl" />
             <span className="text-lg font-bold tracking-tight">UProCRM</span>
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
@@ -239,9 +238,8 @@ export default function LandingPage() {
       <footer className="border-t border-line py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
-              <MessageSquare className="h-4 w-4" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="UProCRM" className="h-8 w-8 rounded-lg" />
             <span className="font-bold">UProCRM</span>
           </div>
           <div className="flex flex-wrap items-center gap-5 text-sm">
