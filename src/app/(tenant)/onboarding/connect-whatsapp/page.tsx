@@ -79,13 +79,22 @@ export default function ConnectWhatsAppPage() {
 
   async function handleSignupComplete(authResponse: any) {
     try {
+      // O session info (waba_id/phone_number_id) pode chegar via postMessage
+      // logo após o callback — aguarda até 4s por ele antes de enviar.
+      let sessionInfo = (window as any).__waSessionInfo || null
+      for (let i = 0; i < 20 && !sessionInfo; i++) {
+        await new Promise((r) => setTimeout(r, 200))
+        sessionInfo = (window as any).__waSessionInfo || null
+      }
+      console.log('[embedded signup] sending to backend, sessionInfo:', sessionInfo)
+
       const res = await fetch('/api/whatsapp/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           authResponse,
           code: authResponse?.code,
-          sessionInfo: (window as any).__waSessionInfo || null
+          sessionInfo
         })
       })
 
