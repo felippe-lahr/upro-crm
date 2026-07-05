@@ -50,8 +50,9 @@ export default function ConnectWhatsAppPage() {
       },
       {
         config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID,
-        response_type: 'code',
-        override_default_response_type: true,
+        // Fluxo implícito: retorna um access token direto em authResponse.accessToken,
+        // evitando a troca de código (que exigia redirect_uri e falhava).
+        response_type: 'token',
         extras: {
           setup: {},
           featureType: '',
