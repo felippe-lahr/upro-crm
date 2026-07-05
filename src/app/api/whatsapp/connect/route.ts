@@ -39,9 +39,9 @@ export async function POST(req: NextRequest) {
   try {
     const tokenRes = await fetch(
       `https://graph.facebook.com/v21.0/oauth/access_token?` +
-        `client_id=${process.env.META_APP_ID}&` +
-        `client_secret=${process.env.META_APP_SECRET}&` +
-        `code=${code}`,
+        `client_id=${encodeURIComponent(process.env.META_APP_ID || '')}&` +
+        `client_secret=${encodeURIComponent(process.env.META_APP_SECRET || '')}&` +
+        `code=${encodeURIComponent(code || '')}`,
       { method: 'GET' }
     )
     const tokenData = await tokenRes.json()
@@ -49,7 +49,10 @@ export async function POST(req: NextRequest) {
 
     if (!accessToken) {
       console.error('[whatsapp connect] token exchange failed', JSON.stringify(tokenData))
-      const detail = tokenData?.error?.message || JSON.stringify(tokenData)
+      const e = tokenData?.error
+      const detail = e
+        ? `${e.message} [code ${e.code}/${e.error_subcode}] appid=${(process.env.META_APP_ID || '').slice(-4)}`
+        : JSON.stringify(tokenData)
       return Response.json({ error: `Falha ao obter token: ${detail}` }, { status: 400 })
     }
 
