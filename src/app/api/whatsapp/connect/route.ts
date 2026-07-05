@@ -37,15 +37,34 @@ export async function POST(req: NextRequest) {
   const { code } = await req.json()
 
   try {
-    const tokenRes = await fetch(
-      `https://graph.facebook.com/v21.0/oauth/access_token?` +
-        `client_id=${encodeURIComponent(process.env.META_APP_ID || '')}&` +
-        `client_secret=${encodeURIComponent(process.env.META_APP_SECRET || '')}&` +
-        `code=${encodeURIComponent(code || '')}`,
-      { method: 'GET' }
-    )
-    const tokenData = await tokenRes.json()
-    const accessToken = tokenData.access_token
+    // O SDK JS às vezes vincula um redirect_uri ao código do Embedded Signup.
+    // Tentamos sem redirect_uri (fluxo canônico) e, se falhar, com as variações mais prováveis.
+    const base = process.env.NEXT_PUBLIC_URL || 'https://uprocrm.com.br'
+    const redirectCandidates: (string | null)[] = [
+      null,
+      `${base}/onboarding/connect-whatsapp`,
+      `${base}/`,
+      base
+    ]
+    const appId = encodeURIComponent(process.env.META_APP_ID || '')
+    const appSecret = encodeURIComponent(process.env.META_APP_SECRET || '')
+    const codeEnc = encodeURIComponent(code || '')
+
+    let tokenData: any = null
+    let accessToken: string | undefined
+    for (const ru of redirectCandidates) {
+      const url = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${codeEnc}` +
+        (ru ? `&redirect_uri=${encodeURIComponent(ru)}` : '')
+      const r = await fetch(url, { method: 'GET' })
+      tokenData = await r.json()
+      if (tokenData?.access_token) {
+        accessToken = tokenData.access_token
+        console.log('[whatsapp connect] token OK with redirect_uri =', ru ?? '(none)')
+        break
+      }
+      // Se o erro NÃO for de redirect_uri (36008), não adianta tentar as outras variações.
+      if (tokenData?.error?.error_subcode !== 36008) break
+    }
 
     if (!accessToken) {
       console.error('[whatsapp connect] token exchange failed', JSON.stringify(tokenData))
