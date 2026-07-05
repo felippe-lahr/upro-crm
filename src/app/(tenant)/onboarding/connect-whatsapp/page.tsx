@@ -43,7 +43,7 @@ export default function ConnectWhatsAppPage() {
     window.FB.login(
       function (response: any) {
         if (response.authResponse) {
-          handleSignupComplete(response.authResponse.code)
+          handleSignupComplete(response.authResponse)
         } else {
           setStatus('idle')
         }
@@ -61,12 +61,12 @@ export default function ConnectWhatsAppPage() {
     )
   }
 
-  async function handleSignupComplete(code: string) {
+  async function handleSignupComplete(authResponse: any) {
     try {
       const res = await fetch('/api/whatsapp/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
+        body: JSON.stringify({ authResponse, code: authResponse?.code })
       })
 
       const data = await res.json()

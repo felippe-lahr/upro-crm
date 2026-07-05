@@ -34,9 +34,13 @@ export async function POST(req: NextRequest) {
   }
 
   const tenantId = (session!.user as any).tenantId
-  const { code } = await req.json()
+  const body = await req.json()
+  const authResponse = body?.authResponse || {}
+  const code = authResponse.code || body?.code
+  const directToken = authResponse.accessToken
 
   try {
+    console.log('[whatsapp connect] authResponse keys:', Object.keys(authResponse), 'hasToken:', !!directToken, 'hasCode:', !!code)
     // O SDK JS pode vincular um redirect_uri ao código. Usamos o domínio REAL da
     // requisição (uprocrm.com.br) — não NEXT_PUBLIC_URL, que pode estar errado.
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'uprocrm.com.br'
@@ -54,18 +58,22 @@ export async function POST(req: NextRequest) {
     const codeEnc = encodeURIComponent(code || '')
 
     let tokenData: any = null
-    let accessToken: string | undefined
-    for (const ru of redirectCandidates) {
-      const rp = ru === null ? '' : `&redirect_uri=${encodeURIComponent(ru)}`
-      const url = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${codeEnc}${rp}`
-      const r = await fetch(url, { method: 'GET' })
-      tokenData = await r.json()
-      if (tokenData?.access_token) {
-        accessToken = tokenData.access_token
-        console.log('[whatsapp connect] token OK with redirect_uri =', ru === null ? '(none)' : `"${ru}"`)
-        break
+    let accessToken: string | undefined = directToken || undefined
+
+    // Só faz a troca de código quando o SDK NÃO devolveu um token direto.
+    if (!accessToken && code) {
+      for (const ru of redirectCandidates) {
+        const rp = ru === null ? '' : `&redirect_uri=${encodeURIComponent(ru)}`
+        const url = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${codeEnc}${rp}`
+        const r = await fetch(url, { method: 'GET' })
+        tokenData = await r.json()
+        if (tokenData?.access_token) {
+          accessToken = tokenData.access_token
+          console.log('[whatsapp connect] token OK with redirect_uri =', ru === null ? '(none)' : `"${ru}"`)
+          break
+        }
+        console.warn('[whatsapp connect] try redirect_uri', ru === null ? '(none)' : `"${ru}"`, '->', tokenData?.error?.message)
       }
-      console.warn('[whatsapp connect] try redirect_uri', ru === null ? '(none)' : `"${ru}"`, '->', tokenData?.error?.message)
     }
 
     if (!accessToken) {
