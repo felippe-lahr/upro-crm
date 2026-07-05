@@ -37,14 +37,17 @@ export async function POST(req: NextRequest) {
   const { code } = await req.json()
 
   try {
-    // O SDK JS às vezes vincula um redirect_uri ao código do Embedded Signup.
-    // Tentamos sem redirect_uri (fluxo canônico) e, se falhar, com as variações mais prováveis.
-    const base = process.env.NEXT_PUBLIC_URL || 'https://uprocrm.com.br'
+    // O SDK JS pode vincular um redirect_uri ao código. Usamos o domínio REAL da
+    // requisição (uprocrm.com.br) — não NEXT_PUBLIC_URL, que pode estar errado.
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'uprocrm.com.br'
+    const origin = `https://${host}`
+    // null = sem redirect_uri; '' = redirect_uri vazio; demais = variações de URL.
     const redirectCandidates: (string | null)[] = [
       null,
-      `${base}/onboarding/connect-whatsapp`,
-      `${base}/`,
-      base
+      '',
+      `${origin}/onboarding/connect-whatsapp`,
+      `${origin}/`,
+      origin
     ]
     const appId = encodeURIComponent(process.env.META_APP_ID || '')
     const appSecret = encodeURIComponent(process.env.META_APP_SECRET || '')
@@ -53,17 +56,16 @@ export async function POST(req: NextRequest) {
     let tokenData: any = null
     let accessToken: string | undefined
     for (const ru of redirectCandidates) {
-      const url = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${codeEnc}` +
-        (ru ? `&redirect_uri=${encodeURIComponent(ru)}` : '')
+      const rp = ru === null ? '' : `&redirect_uri=${encodeURIComponent(ru)}`
+      const url = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${codeEnc}${rp}`
       const r = await fetch(url, { method: 'GET' })
       tokenData = await r.json()
       if (tokenData?.access_token) {
         accessToken = tokenData.access_token
-        console.log('[whatsapp connect] token OK with redirect_uri =', ru ?? '(none)')
+        console.log('[whatsapp connect] token OK with redirect_uri =', ru === null ? '(none)' : `"${ru}"`)
         break
       }
-      // Se o erro NÃO for de redirect_uri (36008), não adianta tentar as outras variações.
-      if (tokenData?.error?.error_subcode !== 36008) break
+      console.warn('[whatsapp connect] try redirect_uri', ru === null ? '(none)' : `"${ru}"`, '->', tokenData?.error?.message)
     }
 
     if (!accessToken) {
