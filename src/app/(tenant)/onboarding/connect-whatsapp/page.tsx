@@ -191,7 +191,7 @@ export default function ConnectWhatsAppPage() {
           </button>
 
           <p className="mt-4 text-center text-xs text-faint">
-            Conexão oficial pela Meta Cloud API · Sem risco de ban · v3
+            Conexão oficial pela Meta Cloud API · Sem risco de ban · v4
           </p>
         </div>
       )}
