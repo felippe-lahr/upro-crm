@@ -48,7 +48,9 @@ export async function POST(req: NextRequest) {
     const accessToken = tokenData.access_token
 
     if (!accessToken) {
-      return Response.json({ error: 'Failed to get access token', detail: tokenData }, { status: 400 })
+      console.error('[whatsapp connect] token exchange failed', JSON.stringify(tokenData))
+      const detail = tokenData?.error?.message || JSON.stringify(tokenData)
+      return Response.json({ error: `Falha ao obter token: ${detail}` }, { status: 400 })
     }
 
     const debugRes = await fetch(
