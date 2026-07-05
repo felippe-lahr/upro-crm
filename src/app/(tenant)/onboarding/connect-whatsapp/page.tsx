@@ -15,6 +15,22 @@ export default function ConnectWhatsAppPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const router = useRouter()
 
+  // O popup do Embedded Signup envia o WABA ID e o phone_number_id via postMessage.
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (!String(event.origin).includes('facebook.com')) return
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+        if (data?.type === 'WA_EMBEDDED_SIGNUP') {
+          ;(window as any).__waSessionInfo = data?.data || data
+          console.log('[embedded signup] session info', (window as any).__waSessionInfo)
+        }
+      } catch { /* ignora mensagens não-JSON */ }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
   useEffect(() => {
     window.fbAsyncInit = function () {
       window.FB.init({
@@ -66,7 +82,11 @@ export default function ConnectWhatsAppPage() {
       const res = await fetch('/api/whatsapp/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ authResponse, code: authResponse?.code })
+        body: JSON.stringify({
+          authResponse,
+          code: authResponse?.code,
+          sessionInfo: (window as any).__waSessionInfo || null
+        })
       })
 
       const data = await res.json()

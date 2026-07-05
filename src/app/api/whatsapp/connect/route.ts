@@ -76,8 +76,45 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Fallback: session info do Embedded Signup + token de sistema ──
+    // O popup envia waba_id/phone_number_id via postMessage; com um token de
+    // sistema permanente (META_SYSTEM_USER_TOKEN) registramos direto, sem OAuth.
+    const sessionInfo = body?.sessionInfo || null
+    const sysToken = process.env.META_SYSTEM_USER_TOKEN
+    if (!accessToken && sessionInfo && sysToken) {
+      const wabaId = sessionInfo.waba_id || sessionInfo.wabaId || sessionInfo?.data?.waba_id
+      const phoneNumberId = sessionInfo.phone_number_id || sessionInfo.phoneNumberId || sessionInfo?.data?.phone_number_id
+      console.log('[whatsapp connect] fallback session info', { wabaId, phoneNumberId })
+      if (wabaId && phoneNumberId) {
+        const reg = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messaging_product: 'whatsapp', pin: '000000', access_token: sysToken })
+        }).then(r => r.json()).catch(e => ({ error: { message: String(e) } }))
+        if (reg?.error) console.warn('[whatsapp connect] register warn:', reg.error.message)
+
+        const sub = await fetch(`https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: sysToken })
+        }).then(r => r.json()).catch(e => ({ error: { message: String(e) } }))
+        if (sub?.error) {
+          console.error('[whatsapp connect] subscribe failed:', JSON.stringify(sub.error))
+          return Response.json({ error: `Falha ao inscrever webhook: ${sub.error.message}` }, { status: 400 })
+        }
+
+        await globalPrisma.tenant.update({
+          where: { id: tenantId },
+          data: { waba_id: wabaId, phone_number_id: phoneNumberId, whatsapp_token: encrypt(sysToken), whatsapp_connected: true }
+        })
+        console.log('[whatsapp connect] connected via session info + system token')
+        return Response.json({ success: true })
+      }
+    }
+
     if (!accessToken) {
-      console.error('[whatsapp connect] token exchange failed', JSON.stringify(tokenData))
+      console.error('[whatsapp connect] token exchange failed', JSON.stringify(tokenData),
+        'sessionInfo:', JSON.stringify(sessionInfo), 'hasSysToken:', !!sysToken)
       const e = tokenData?.error
       const detail = e
         ? `${e.message} [code ${e.code}/${e.error_subcode}] appid=${(process.env.META_APP_ID || '').slice(-4)}`
