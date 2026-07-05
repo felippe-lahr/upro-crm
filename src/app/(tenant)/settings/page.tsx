@@ -341,13 +341,25 @@ export default function SettingsPage() {
             }`}
           />
         </div>
-        {!settings.whatsapp_connected && (
+        {!settings.whatsapp_connected ? (
           <a
             href="/onboarding/connect-whatsapp"
             className="mt-4 block rounded-lg bg-brand py-2 text-center text-sm font-medium text-white transition-colors hover:bg-brand-600"
           >
             Conectar WhatsApp
           </a>
+        ) : (
+          <button
+            onClick={async () => {
+              if (!confirm('Desconectar o WhatsApp? Você poderá reconectar em seguida pelo Embedded Signup.')) return
+              const r = await fetch('/api/whatsapp/connect', { method: 'DELETE' })
+              if (r.ok) window.location.reload()
+              else alert('Não foi possível desconectar. Tente novamente.')
+            }}
+            className="mt-4 block w-full rounded-lg border border-line py-2 text-center text-sm font-medium text-muted transition-colors hover:border-red-500/40 hover:text-red-500"
+          >
+            Desconectar WhatsApp
+          </button>
         )}
       </section>
 

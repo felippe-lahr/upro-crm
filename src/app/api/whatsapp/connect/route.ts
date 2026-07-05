@@ -5,6 +5,28 @@ import { auth } from '@/lib/auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { encrypt } from '@/lib/crypto'
 
+// Desconecta o WhatsApp do tenant (limpa credenciais) para reconectar do zero.
+export async function DELETE() {
+  const session = await auth()
+  const tenantId = (session?.user as any)?.tenantId
+  if (!tenantId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const tenant = await globalPrisma.tenant.findUnique({ where: { id: tenantId } })
+  // Best-effort: remove a inscrição do webhook na WABA antes de limpar.
+  if (tenant?.waba_id && tenant.whatsapp_token) {
+    try {
+      const token = (await import('@/lib/crypto')).decrypt(tenant.whatsapp_token)
+      await fetch(`https://graph.facebook.com/v21.0/${tenant.waba_id}/subscribed_apps?access_token=${token}`, { method: 'DELETE' })
+    } catch { /* ignora */ }
+  }
+
+  await globalPrisma.tenant.update({
+    where: { id: tenantId },
+    data: { waba_id: null, phone_number_id: null, whatsapp_token: null, whatsapp_connected: false }
+  })
+  return Response.json({ ok: true })
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!(session?.user as any)?.tenantId) {
