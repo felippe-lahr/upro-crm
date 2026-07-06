@@ -71,6 +71,49 @@ function MercadoPagoConnect({ connected }: { connected: boolean }) {
   )
 }
 
+// Upload do logo do cliente → vira a foto de perfil do WhatsApp Business do número.
+function WhatsAppProfilePhoto() {
+  const [uploading, setUploading] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite reenviar o mesmo arquivo
+    if (!file) return
+    setUploading(true); setMsg(''); setErr('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/whatsapp/profile-photo', { method: 'POST', body: fd })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setErr(data.error || 'Falha ao enviar o logo.'); return }
+      setMsg('Logo aplicado! A nova foto aparece nas conversas em instantes.')
+      setTimeout(() => setMsg(''), 5000)
+    } catch {
+      setErr('Erro ao enviar. Tente novamente.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="mt-5 border-t border-line pt-4">
+      <p className="text-sm font-medium text-fg">Logo do WhatsApp</p>
+      <p className="mt-0.5 text-xs text-muted">
+        Imagem que aparece no topo da conversa para quem fala com você. Use o logo da sua
+        empresa (JPG ou PNG, quadrado, até 5 MB).
+      </p>
+      <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-medium text-fg transition-colors hover:border-brand hover:text-brand">
+        {uploading ? 'Enviando...' : 'Enviar logo'}
+        <input type="file" accept="image/jpeg,image/png" onChange={onFile} disabled={uploading} className="hidden" />
+      </label>
+      {msg && <p className="mt-2 text-sm text-brand">{msg}</p>}
+      {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
+    </div>
+  )
+}
+
 // Wizard de conexão por "número próprio" (modelo custom / projeto premium).
 // Sobrepõe o endpoint /api/admin/connect-whatsapp-manual (protegido pelo token
 // do operador) para conectar um número sem precisar de curl nem do Embedded Signup.
@@ -456,6 +499,8 @@ export default function SettingsPage() {
             Desconectar WhatsApp
           </button>
         )}
+
+        {settings.whatsapp_connected && <WhatsAppProfilePhoto />}
 
         <OwnNumberConnect email={settings.email} />
       </section>
