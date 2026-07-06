@@ -71,6 +71,101 @@ function MercadoPagoConnect({ connected }: { connected: boolean }) {
   )
 }
 
+// Wizard de conexão por "número próprio" (modelo custom / projeto premium).
+// Sobrepõe o endpoint /api/admin/connect-whatsapp-manual (protegido pelo token
+// do operador) para conectar um número sem precisar de curl nem do Embedded Signup.
+function OwnNumberConnect({ email }: { email: string }) {
+  const [open, setOpen] = useState(false)
+  const [token, setToken] = useState('')
+  const [phoneNumberId, setPhoneNumberId] = useState('')
+  const [accessToken, setAccessToken] = useState('')
+  const [wabaId, setWabaId] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+
+  async function connect() {
+    setSaving(true); setMsg(''); setErr('')
+    try {
+      const res = await fetch('/api/admin/connect-whatsapp-manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token.trim(),
+          email,
+          phone_number_id: phoneNumberId.trim(),
+          access_token: accessToken.trim(),
+          waba_id: wabaId.trim() || undefined
+        })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setErr(data.error || 'Falha ao conectar.'); return }
+      setMsg('Número conectado! Recarregando...')
+      setTimeout(() => window.location.reload(), 1200)
+    } catch {
+      setErr('Erro de conexão. Tente novamente.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-5 border-t border-line pt-4">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="text-xs font-medium text-faint transition-colors hover:text-brand"
+      >
+        {open ? '− ' : '+ '}Conectar número próprio (avançado)
+      </button>
+
+      {open && (
+        <div className="mt-4 space-y-3 rounded-lg border border-line bg-background p-4">
+          <p className="text-xs text-muted">
+            Para projetos customizados: conecte um número WhatsApp Business informando os
+            dados da Meta (Business Manager). Requer o <strong>token do operador</strong>.
+            Não depende do App Review.
+          </p>
+          <input
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="Token do operador"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
+          />
+          <input
+            value={phoneNumberId}
+            onChange={(e) => setPhoneNumberId(e.target.value)}
+            placeholder="phone_number_id (Meta)"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
+          />
+          <input
+            type="password"
+            value={accessToken}
+            onChange={(e) => setAccessToken(e.target.value)}
+            placeholder="access_token (System User Token)"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
+          />
+          <input
+            value={wabaId}
+            onChange={(e) => setWabaId(e.target.value)}
+            placeholder="waba_id (opcional)"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
+          />
+          <button
+            onClick={connect}
+            disabled={saving || !token.trim() || !phoneNumberId.trim() || !accessToken.trim()}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-40"
+          >
+            {saving ? 'Conectando...' : 'Conectar número próprio'}
+          </button>
+          {msg && <p className="text-sm text-brand">{msg}</p>}
+          {err && <p className="text-sm text-red-400">{err}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface QuickReply {
   id: string
   shortcut: string
@@ -361,6 +456,8 @@ export default function SettingsPage() {
             Desconectar WhatsApp
           </button>
         )}
+
+        <OwnNumberConnect email={settings.email} />
       </section>
 
       {/* Mercado Pago (recebe os sinais de agendamento) */}
