@@ -7,12 +7,26 @@ import { sendAppointmentEmail } from '@/lib/email'
 import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string | null): boolean {
-  if (!signature) return false
-  const expected = `sha256=${crypto
-    .createHmac('sha256', process.env.META_APP_SECRET!)
-    .update(body)
-    .digest('hex')}`
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+  const secret = process.env.META_APP_SECRET
+  if (!secret) {
+    console.error('[whatsapp webhook] META_APP_SECRET não configurado — recebimento bloqueado')
+    return false
+  }
+  if (!signature) {
+    console.warn('[whatsapp webhook] sem header x-hub-signature-256')
+    return false
+  }
+  const expected = `sha256=${crypto.createHmac('sha256', secret).update(body).digest('hex')}`
+  const a = Buffer.from(signature)
+  const b = Buffer.from(expected)
+  // timingSafeEqual lança se os tamanhos diferem — compara o tamanho antes.
+  if (a.length !== b.length) {
+    console.warn(`[whatsapp webhook] assinatura inválida (tamanho) recv=${a.length} exp=${b.length} — verifique se META_APP_SECRET do Railway = App Secret atual da Meta`)
+    return false
+  }
+  const ok = crypto.timingSafeEqual(a, b)
+  if (!ok) console.warn('[whatsapp webhook] assinatura não confere — provável divergência de META_APP_SECRET')
+  return ok
 }
 
 export async function GET(req: Request) {

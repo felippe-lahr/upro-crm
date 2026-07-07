@@ -61,6 +61,28 @@ export function ConversationThread({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Atualização em tempo real: busca mensagens novas a cada 2s (sem recarregar a página).
+  // O envio persiste no banco na hora, então a lista do servidor é a fonte da verdade.
+  useEffect(() => {
+    let active = true
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/conversations/messages?contactId=${contact.id}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (!active || !Array.isArray(data.messages)) return
+        setMessages((prev) => {
+          const last = prev[prev.length - 1]
+          const srvLast = data.messages[data.messages.length - 1]
+          // Só re-renderiza se algo mudou (contagem ou última mensagem).
+          if (data.messages.length === prev.length && last?.id === srvLast?.id) return prev
+          return data.messages
+        })
+      } catch { /* ignora falhas transitórias */ }
+    }, 2000)
+    return () => { active = false; clearInterval(timer) }
+  }, [contact.id])
+
   async function send() {
     if (!text.trim() || sending) return
     setSending(true)
