@@ -36,10 +36,24 @@ Bot de IA como vendedor para lojas que usam o botão "Comprar no WhatsApp" (a me
 - **Plataforma do 1º cliente (bonitasnaweb.com.br): Tray.** Tem **Tray Commerce API** (OAuth token) → obter produto/preço/estoque/variações de forma confiável (a página bloqueia fetch server-side com 403, então usar a API). Tray também tem link nativo de adicionar ao carrinho (confirmar formato exato na doc na implementação).
 - Pendências para começar: credenciais da Tray API do cliente (consumer_key/secret + code) e confirmar o padrão da URL de carrinho da Tray.
 
-### 3. Disparo em massa (templates)
+### 3. PWA da inbox (app no celular sem App Store)
+Transformar a inbox web num app instalável ("Adicionar à Tela de Início"), resolvendo a objeção "quero um app tipo WhatsApp" sem custo/revisão de loja.
+- **Fase A (rápida):** manifest.json + ícone + tela cheia + service worker (shell) → vira ícone no celular (iOS/Android), abre como app.
+- **Fase B:** **notificações push** de mensagem nova (Web Push API + VAPID; iOS 16.4+ para PWA instalada). Requer armazenar subscription por usuário e disparar push no webhook de mensagem inbound.
+- App nativo iOS (App Store) fica como fase 2 futura, só se houver motivo comercial (marca na loja/escala). Muito mais esforço (conta Apple, revisão, APNs, manutenção).
+
+### 4. Roteamento inteligente + resumo de atendimento
+Bot coleta infos definidas no prompt, classifica e encaminha o resumo da conversa para o destino certo (por setor/produto/etc.).
+- Config por tenant: lista de destinos (rótulo → número WhatsApp / e-mail / API Digisac).
+- Nova tool do bot `encaminhar_atendimento(destino, resumo)`; reaproveita o `ai_summary` já existente.
+- Gatilho: no handoff para humano (marcador `[ESCALAR]`) ou conversa concluída.
+- Entrega: WhatsApp (exige template fora da janela 24h), **e-mail** ou **API da Digisac** (sem template, mais limpo).
+- Caso concreto: cliente que usa Digisac — bot pré-atende e joga o resumo na Digisac.
+
+### 5. Disparo em massa (templates)
 Envio de mensagens em massa via templates aprovados (respeitando janela de 24h e categorias). Depende de templates aprovados na WABA.
 
-### 4. Refresh automático do token de 60 dias do WhatsApp
+### 6. Refresh automático do token de 60 dias do WhatsApp
 Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 
 ## 🔒 Pós-aprovação (checklist de segurança)
