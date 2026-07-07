@@ -56,6 +56,33 @@ async function handleAppointmentPayment(paymentId: string) {
   }
 }
 
+// Pagamento único do plano ANUAL (12x) na conta da plataforma → ativa o tenant.
+// external_reference = tenantId (os pagamentos de agendamento usam "appt:...").
+async function handleSubscriptionPayment(paymentId: string) {
+  const { MercadoPagoConfig, Payment } = await import('mercadopago')
+  const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
+
+  let pay: any
+  try {
+    pay = await new Payment(client).get({ id: paymentId })
+  } catch {
+    // Pagamento não pertence à conta da plataforma (ex.: Pix de agendamento no MP do lojista).
+    return
+  }
+
+  const extRef: string | undefined = pay?.external_reference
+  if (!extRef || extRef.startsWith('appt:')) return // não é um pagamento de plano
+  if (pay.status !== 'approved') return
+
+  const tenant = await globalPrisma.tenant.findUnique({ where: { id: extRef } })
+  if (!tenant || tenant.status === 'active') return // inexistente ou já ativado
+
+  await provisionTenant(extRef)
+  const amount = Number(pay.transaction_amount || 0)
+  if (amount > 0) await generateAffiliateCommission(extRef, amount)
+  console.log('[MP webhook] annual plan activated', { tenantId: extRef, amount })
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function verifyMPSignature(req: Request, body: string): boolean {
   const xSignature = req.headers.get('x-signature')
@@ -122,10 +149,13 @@ export async function POST(req: Request) {
     }
   }
 
-  // Pagamento Pix de sinal de agendamento → confirma a pré-reserva
+  // Pagamento único → pode ser sinal de agendamento (Pix) OU plano anual (12x).
   if (body.type === 'payment' && body.data?.id) {
-    try { await handleAppointmentPayment(String(body.data.id)) }
+    const paymentId = String(body.data.id)
+    try { await handleAppointmentPayment(paymentId) }
     catch (err) { console.error('[MP webhook] appointment payment failed', err) }
+    try { await handleSubscriptionPayment(paymentId) }
+    catch (err) { console.error('[MP webhook] annual plan payment failed', err) }
   }
 
   // Pagamento recorrente mensal da assinatura → comissão do mês

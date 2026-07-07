@@ -24,6 +24,11 @@ Colocar o mesmo bot para atender no Instagram Direct e no Messenger.
 - Meta: novas permissões (`instagram_manage_messages`, `pages_messaging`, `pages_manage_metadata`) + outra rodada de App Review.
 - Esforço: código ~2-4 dias + review Meta. **Fazer só depois da aprovação do WhatsApp** (não abrir duas frentes de review juntas). Fazer IG + Messenger juntos (compartilham a Send API).
 
+### ✅ Billing anual em 12x sem juros (implementado — validar com pagamento real)
+- Mensal: assinatura recorrente (PreApproval) — inalterado.
+- Anual: pagamento único parcelado em até 12x no cartão (API Payment) + ativação via webhook.
+- **Pendente de config na conta MP:** ativar "parcelamento sem juros" (12x) no painel do Mercado Pago para o cliente não pagar juros; senão o MP aplica juros. Testar um pagamento anual real de ponta a ponta.
+
 ### 2. Disparo em massa (templates)
 Envio de mensagens em massa via templates aprovados (respeitando janela de 24h e categorias). Depende de templates aprovados na WABA.
 

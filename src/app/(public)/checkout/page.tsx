@@ -45,6 +45,15 @@ function CheckoutContent() {
     : 0
   const finalPrice = Math.max(1, displayedPrice - couponDiscount)
 
+  // Total anual efetivamente cobrado (com cupom aplicado sobre o valor do ano)
+  const annualBilled = couponStatus?.valid
+    ? Math.max(1, annualTotal - (couponStatus.discount_type === 'percent'
+      ? Math.round(annualTotal * couponStatus.discount_value / 100)
+      : couponStatus.discount_value * 12))
+    : annualTotal
+  // Valor que o Brick deve usar como base (anual à vista para calcular as 12x; mensal recorrente)
+  const brickAmount = (billing === 'annual' ? annualBilled : finalPrice) || 97
+
   // Keep refs in sync (avoid remounting Brick)
   useEffect(() => { billingRef.current = billing }, [billing])
   useEffect(() => { planRef.current = plan }, [plan])
@@ -74,6 +83,10 @@ function CheckoutContent() {
           payerEmail: data.payer?.email,
           payerDocType: data.payer?.identification?.type,
           payerDocNumber: data.payer?.identification?.number,
+          // Parcelamento (usado no plano anual em 12x)
+          installments: data.installments,
+          paymentMethodId: data.payment_method_id,
+          issuerId: data.issuer_id,
         })
       })
       const result = await res.json()
@@ -106,7 +119,7 @@ function CheckoutContent() {
       const bricks = mp.bricks()
       try {
         brickController.current = await bricks.create('cardPayment', 'mp-card-brick', {
-          initialization: { amount: 97, payer: { email: '' } },
+          initialization: { amount: brickAmount, payer: { email: '' } },
           customization: {
             visual: {
               style: {
@@ -118,7 +131,8 @@ function CheckoutContent() {
               },
               texts: { formTitle: 'Dados do cartão', cardholderName: { label: 'Nome no cartão' } }
             },
-            paymentMethods: { maxInstallments: 1 }
+            // Anual: até 12x (sem juros, configurado na conta MP). Mensal: assinatura recorrente, sem parcelas.
+            paymentMethods: { maxInstallments: billing === 'annual' ? 12 : 1 }
           },
           callbacks: {
             onReady: () => setBrickReady(true),
@@ -140,7 +154,15 @@ function CheckoutContent() {
       brickController.current?.unmount?.()
       brickController.current = null
     }
-  }, [handleSubmit])
+    // Remonta ao alternar mensal/anual (muda o número de parcelas do Brick).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleSubmit, billing])
+
+  // Atualiza o valor-base do Brick quando plano/cupom mudam (sem remontar).
+  useEffect(() => {
+    brickController.current?.update?.({ amount: brickAmount })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brickAmount])
 
   async function handleValidateCoupon() {
     if (!couponCode.trim()) return
@@ -162,12 +184,6 @@ function CheckoutContent() {
       setCheckingCoupon(false)
     }
   }
-
-  const annualBilled = couponStatus?.valid
-    ? Math.max(1, annualTotal - (couponStatus.discount_type === 'percent'
-      ? Math.round(annualTotal * couponStatus.discount_value / 100)
-      : couponStatus.discount_value * 12))
-    : annualTotal
 
   const PLAN_INCLUDES = plan === 'pro'
     ? [
@@ -254,11 +270,21 @@ function CheckoutContent() {
               {couponStatus?.valid && (
                 <span className="mb-1 text-base text-faint line-through">R$ {displayedPrice}</span>
               )}
-              <span className="text-4xl font-bold tracking-tight">R$ {finalPrice}</span>
-              <span className="mb-1 text-sm text-muted">/mês</span>
+              {billing === 'annual' ? (
+                <>
+                  <span className="mb-1 text-sm text-muted">12x de</span>
+                  <span className="text-4xl font-bold tracking-tight">R$ {finalPrice}</span>
+                  <span className="mb-1 text-sm font-medium text-brand">sem juros</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-4xl font-bold tracking-tight">R$ {finalPrice}</span>
+                  <span className="mb-1 text-sm text-muted">/mês</span>
+                </>
+              )}
             </div>
             {billing === 'annual' && (
-              <p className="mt-1 text-xs text-muted">Cobrado R$ {annualBilled} uma vez por ano</p>
+              <p className="mt-1 text-xs text-muted">Total R$ {annualBilled} por ano · parcelado no cartão</p>
             )}
 
             {/* Cupom */}

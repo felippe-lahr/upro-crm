@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   const { MercadoPagoConfig, PreApproval } = await import('mercadopago')
   const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
 
-  const { tenantId, couponCode, billing, plan: rawPlan, cardTokenId, payerEmail, payerDocType, payerDocNumber } = await req.json()
+  const { tenantId, couponCode, billing, plan: rawPlan, cardTokenId, payerEmail, payerDocType, payerDocNumber, installments, paymentMethodId, issuerId } = await req.json()
   const plan = rawPlan === 'pro' ? 'pro' : 'basic'
 
   const saasConfig = await globalPrisma.saasConfig.upsert({
@@ -54,6 +54,47 @@ export async function POST(req: Request) {
         data: { uses_count: { increment: 1 } }
       })
     }
+  }
+
+  // ── Plano ANUAL: pagamento único parcelado em até 12x (sem assinatura) ──
+  // O mensal segue como assinatura recorrente (PreApproval) mais abaixo.
+  if (billing === 'annual' && cardTokenId) {
+    const { Payment } = await import('mercadopago')
+    const payment = new Payment(client)
+    const cleanDoc = payerDocNumber ? payerDocNumber.replace(/\D/g, '') : undefined
+    let result: any
+    try {
+      result = await payment.create({
+        body: {
+          transaction_amount: finalPrice, // valor anual (já com desconto/cupom)
+          token: cardTokenId,
+          installments: Math.min(12, Math.max(1, Number(installments) || 12)),
+          payment_method_id: paymentMethodId,
+          ...(issuerId ? { issuer_id: Number(issuerId) } : {}),
+          description: `UProCRM — Plano ${plan === 'pro' ? 'Pro' : 'Básico'} Anual (12x)`,
+          external_reference: tenantId,
+          payer: {
+            email: payerEmail || tenant.email,
+            ...(payerDocType && cleanDoc ? { identification: { type: payerDocType, number: cleanDoc } } : {})
+          }
+        }
+      })
+    } catch (err: any) {
+      const errMsg = err?.message || String(err)
+      console.error('[MP annual payment error]', errMsg, err?.cause ? String(err.cause) : '')
+      return Response.json({ error: errMsg || 'Erro ao processar o pagamento anual' }, { status: 500 })
+    }
+
+    const status = (result as any).status
+    console.log('[MP annual payment]', JSON.stringify({ status, id: (result as any).id, detail: (result as any).status_detail }))
+    // approved → ativa via webhook (payment). in_process/pending → idem. rejected → erro.
+    if (['approved', 'in_process', 'pending', 'authorized'].includes(status)) {
+      return Response.json({ success: true, status, final_price: finalPrice })
+    }
+    return Response.json({
+      error: `Pagamento não aprovado (${(result as any).status_detail || status}). Verifique os dados do cartão.`,
+      status
+    }, { status: 422 })
   }
 
   const preApproval = new PreApproval(client)
