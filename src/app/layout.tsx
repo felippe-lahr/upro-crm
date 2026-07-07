@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Poppins } from "next/font/google";
 import "./globals.css";
@@ -18,7 +18,26 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "UProCRM — CRM para WhatsApp",
   description: "CRM multi-tenant para WhatsApp Business com bot de IA, funil de vendas e disparos.",
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/logo.svg", apple: "/logo.svg" },
+  // Faz o app instalado (iOS) abrir em tela cheia com o nome "UProCRM".
+  appleWebApp: { capable: true, title: "UProCRM", statusBarStyle: "default" },
 };
+
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
+  // Ocupa a área do notch quando aberto como app.
+  viewportFit: "cover",
+};
+
+// Registra o service worker para habilitar a instalação como app (PWA).
+const swRegister = `
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+  });
+}
+`;
 
 // Apply the persisted theme before paint to avoid a flash of the wrong theme.
 const themeScript = `
@@ -40,6 +59,7 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: swRegister }} />
       </head>
       <body
         className={`${poppins.variable} ${geistMono.variable} antialiased`}
