@@ -33,7 +33,8 @@ Colocar o mesmo bot para atender no Instagram Direct e no Messenger.
 Bot de IA como vendedor para lojas que usam o botão "Comprar no WhatsApp" (a mensagem já chega com nome do produto + link).
 - **Fase A — Bot vendedor por contexto:** detectar o link do produto na mensagem, obter nome/preço/estoque (via API da plataforma ou extração da página), injetar no contexto do bot + prompt de vendas; taggear o produto de interesse no CRM/funil.
 - **Fase B — Carrinho pré-preenchido:** montar a URL "adicionar ao carrinho" da plataforma (padrão varia: Loja Integrada `/carrinho/adicionar/{id}`, Nuvemshop `/comprar/{id}`, Tray `?add_to_cart=`, WooCommerce `?add-to-cart=`, VTEX `/checkout/cart/add?sku=`, Shopify `/cart/{variant}:1`). Bot manda o link e o cliente finaliza a compra na própria loja (sem integrar pagamento).
-- **Definir:** qual plataforma o cliente usa (ex.: bonitasnaweb.com.br) e se tem API/token (mais robusto — o site pode bloquear fetch server-side com 403).
+- **Plataforma do 1º cliente (bonitasnaweb.com.br): Tray.** Tem **Tray Commerce API** (OAuth token) → obter produto/preço/estoque/variações de forma confiável (a página bloqueia fetch server-side com 403, então usar a API). Tray também tem link nativo de adicionar ao carrinho (confirmar formato exato na doc na implementação).
+- Pendências para começar: credenciais da Tray API do cliente (consumer_key/secret + code) e confirmar o padrão da URL de carrinho da Tray.
 
 ### 3. Disparo em massa (templates)
 Envio de mensagens em massa via templates aprovados (respeitando janela de 24h e categorias). Depende de templates aprovados na WABA.
