@@ -12,6 +12,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const token = url.searchParams.get('token')
   const email = url.searchParams.get('email')
+  // Contas de cliente real: ative com &noseed=1 para NÃO popular dados de demonstração.
+  const noSeed = ['1', 'true'].includes((url.searchParams.get('noseed') || '').toLowerCase())
 
   if (!token || token !== process.env.NEXTAUTH_SECRET) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
@@ -56,8 +58,8 @@ export async function GET(req: Request) {
   })
   steps.activated = true
 
-  // 3. Popular com dados de demonstração
-  if (steps.schema === 'ok') {
+  // 3. Popular com dados de demonstração (pulado em contas reais com ?noseed=1)
+  if (steps.schema === 'ok' && !noSeed) {
     try {
       const db = getTenantPrisma(schemaName)
       await seedDemoData(db)
