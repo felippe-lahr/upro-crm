@@ -26,14 +26,16 @@ export interface PushPayload {
  * Envia uma notificação push para todos os dispositivos inscritos de um tenant.
  * Best-effort: falhas não quebram o fluxo; inscrições inválidas (410/404) são removidas.
  */
-export async function sendPushToTenant(tenantId: string, payload: PushPayload) {
+export async function sendPushToTenant(tenantId: string, payload: PushPayload): Promise<{ configured: boolean; subs: number; sent: number; errors: string[] }> {
   const webpush = getWebPush()
-  if (!webpush) return
+  if (!webpush) return { configured: false, subs: 0, sent: 0, errors: ['VAPID não configurado no servidor'] }
 
   const subs = await globalPrisma.pushSubscription.findMany({ where: { tenant_id: tenantId } })
-  if (subs.length === 0) return
+  if (subs.length === 0) return { configured: true, subs: 0, sent: 0, errors: [] }
 
   const data = JSON.stringify(payload)
+  let sent = 0
+  const errors: string[] = []
 
   await Promise.all(
     subs.map(async (s: any) => {
@@ -42,15 +44,19 @@ export async function sendPushToTenant(tenantId: string, payload: PushPayload) {
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
           data
         )
+        sent++
       } catch (err: any) {
-        // Inscrição expirada/removida no dispositivo → limpa do banco.
         const code = err?.statusCode
         if (code === 404 || code === 410) {
           await globalPrisma.pushSubscription.delete({ where: { endpoint: s.endpoint } }).catch(() => {})
+          errors.push(`sub removida (${code})`)
         } else {
-          console.error('[push] send failed', code || err?.message || err)
+          const m = `${code || ''} ${err?.body || err?.message || err}`.trim()
+          console.error('[push] send failed', m)
+          errors.push(m)
         }
       }
     })
   )
+  return { configured: true, subs: subs.length, sent, errors }
 }
