@@ -43,11 +43,11 @@ export default async function FunnelPage() {
   const lossReasons = Array.isArray(tenant?.loss_reasons) ? (tenant!.loss_reasons as string[]) : []
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-fg">Funil de Vendas</h1>
         <p className="mt-1 text-sm text-muted">
-          Arraste os contatos entre os estágios para acompanhar o pipeline.
+          Arraste os cards ou use o botão de mover para acompanhar o pipeline.
         </p>
       </div>
 

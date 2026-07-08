@@ -351,7 +351,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl p-8">
+    <div className="max-w-2xl p-4 sm:p-8">
       <h1 className="mb-8 text-2xl font-bold text-fg">Configurações</h1>
 
       {/* Account */}

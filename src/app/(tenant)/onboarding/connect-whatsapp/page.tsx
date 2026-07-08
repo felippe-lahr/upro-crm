@@ -114,7 +114,7 @@ export default function ConnectWhatsAppPage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-2xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-fg">Conectar WhatsApp Business</h1>
         <p className="mt-1 text-muted">

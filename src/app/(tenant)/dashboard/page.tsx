@@ -63,7 +63,7 @@ export default async function DashboardPage() {
     n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-fg">
           Bem-vindo, {String(user?.name || '').split(' ')[0]}!
@@ -73,7 +73,7 @@ export default async function DashboardPage() {
 
       {/* Alerts */}
       {!tenant?.whatsapp_connected && (
-        <div className="mb-6 flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-amber-400">WhatsApp não conectado</p>
             <p className="mt-0.5 text-xs text-amber-500/80">
@@ -82,7 +82,7 @@ export default async function DashboardPage() {
           </div>
           <Link
             href="/onboarding/connect-whatsapp"
-            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600"
+            className="rounded-lg bg-amber-500 px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-amber-600"
           >
             Conectar agora
           </Link>
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
       )}
 
       {/* Stats */}
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3">
         <StatCard label="Contatos" value={String(stats.contacts)} icon="👥" />
         <StatCard label="Mensagens hoje" value={String(stats.messagesToday)} icon="💬" />
         <StatCard label="Conversas abertas" value={String(stats.openConversations)} icon="🔔" />
@@ -132,12 +132,12 @@ function StatCard({
   accent?: boolean
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm text-muted">{label}</span>
-        <span className="text-2xl">{icon}</span>
+    <div className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="truncate text-xs text-muted sm:text-sm">{label}</span>
+        <span className="text-xl sm:text-2xl">{icon}</span>
       </div>
-      <div className={`text-3xl font-bold ${accent ? 'text-brand' : 'text-fg'}`}>
+      <div className={`text-2xl font-bold sm:text-3xl ${accent ? 'text-brand' : 'text-fg'}`}>
         {value}
       </div>
     </div>

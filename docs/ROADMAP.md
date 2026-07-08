@@ -41,7 +41,11 @@ O app era desktop-first; passada para funcionar bem no celular (o atendente usa 
 - ✅ Shell responsivo: sidebar vira drawer com hambúrguer (animado); conteúdo full-width; item ativo destacado.
 - ✅ Conversas: sem overflow horizontal; cabeçalho compacto (status vira bolinhas no mobile); barra global oculta na conversa aberta (sem gap); campo de mensagem 16px (sem zoom iOS) + botão Enviar full-width abaixo.
 - ✅ Funil: botão "mover" em cada card (tap-to-move) além do drag no desktop.
-- 🔜 Falta polir: Agenda (dia/mês) e Dashboard (cards em 1 coluna) no mobile; áreas de toque/safe-area.
+- ✅ Agenda: barra de ações quebra linha; cards com ações em linha própria.
+- ✅ Dashboard: cards 2 colunas no mobile; alerta empilha.
+- ✅ Contatos: tabela com rolagem horizontal; padding reduzido no mobile.
+- ✅ Padding responsivo (p-4 sm:p-8) em todas as telas do painel.
+- 🔜 Opcional futuro: áreas de toque maiores, safe-area no notch.
 
 ### 3. PWA da inbox (app no celular sem App Store)
 Transformar a inbox web num app instalável ("Adicionar à Tela de Início"), resolvendo a objeção "quero um app tipo WhatsApp" sem custo/revisão de loja.

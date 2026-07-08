@@ -49,7 +49,7 @@ export default async function ConversationsPage() {
   const allTags = Array.from(new Set(conversations.flatMap((c) => c.tags))).sort()
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-fg">Conversas</h1>
       </div>

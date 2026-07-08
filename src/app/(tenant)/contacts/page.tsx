@@ -28,8 +28,8 @@ export default async function ContactsPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="p-4 sm:p-8">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-fg">Contatos</h1>
           <p className="mt-1 text-sm text-muted">
@@ -49,8 +49,8 @@ export default async function ContactsPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-          <table className="w-full">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
+          <table className="w-full min-w-[560px]">
             <thead>
               <tr className="border-b border-line bg-surface2">
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Nome</th>
