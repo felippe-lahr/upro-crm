@@ -72,13 +72,13 @@ export function AgendaClient() {
   const isToday = ymd(day) === ymd(new Date())
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
           <p className="mt-1 text-sm text-muted">Gerencie seus agendamentos.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <div className="inline-flex rounded-lg border border-line p-0.5 text-sm">
             <button onClick={() => setView('day')} className={`rounded-md px-3 py-1.5 ${view === 'day' ? 'bg-brand text-white' : 'text-muted hover:text-fg'}`}>Dia</button>
             <button onClick={() => setView('month')} className={`rounded-md px-3 py-1.5 ${view === 'month' ? 'bg-brand text-white' : 'text-muted hover:text-fg'}`}>Mês</button>
@@ -86,7 +86,7 @@ export function AgendaClient() {
           <button onClick={() => setShowConfig(!showConfig)} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm text-muted hover:text-fg">
             <Settings className="h-4 w-4" /> Configurar
           </button>
-          <button onClick={() => { setShowForm(!showForm); setError('') }} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-600">
+          <button onClick={() => { setShowForm(!showForm); setError('') }} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-600 sm:flex-none">
             <Plus className="h-4 w-4" /> Novo agendamento
           </button>
         </div>
@@ -136,25 +136,27 @@ export function AgendaClient() {
               const st = STATUS[a.status] || STATUS.scheduled
               const who = a.customer_name || a.contact?.name || a.customer_phone || a.contact?.phone || 'Cliente'
               return (
-                <div key={a.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
-                  <div className="w-16 text-center">
-                    <div className="text-lg font-bold text-fg">{hm(a.start_at)}</div>
-                    <div className="text-[10px] text-faint">{hm(a.end_at)}</div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-fg">{who}</span>
-                      {a.booked_by && <span className="text-xs text-faint">· agendado por {a.booked_by}</span>}
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${st.cls}`}>{st.label}</span>
+                <div key={a.id} className="flex flex-wrap items-start gap-3 px-4 py-4 sm:gap-4 sm:px-5">
+                  <div className="flex min-w-0 flex-1 gap-3">
+                    <div className="w-14 flex-shrink-0 text-center sm:w-16">
+                      <div className="text-lg font-bold text-fg">{hm(a.start_at)}</div>
+                      <div className="text-[10px] text-faint">{hm(a.end_at)}</div>
                     </div>
-                    <div className="text-xs text-muted">
-                      {a.service?.name || a.title || 'Agendamento'}
-                      {(a.customer_phone || a.contact?.phone) && <> · {a.customer_phone || a.contact?.phone}</>}
-                      {a.customer_email && <> · {a.customer_email}</>}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-medium text-fg">{who}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${st.cls}`}>{st.label}</span>
+                        {a.booked_by && <span className="w-full text-xs text-faint sm:w-auto">· agendado por {a.booked_by}</span>}
+                      </div>
+                      <div className="mt-0.5 break-words text-xs text-muted">
+                        {a.service?.name || a.title || 'Agendamento'}
+                        {(a.customer_phone || a.contact?.phone) && <> · {a.customer_phone || a.contact?.phone}</>}
+                        {a.customer_email && <> · {a.customer_email}</>}
+                      </div>
+                      {a.notes && <div className="mt-0.5 text-xs text-faint">{a.notes}</div>}
                     </div>
-                    {a.notes && <div className="mt-0.5 text-xs text-faint">{a.notes}</div>}
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto">
                     {a.status !== 'confirmed' && a.status !== 'cancelled' && (
                       <button onClick={() => patch(a.id, { status: 'confirmed' })} title="Confirmar" className="rounded-lg border border-line p-1.5 text-muted hover:text-green-600"><Check className="h-4 w-4" /></button>
                     )}
