@@ -37,6 +37,10 @@ export function AppShell({
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
+  // Numa conversa aberta, o próprio cabeçalho do contato (com "voltar") já fica no
+  // topo — esconde a barra global no mobile para não empilhar duas barras.
+  const hideMobileTopBar = /^\/conversations\/[^/]+$/.test(pathname || '')
+
   const nav: NavDef[] = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/funnel', icon: KanbanSquare, label: 'Funil de Vendas' },
@@ -120,8 +124,8 @@ export function AppShell({
 
       {/* Conteúdo */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top bar (mobile) */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-surface px-4 py-3 lg:hidden">
+        {/* Top bar (mobile) — oculta numa conversa aberta */}
+        <header className={`sticky top-0 z-30 items-center gap-3 border-b border-line bg-surface px-4 py-3 lg:hidden ${hideMobileTopBar ? 'hidden' : 'flex'}`}>
           <button onClick={() => setOpen(true)} className="rounded-lg p-1.5 text-fg hover:bg-brand/5" aria-label="Abrir menu">
             <Menu className="h-6 w-6" />
           </button>
