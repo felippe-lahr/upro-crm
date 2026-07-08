@@ -90,7 +90,7 @@ export function AppShell({
         <div className="border-b border-line p-6">
           <Link href="/dashboard" className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="UProCRM" className="h-8 w-8 rounded-lg" />
+            <img src="/logo-upro-novo.png" alt="UProCRM" className="h-8 w-8 rounded-lg" />
             <span className="font-bold tracking-tight text-fg">UProCRM</span>
           </Link>
         </div>
@@ -110,7 +110,7 @@ export function AppShell({
             <div className="flex items-center justify-between border-b border-line p-4">
               <Link href="/dashboard" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.svg" alt="UProCRM" className="h-8 w-8 rounded-lg" />
+                <img src="/logo-upro-novo.png" alt="UProCRM" className="h-8 w-8 rounded-lg" />
                 <span className="font-bold tracking-tight text-fg">UProCRM</span>
               </Link>
               <button onClick={() => setOpen(false)} className="rounded-lg p-2 text-muted hover:bg-brand/5 hover:text-brand" aria-label="Fechar menu">
@@ -131,7 +131,7 @@ export function AppShell({
           </button>
           <Link href="/dashboard" className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="UProCRM" className="h-7 w-7 rounded-lg" />
+            <img src="/logo-upro-novo.png" alt="UProCRM" className="h-7 w-7 rounded-lg" />
             <span className="font-bold tracking-tight text-fg">UProCRM</span>
           </Link>
           {unread > 0 && (

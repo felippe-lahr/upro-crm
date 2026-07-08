@@ -19,8 +19,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'UProCRM'
   const options = {
     body: data.body || 'Nova mensagem',
-    icon: '/logo.svg',
-    badge: '/logo.svg',
+    icon: '/logo-upro-novo.png',
+    badge: '/logo-upro-novo.png',
     tag: data.tag || undefined,
     data: { url: data.url || '/conversations' }
   }

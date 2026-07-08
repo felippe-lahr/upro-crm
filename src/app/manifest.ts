@@ -15,8 +15,8 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: '#ffffff',
     theme_color: '#2563eb',
     icons: [
-      { src: '/logo.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-      { src: '/logo.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' }
+      { src: '/logo-upro-novo.png', sizes: '550x545', type: 'image/png', purpose: 'any' },
+      { src: '/logo-upro-novo.png', sizes: '550x545', type: 'image/png', purpose: 'maskable' }
     ]
   }
 }
