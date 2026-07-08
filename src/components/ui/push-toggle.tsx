@@ -53,6 +53,23 @@ export function PushToggle() {
     }
   }
 
+  async function sendTest() {
+    setBusy(true); setMsg('')
+    try {
+      const res = await fetch('/api/push/test')
+      const r = await res.json().catch(() => ({}))
+      if (r.configured === false) setMsg('Servidor sem chaves VAPID. Verifique as variáveis no Railway.')
+      else if (r.subs === 0) setMsg('Nenhum dispositivo inscrito. Desative e ative novamente.')
+      else if (r.sent > 0) setMsg(`Teste enviado a ${r.sent} dispositivo(s). Deve chegar em instantes.`)
+      else setMsg('Falha: ' + (r.errors?.join('; ') || 'erro desconhecido'))
+    } catch {
+      setMsg('Erro ao enviar teste.')
+    } finally {
+      setBusy(false)
+      setTimeout(() => setMsg(''), 8000)
+    }
+  }
+
   async function disable() {
     setBusy(true); setMsg('')
     try {
@@ -85,6 +102,7 @@ export function PushToggle() {
       ) : enabled ? (
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-3 py-1 text-sm font-medium text-green-600">● Ativadas</span>
+          <button onClick={sendTest} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-fg hover:border-brand hover:text-brand disabled:opacity-50">Enviar teste</button>
           <button onClick={disable} disabled={busy} className="text-sm text-muted hover:text-red-500">Desativar</button>
         </div>
       ) : (
