@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { MoveRight } from 'lucide-react'
 import { FUNNEL_STAGES, LOST_STAGE_ID, type Stage } from '@/lib/funnel'
 
 export interface LeadCard {
@@ -52,6 +53,17 @@ export function KanbanBoard({
   const [activeTags, setActiveTags] = useState<string[]>([])
   const [pendingLost, setPendingLost] = useState<string | null>(null) // contactId aguardando motivo
   const [config, setConfig] = useState(false)
+  const [menuId, setMenuId] = useState<string | null>(null) // card com o menu "mover" aberto (mobile)
+
+  // Move via botão (toque) — respeita o fluxo de motivo de perda.
+  function requestMove(contactId: string, stage: string) {
+    setMenuId(null)
+    if (stage === LOST_STAGE_ID && lossReasons.length > 0) {
+      setPendingLost(contactId)
+      return
+    }
+    moveLead(contactId, stage)
+  }
 
   const allTags = useMemo(
     () => Array.from(new Set(leads.flatMap((l) => l.tags))).sort(),
@@ -216,7 +228,31 @@ export function KanbanBoard({
                     <span className="truncate text-sm font-medium text-fg">
                       {lead.name || lead.phone}
                     </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setMenuId(menuId === lead.id ? null : lead.id) }}
+                      className="ml-auto flex-shrink-0 rounded-md p-1.5 text-faint transition-colors hover:bg-brand/5 hover:text-brand"
+                      title="Mover para outra etapa"
+                      aria-label="Mover"
+                    >
+                      <MoveRight className="h-4 w-4" />
+                    </button>
                   </div>
+
+                  {menuId === lead.id && (
+                    <div className="mt-2 space-y-1 rounded-lg border border-line bg-background p-1.5">
+                      <p className="px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-faint">Mover para</p>
+                      {stages.filter((s) => s.id !== lead.stage).map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={(e) => { e.stopPropagation(); requestMove(lead.id, s.id) }}
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-fg hover:bg-brand/5"
+                        >
+                          <span className={`h-2 w-2 flex-shrink-0 rounded-full ${s.color}`} />
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {lead.lastMessage && (
                     <p className="truncate pl-9 text-xs text-faint">{lead.lastMessage}</p>
                   )}
@@ -248,8 +284,8 @@ export function KanbanBoard({
                 </div>
               ))}
               {stageLeads.length === 0 && (
-                <div className="rounded-xl border-2 border-dashed border-line py-4 text-center text-xs text-faint">
-                  Arraste leads aqui
+                <div className="rounded-xl border-2 border-dashed border-line px-2 py-4 text-center text-xs text-faint">
+                  Arraste um lead aqui ou use o botão <MoveRight className="mx-0.5 inline h-3 w-3" /> no card
                 </div>
               )}
             </div>
