@@ -80,7 +80,7 @@ export function AppShell({
   )
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-[100dvh] overflow-hidden bg-background">
       {/* Sidebar (desktop) */}
       <aside className="hidden w-64 flex-shrink-0 flex-col border-r border-line bg-sidebar lg:flex">
         <div className="border-b border-line p-6">
@@ -94,11 +94,15 @@ export function AppShell({
         {Footer}
       </aside>
 
-      {/* Drawer (mobile) */}
-      {open && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col border-r border-line bg-sidebar shadow-xl">
+      {/* Drawer (mobile) — sempre montado para animar o deslize */}
+      <div className={`fixed inset-0 z-40 lg:hidden ${open ? '' : 'pointer-events-none'}`}>
+        <div
+          className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setOpen(false)}
+        />
+        <aside
+          className={`absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col border-r border-line bg-sidebar shadow-xl transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        >
             <div className="flex items-center justify-between border-b border-line p-4">
               <Link href="/dashboard" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -111,9 +115,8 @@ export function AppShell({
             </div>
             {NavList}
             {Footer}
-          </aside>
-        </div>
-      )}
+        </aside>
+      </div>
 
       {/* Conteúdo */}
       <div className="flex min-w-0 flex-1 flex-col">

@@ -168,29 +168,30 @@ export function ConversationThread({
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-full w-full overflow-hidden">
       {/* Thread */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-line bg-surface px-6 py-4">
           <Link href="/conversations" className="text-muted hover:text-fg">←</Link>
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/15 font-medium text-brand">
             {(contact.name || contact.phone)[0].toUpperCase()}
           </div>
-          <div className="flex-1">
-            <div className="text-sm font-semibold text-fg">{contact.name || contact.phone}</div>
-            <div className="text-xs text-faint">{contact.phone}</div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold text-fg">{contact.name || contact.phone}</div>
+            <div className="truncate text-xs text-faint">{contact.phone}</div>
           </div>
-          <div className="flex gap-1">
+          <div className="flex flex-shrink-0 gap-1">
             {STATUSES.map((s) => (
               <button
                 key={s.id}
                 onClick={() => changeStatus(s.id)}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                title={s.label}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:py-1 ${
                   status === s.id ? 'bg-surface2 text-fg' : 'text-faint hover:text-muted'
                 }`}
               >
                 <span className={`h-2 w-2 rounded-full ${s.color}`} />
-                {s.label}
+                <span className="hidden sm:inline">{s.label}</span>
               </button>
             ))}
           </div>
@@ -206,7 +207,7 @@ export function ConversationThread({
               className={`flex ${m.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm ${
+                className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm sm:max-w-[70%] ${
                   m.direction === 'outbound'
                     ? 'bg-brand-600 text-white'
                     : 'border border-line bg-surface text-fg'
