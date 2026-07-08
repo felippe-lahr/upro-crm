@@ -36,6 +36,13 @@ Bot de IA como vendedor para lojas que usam o botão "Comprar no WhatsApp" (a me
 - **Plataforma do 1º cliente (bonitasnaweb.com.br): Tray.** Tem **Tray Commerce API** (OAuth token) → obter produto/preço/estoque/variações de forma confiável (a página bloqueia fetch server-side com 403, então usar a API). Tray também tem link nativo de adicionar ao carrinho (confirmar formato exato na doc na implementação).
 - Pendências para começar: credenciais da Tray API do cliente (consumer_key/secret + code) e confirmar o padrão da URL de carrinho da Tray.
 
+### Responsividade mobile (em andamento)
+O app era desktop-first; passada para funcionar bem no celular (o atendente usa via PWA).
+- ✅ Shell responsivo: sidebar vira drawer com hambúrguer (animado); conteúdo full-width; item ativo destacado.
+- ✅ Conversas: sem overflow horizontal; cabeçalho compacto (status vira bolinhas no mobile); barra global oculta na conversa aberta (sem gap); campo de mensagem 16px (sem zoom iOS) + botão Enviar full-width abaixo.
+- ✅ Funil: botão "mover" em cada card (tap-to-move) além do drag no desktop.
+- 🔜 Falta polir: Agenda (dia/mês) e Dashboard (cards em 1 coluna) no mobile; áreas de toque/safe-area.
+
 ### 3. PWA da inbox (app no celular sem App Store)
 Transformar a inbox web num app instalável ("Adicionar à Tela de Início"), resolvendo a objeção "quero um app tipo WhatsApp" sem custo/revisão de loja.
 - **Fase A (feita ✅):** manifest (`app/manifest.ts`) + meta tags de app (appleWebApp) + service worker (`public/sw.js`) → inbox instalável no celular (iOS/Android), abre em tela cheia. start_url `/conversations`. Ícone atual = logo.svg (no iOS, adicionar um PNG 180/192/512 depois deixa o ícone perfeito).
