@@ -5,6 +5,10 @@ import {
 } from 'lucide-react'
 import { CrmPreview } from '@/components/landing/crm-preview'
 import { RefCapture } from '@/components/landing/ref-capture'
+import { globalPrisma } from '@/lib/prisma-tenant'
+
+// Renderiza por request para refletir o preço atual do admin (não prerender no build).
+export const dynamic = 'force-dynamic'
 
 const FEATURES = [
   { icon: MessageSquare, title: 'Inbox compartilhada', desc: 'Todas as conversas do WhatsApp num só lugar. Status, histórico completo e respostas em equipe sem pisar no pé um do outro.' },
@@ -29,7 +33,14 @@ const FAQ = [
   { q: 'Quais formas de pagamento?', a: 'Pix, boleto ou cartão de crédito via Mercado Pago, com checkout transparente direto na plataforma.' }
 ]
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Preços vêm do painel admin (SaasConfig), não fixos no código.
+  const cfg = await globalPrisma.saasConfig
+    .upsert({ where: { id: 'singleton' }, create: { id: 'singleton' }, update: {} })
+    .catch(() => null)
+  const priceBasic = Number(cfg?.price_basic ?? 97)
+  const pricePro = Number(cfg?.price_pro ?? 197)
+
   return (
     <div className="min-h-screen bg-background text-fg">
       <RefCapture />
@@ -163,7 +174,7 @@ export default function LandingPage() {
             <div className="rounded-2xl border border-line bg-surface p-8">
               <div className="text-sm font-semibold text-muted">Básico</div>
               <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-extrabold">R$ 97</span>
+                <span className="text-4xl font-extrabold">R$ {priceBasic}</span>
                 <span className="text-sm text-muted">/mês</span>
               </div>
               <p className="mt-2 text-sm text-muted">Para começar a organizar seu atendimento.</p>
@@ -183,7 +194,7 @@ export default function LandingPage() {
               <div className="absolute -top-3 left-8 rounded-full bg-brand px-3 py-1 text-xs font-bold text-white">MAIS POPULAR</div>
               <div className="text-sm font-semibold text-brand">Pro</div>
               <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-extrabold">R$ 197</span>
+                <span className="text-4xl font-extrabold">R$ {pricePro}</span>
                 <span className="text-sm text-muted">/mês</span>
               </div>
               <p className="mt-2 text-sm text-muted">Atendimento automático com IA de verdade.</p>
