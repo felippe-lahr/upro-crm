@@ -248,31 +248,34 @@ export function ConversationThread({
               ))}
             </div>
           )}
-          <div className="flex items-end gap-2">
-            <button
-              onClick={() => setShowQuick((s) => !s)}
-              title="Respostas rápidas"
-              className="rounded-lg bg-surface2 px-3 py-2 text-fg hover:bg-line"
-            >
-              ⚡
-            </button>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  send()
-                }
-              }}
-              rows={1}
-              placeholder="Digite uma mensagem..."
-              className="flex-1 resize-none rounded-xl border border-line bg-background px-4 py-2 text-sm text-fg focus:border-brand focus:outline-none"
-            />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex flex-1 items-end gap-2">
+              <button
+                onClick={() => setShowQuick((s) => !s)}
+                title="Respostas rápidas"
+                className="flex-shrink-0 rounded-lg bg-surface2 px-3 py-2 text-fg hover:bg-line"
+              >
+                ⚡
+              </button>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    send()
+                  }
+                }}
+                rows={1}
+                placeholder="Digite uma mensagem..."
+                // text-base (16px) no mobile evita o zoom automático do iOS ao focar.
+                className="min-w-0 flex-1 resize-none rounded-xl border border-line bg-background px-4 py-2 text-base text-fg focus:border-brand focus:outline-none sm:text-sm"
+              />
+            </div>
             <button
               onClick={send}
               disabled={sending || !text.trim()}
-              className="rounded-xl bg-brand px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-40"
+              className="w-full rounded-xl bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-40 sm:w-auto sm:py-2"
             >
               {sending ? '...' : 'Enviar'}
             </button>
