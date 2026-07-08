@@ -14,7 +14,10 @@ export async function GET() {
     create: { id: 'singleton' },
     update: {}
   })
-  return Response.json(config)
+  // Preço nunca pode ser cacheado (navegador/PWA/CDN) — sempre valor atual.
+  return Response.json(config, {
+    headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' }
+  })
 }
 
 export async function PATCH(req: Request) {
