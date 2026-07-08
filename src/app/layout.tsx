@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   title: "UProCRM — CRM para WhatsApp",
   description: "CRM multi-tenant para WhatsApp Business com bot de IA, funil de vendas e disparos.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/logo-upro-novo.png", apple: "/logo-upro-novo.png" },
+  // Favicon/ícones vêm de app/favicon.ico, app/icon.png e app/apple-icon.png (convenção do Next).
   // Faz o app instalado (iOS) abrir em tela cheia com o nome "UProCRM".
   appleWebApp: { capable: true, title: "UProCRM", statusBarStyle: "default" },
 };
