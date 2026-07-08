@@ -106,6 +106,20 @@ model AppointmentPayment {
   @@map("appointment_payments")
 }
 
+// Inscrição de notificação push (Web Push) de um usuário/dispositivo.
+model PushSubscription {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id  String   @db.Uuid
+  user_email String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  created_at DateTime @default(now())
+
+  @@index([tenant_id])
+  @@map("push_subscriptions")
+}
+
 model TenantUser {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenant_id     String   @db.Uuid

@@ -4,6 +4,7 @@ import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { processBotResponse, processMenuBotResponse, extractContactInfo, sendWhatsAppMessage, type MenuOption } from '@/lib/bot'
 import { transcribeWhatsAppAudio } from '@/lib/transcribe'
 import { sendAppointmentEmail } from '@/lib/email'
+import { sendPushToTenant } from '@/lib/push'
 import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string | null): boolean {
@@ -156,6 +157,14 @@ async function processIncomingMessage(
       timestamp: new Date(parseInt(message.timestamp) * 1000)
     }
   })
+
+  // Notificação push para os atendentes do tenant (best-effort).
+  sendPushToTenant(tenant.id, {
+    title: dbContact.name || dbContact.phone || 'Nova mensagem',
+    body: (resolvedText || storedContent || 'Nova mensagem').slice(0, 140),
+    url: `/conversations/${dbContact.id}`,
+    tag: dbContact.id
+  }).catch(() => {})
 
   // Resposta a um lembrete de agendamento (botões Confirmar/Cancelar/Remarcar)
   const buttonId: string | undefined = message?.interactive?.button_reply?.id

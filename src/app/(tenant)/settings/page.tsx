@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { PushToggle } from '@/components/ui/push-toggle'
 
 interface MenuOption {
   id?: string
@@ -504,6 +505,9 @@ export default function SettingsPage() {
 
         <OwnNumberConnect email={settings.email} />
       </section>
+
+      {/* Notificações push (mobile) */}
+      <PushToggle />
 
       {/* Mercado Pago (recebe os sinais de agendamento) */}
       <MercadoPagoConnect connected={!!(settings as any)?.mp_connected} />
