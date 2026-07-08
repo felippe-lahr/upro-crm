@@ -26,8 +26,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#2563eb",
-  // Ocupa a área do notch quando aberto como app.
-  viewportFit: "cover",
+  // "auto" mantém o conteúdo dentro da área segura do iOS (sem cortar as bordas
+  // no PWA instalado). "cover" empurrava o conteúdo para baixo do notch/cantos.
+  viewportFit: "auto",
 };
 
 // Registra o service worker para habilitar a instalação como app (PWA).
