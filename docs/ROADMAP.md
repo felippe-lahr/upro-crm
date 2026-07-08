@@ -50,7 +50,7 @@ O app era desktop-first; passada para funcionar bem no celular (o atendente usa 
 ### 3. PWA da inbox (app no celular sem App Store)
 Transformar a inbox web num app instalável ("Adicionar à Tela de Início"), resolvendo a objeção "quero um app tipo WhatsApp" sem custo/revisão de loja.
 - **Fase A (feita ✅):** manifest (`app/manifest.ts`) + meta tags de app (appleWebApp) + service worker (`public/sw.js`) → inbox instalável no celular (iOS/Android), abre em tela cheia. start_url `/conversations`. Ícone atual = logo.svg (no iOS, adicionar um PNG 180/192/512 depois deixa o ícone perfeito).
-- **Fase B (próxima):** **notificações push** de mensagem nova (Web Push API + VAPID; iOS 16.4+ para PWA instalada). Requer armazenar subscription por usuário e disparar push no webhook de mensagem inbound.
+- **Fase B (feita ✅):** **notificações push** de mensagem nova (Web Push + VAPID). Modelo PushSubscription; /api/push/{subscribe,unsubscribe,test}; lib/push.ts; service worker push+notificationclick; toggle "Ativar notificações" + "Enviar teste" em Configurações; webhook dispara push a cada inbound. VAPID em env (4 vars) no Railway. Testado no iPhone (PWA instalado). Obs.: chaves VAPID precisam de .trim() (quebra de linha ao colar).
 - App nativo iOS (App Store) fica como fase 2 futura, só se houver motivo comercial (marca na loja/escala). Muito mais esforço (conta Apple, revisão, APNs, manutenção).
 
 ### 4. Roteamento inteligente + resumo de atendimento
