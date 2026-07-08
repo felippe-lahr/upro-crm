@@ -7,11 +7,9 @@ function getWebPush() {
   if (!publicKey || !privateKey) return null
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const webpush = require('web-push')
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:contato@uprocrm.com.br',
-    publicKey,
-    privateKey
-  )
+  const subject = process.env.VAPID_SUBJECT || 'mailto:contato@uprocrm.com.br'
+  // setVapidDetails lança se subject/chaves forem inválidos — propaga para diagnóstico.
+  webpush.setVapidDetails(subject, publicKey.trim(), privateKey.trim())
   return webpush
 }
 
