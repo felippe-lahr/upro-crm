@@ -72,6 +72,10 @@ Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 - Rotacionar `NEXTAUTH_SECRET`, `ENCRYPTION_KEY` e `META_APP_SECRET` no Railway (apareceram em URLs/prints)
 - Trocar senhas de contas de teste
 
+## ✅ Melhorias recentes do bot / UX
+- Indicador "digitando…" no WhatsApp antes do bot responder (Cloud API typing_indicator + status:read → marca como lida). Vale para bot IA e menu bot.
+- Prompt de bot por cliente (ex.: Cinthia Claro Arquitetura) — configurado via campo bot_prompt no tenant.
+
 ## 💡 Backlog / ideias
 - Preview da foto de perfil atual do WhatsApp dentro de `/settings`
 - Two-track: SaaS self-service (Tech Provider) + projetos customizados número próprio (já suportado, manter)
