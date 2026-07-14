@@ -43,9 +43,9 @@ export default function LoginPage() {
           <Link href="/" className="inline-flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-upro-novo.png" alt="UProCRM" className="h-8 w-8 rounded-lg" />
-            <span className="text-lg font-bold text-white">UProCRM</span>
+            <span className="text-lg font-bold text-fg">UProCRM</span>
           </Link>
-          <h1 className="mb-1 mt-6 text-2xl font-bold text-white">Entrar na sua conta</h1>
+          <h1 className="mb-1 mt-6 text-2xl font-bold text-fg">Entrar na sua conta</h1>
           <p className="text-sm text-muted">
             Não tem conta?{' '}
             <Link href="/signup" className="text-brand hover:underline">

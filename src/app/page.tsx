@@ -4,6 +4,7 @@ import {
   ArrowRight, Check, Plug2, Users, Workflow
 } from 'lucide-react'
 import { CrmPreview } from '@/components/landing/crm-preview'
+import { PhonePreview } from '@/components/landing/phone-preview'
 import { RefCapture } from '@/components/landing/ref-capture'
 import { globalPrisma } from '@/lib/prisma-tenant'
 
@@ -112,6 +113,11 @@ export default async function LandingPage() {
               <div className="relative">
                 <CrmPreview />
               </div>
+            </div>
+
+            {/* iPhone com o PWA, sobrepondo o canto do desktop */}
+            <div className="pointer-events-none absolute -bottom-8 -right-2 hidden sm:block lg:-right-10">
+              <PhonePreview />
             </div>
           </div>
         </div>
