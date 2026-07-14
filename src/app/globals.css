@@ -81,6 +81,28 @@ body {
 .animate-pulse-ring { animation: pulse-ring 2s infinite; }
 .typing-dot { animation: typing-dot 1.4s infinite; }
 
+/* Carrossel de telas dentro do iPhone (4 slides: S1, S2, S3, S1 → loop sem salto). */
+@keyframes screen-carousel {
+  0%, 24%   { transform: translateY(0%); }
+  32%, 57%  { transform: translateY(-100%); }
+  65%, 90%  { transform: translateY(-200%); }
+  98%, 100% { transform: translateY(-300%); }
+}
+.animate-screens { animation: screen-carousel 15s cubic-bezier(0.7, 0, 0.2, 1) infinite; }
+
+/* Reflexo de luz cruzando a tela do celular. */
+@keyframes glare-sweep {
+  0%   { transform: translateX(-120%) rotate(12deg); opacity: 0; }
+  12%  { opacity: 0.35; }
+  30%  { transform: translateX(120%) rotate(12deg); opacity: 0; }
+  100% { transform: translateX(120%) rotate(12deg); opacity: 0; }
+}
+.animate-glare { animation: glare-sweep 7s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-screens, .animate-glare, .animate-float-slow, .animate-beam-sweep { animation: none; }
+}
+
 /* Themed scrollbars for dark mode */
 .dark ::-webkit-scrollbar {
   width: 10px;
