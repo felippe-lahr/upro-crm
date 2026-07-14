@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
-import { processBotResponse, processMenuBotResponse, extractContactInfo, sendWhatsAppMessage, type MenuOption } from '@/lib/bot'
+import { processBotResponse, processMenuBotResponse, extractContactInfo, sendWhatsAppMessage, sendTypingIndicator, type MenuOption } from '@/lib/bot'
 import { transcribeWhatsAppAudio } from '@/lib/transcribe'
 import { sendAppointmentEmail } from '@/lib/email'
 import { sendPushToTenant } from '@/lib/push'
@@ -184,6 +184,8 @@ async function processIncomingMessage(
   // Bot com IA: exclusivo do plano Pro
   if (tenant.plan === 'pro' && tenant.bot_enabled) {
     if (resolvedText) {
+      // Mostra "digitando…" enquanto a IA elabora a resposta (e marca como lida).
+      await sendTypingIndicator(tenant, message.id).catch(() => {})
       try {
         await processBotResponse(tenant, resolvedText, dbContact, message.from)
       } catch (err: any) {
@@ -200,6 +202,7 @@ async function processIncomingMessage(
 
   // Menu bot: disponível nos demais planos
   if (tenant.menu_bot_enabled) {
+    await sendTypingIndicator(tenant, message.id).catch(() => {})
     await processMenuBotResponse(
       {
         schema_name: tenant.schema_name,

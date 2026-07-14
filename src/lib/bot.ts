@@ -595,6 +595,33 @@ export async function sendWhatsAppButtons(
   }
 }
 
+/**
+ * Mostra o indicador "digitando…" no WhatsApp do cliente (e marca a mensagem como
+ * lida). O indicador dura até ~25s ou até o bot enviar a resposta. Best-effort.
+ * Requer o id da mensagem recebida (message.id do webhook).
+ */
+export async function sendTypingIndicator(
+  tenant: { phone_number_id: string; whatsapp_token: string },
+  messageId: string
+) {
+  if (!messageId) return
+  try {
+    const token = decrypt(tenant.whatsapp_token)
+    await fetch(`https://graph.facebook.com/v21.0/${tenant.phone_number_id}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: messageId,
+        typing_indicator: { type: 'text' }
+      })
+    })
+  } catch (e) {
+    console.error('[typing] failed', e)
+  }
+}
+
 export async function sendWhatsAppMessage(
   tenant: { phone_number_id: string; whatsapp_token: string },
   to: string,
