@@ -38,25 +38,24 @@ export default async function AdminPage() {
     <div className="min-h-screen bg-background text-fg">
       <div className="border-b border-line bg-surface px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-brand rounded-md flex items-center justify-center">
-            <span className="text-white font-bold text-xs">UP</span>
-          </div>
-          <span className="font-bold text-white">UProCRM Admin</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-upro-novo.png" alt="UProCRM" className="h-7 w-7 rounded-md" />
+          <span className="font-bold text-fg">UProCRM Admin</span>
         </div>
         <span className="text-xs text-faint">Painel do SaaS</span>
       </div>
 
       <div className="p-8 space-y-8">
-        <h1 className="text-2xl font-bold text-white">Dashboard Admin</h1>
+        <h1 className="text-2xl font-bold text-fg">Dashboard Admin</h1>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
             { label: 'MRR', value: `R$ ${stats.mrr.toLocaleString('pt-BR')}`, color: 'text-brand' },
-            { label: 'Total tenants', value: stats.total, color: 'text-white' },
+            { label: 'Total tenants', value: stats.total, color: 'text-fg' },
             { label: 'Ativos', value: stats.active, color: 'text-brand' },
-            { label: 'Pendentes', value: stats.pending, color: 'text-yellow-400' },
-            { label: 'WA conectado', value: stats.connected, color: 'text-white' }
+            { label: 'Pendentes', value: stats.pending, color: 'text-yellow-500' },
+            { label: 'WA conectado', value: stats.connected, color: 'text-fg' }
           ].map(({ label, value, color }) => (
             <div key={label} className="rounded-xl border border-line bg-surface p-4">
               <div className="text-xs text-faint mb-1">{label}</div>
@@ -69,6 +68,7 @@ export default async function AdminPage() {
         <PricingPanel initialConfig={{
           price_basic: Number(saasConfig.price_basic),
           price_pro: Number(saasConfig.price_pro),
+          price_promaster: Number(saasConfig.price_promaster),
           annual_discount: saasConfig.annual_discount
         }} />
 
@@ -81,7 +81,7 @@ export default async function AdminPage() {
         {/* Tenants table */}
         <div className="rounded-2xl border border-line bg-surface overflow-hidden">
           <div className="px-6 py-4 border-b border-line">
-            <h2 className="font-semibold text-white">Todos os tenants</h2>
+            <h2 className="font-semibold text-fg">Todos os tenants</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -94,14 +94,15 @@ export default async function AdminPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1b222c]">
+              <tbody className="divide-y divide-line">
                 {tenants.map((t: any) => (
                   <tr key={t.id} className="hover:bg-surface2 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-white">{t.name}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-fg">{t.name}</td>
                     <td className="px-6 py-4 text-sm text-muted">{t.email}</td>
                     <td className="px-6 py-4">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
-                        t.plan === 'pro' ? 'bg-purple-500/20 text-purple-400' :
+                        t.plan === 'promaster' ? 'bg-amber-500/20 text-amber-600' :
+                        t.plan === 'pro' ? 'bg-purple-500/20 text-purple-500' :
                         t.plan === 'basic' ? 'bg-brand/20 text-brand' :
                         'bg-surface2 text-muted'
                       }`}>

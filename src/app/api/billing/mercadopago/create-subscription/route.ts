@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
 
   const { tenantId, couponCode, billing, plan: rawPlan, cardTokenId, payerEmail, payerDocType, payerDocNumber, installments, paymentMethodId, issuerId } = await req.json()
-  const plan = rawPlan === 'pro' ? 'pro' : 'basic'
+  const plan = ['pro', 'promaster'].includes(rawPlan) ? rawPlan : 'basic'
 
   const saasConfig = await globalPrisma.saasConfig.upsert({
     where: { id: 'singleton' },
@@ -16,7 +16,12 @@ export async function POST(req: Request) {
     update: {}
   })
 
-  const monthlyPrice = plan === 'pro' ? Number(saasConfig.price_pro) : Number(saasConfig.price_basic)
+  const monthlyPrice = plan === 'promaster'
+    ? Number(saasConfig.price_promaster)
+    : plan === 'pro'
+      ? Number(saasConfig.price_pro)
+      : Number(saasConfig.price_basic)
+  const planLabel = plan === 'promaster' ? 'Promaster' : plan === 'pro' ? 'Pro' : 'Básico'
   const BASE_PRICE = billing === 'annual'
     ? Math.round(monthlyPrice * 12 * (1 - saasConfig.annual_discount / 100))
     : monthlyPrice
@@ -71,7 +76,7 @@ export async function POST(req: Request) {
           installments: Math.min(12, Math.max(1, Number(installments) || 12)),
           payment_method_id: paymentMethodId,
           ...(issuerId ? { issuer_id: Number(issuerId) } : {}),
-          description: `UProCRM — Plano ${plan === 'pro' ? 'Pro' : 'Básico'} Anual (12x)`,
+          description: `UProCRM — Plano ${planLabel} Anual (12x)`,
           external_reference: tenantId,
           payer: {
             email: payerEmail || tenant.email,

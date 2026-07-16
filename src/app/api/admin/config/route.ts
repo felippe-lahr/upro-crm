@@ -25,7 +25,7 @@ export async function PATCH(req: Request) {
     return Response.json({ error: 'Não autorizado' }, { status: 401 })
   }
 
-  const { price_basic, price_pro, annual_discount } = await req.json()
+  const { price_basic, price_pro, price_promaster, annual_discount } = await req.json()
 
   const config = await globalPrisma.saasConfig.upsert({
     where: { id: 'singleton' },
@@ -33,11 +33,13 @@ export async function PATCH(req: Request) {
       id: 'singleton',
       price_basic: price_basic ?? 97,
       price_pro: price_pro ?? 197,
+      price_promaster: price_promaster ?? 297,
       annual_discount: annual_discount ?? 20
     },
     update: {
       ...(price_basic !== undefined && { price_basic }),
       ...(price_pro !== undefined && { price_pro }),
+      ...(price_promaster !== undefined && { price_promaster }),
       ...(annual_discount !== undefined && { annual_discount })
     }
   })

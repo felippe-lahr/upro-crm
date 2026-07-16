@@ -41,6 +41,7 @@ export default async function LandingPage() {
     .catch(() => null)
   const priceBasic = Number(cfg?.price_basic ?? 97)
   const pricePro = Number(cfg?.price_pro ?? 197)
+  const pricePromaster = Number(cfg?.price_promaster ?? 297)
 
   return (
     <div className="min-h-screen bg-background text-fg">
@@ -169,13 +170,13 @@ export default async function LandingPage() {
 
       {/* Pricing */}
       <section id="planos" className="border-t border-line py-20">
-        <div className="mx-auto max-w-5xl px-6">
+        <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto mb-14 max-w-2xl text-center">
             <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand">Planos</div>
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Preço simples, sem surpresa</h2>
             <p className="mt-4 text-muted">Sem taxa de setup. Pix, boleto ou cartão via Mercado Pago. Cancele quando quiser.</p>
           </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3">
             {/* Básico */}
             <div className="rounded-2xl border border-line bg-surface p-8">
               <div className="text-sm font-semibold text-muted">Básico</div>
@@ -196,7 +197,7 @@ export default async function LandingPage() {
               </Link>
             </div>
             {/* Pro */}
-            <div className="relative rounded-2xl border-2 border-brand bg-surface p-8 shadow-xl shadow-brand/10">
+            <div className="relative rounded-2xl border-2 border-brand bg-surface p-8 shadow-xl shadow-brand/10 md:-mt-4">
               <div className="absolute -top-3 left-8 rounded-full bg-brand px-3 py-1 text-xs font-bold text-white">MAIS POPULAR</div>
               <div className="text-sm font-semibold text-brand">Pro</div>
               <div className="mt-3 flex items-baseline gap-1">
@@ -213,6 +214,26 @@ export default async function LandingPage() {
               </ul>
               <Link href="/signup" className="mt-8 block rounded-xl bg-brand py-3 text-center font-semibold text-white shadow-lg shadow-brand/25 transition-colors hover:bg-brand-600">
                 Assinar o Pro
+              </Link>
+            </div>
+            {/* Promaster */}
+            <div className="relative rounded-2xl border border-amber-400/40 bg-surface p-8">
+              <div className="absolute -top-3 left-8 rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white">E-COMMERCE</div>
+              <div className="text-sm font-semibold text-amber-500">Promaster</div>
+              <div className="mt-3 flex items-baseline gap-1">
+                <span className="text-4xl font-extrabold">R$ {pricePromaster}</span>
+                <span className="text-sm text-muted">/mês</span>
+              </div>
+              <p className="mt-2 text-sm text-muted">Bot vendedor para lojas online.</p>
+              <ul className="mt-6 space-y-3">
+                {['Tudo do Pro', 'Bot vendedor de e-commerce', 'Catálogo por feed XML de produtos', 'Busca de produtos no WhatsApp', 'Envia o link da página pra comprar', 'Sincronização automática de preços'].map((i) => (
+                  <li key={i} className="flex items-center gap-2.5 text-sm text-fg">
+                    <Check className="h-4 w-4 flex-shrink-0 text-amber-500" /> {i}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/signup" className="mt-8 block rounded-xl border border-amber-400/50 py-3 text-center font-semibold text-fg transition-colors hover:bg-amber-500/10">
+                Assinar o Promaster
               </Link>
             </div>
           </div>

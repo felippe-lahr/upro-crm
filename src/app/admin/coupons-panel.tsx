@@ -67,7 +67,7 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
   return (
     <div className="rounded-2xl border border-line bg-surface overflow-hidden">
       <div className="px-6 py-4 border-b border-line flex items-center justify-between">
-        <h2 className="font-semibold text-white">Cupons de Desconto</h2>
+        <h2 className="font-semibold text-fg">Cupons de Desconto</h2>
         <button
           onClick={() => setCreating(!creating)}
           className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition-colors"
@@ -86,7 +86,7 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
               onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
               required
               placeholder="BEMVINDO50"
-              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none uppercase"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none uppercase"
             />
           </div>
           <div>
@@ -95,7 +95,7 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
               placeholder="Ex: Desconto de lançamento"
-              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
             />
           </div>
           <div>
@@ -103,7 +103,7 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
             <select
               value={form.discount_type}
               onChange={e => setForm({ ...form, discount_type: e.target.value })}
-              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
             >
               <option value="percent">Percentual (%)</option>
               <option value="fixed">Valor fixo (R$)</option>
@@ -121,7 +121,7 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
               min="1"
               max={form.discount_type === 'percent' ? '100' : undefined}
               placeholder={form.discount_type === 'percent' ? '50' : '30'}
-              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
             />
           </div>
           <div>
@@ -132,7 +132,7 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
               onChange={e => setForm({ ...form, max_uses: e.target.value })}
               placeholder="Ilimitado"
               min="1"
-              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
             />
           </div>
           <div>
@@ -141,11 +141,11 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
               type="date"
               value={form.expires_at}
               onChange={e => setForm({ ...form, expires_at: e.target.value })}
-              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-white focus:border-brand focus:outline-none"
+              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
             />
           </div>
           <div className="col-span-2 flex gap-2 justify-end pt-1">
-            <button type="button" onClick={() => setCreating(false)} className="px-4 py-2 text-sm text-muted hover:text-white transition-colors">
+            <button type="button" onClick={() => setCreating(false)} className="px-4 py-2 text-sm text-muted hover:text-fg transition-colors">
               Cancelar
             </button>
             <button type="submit" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition-colors">
@@ -167,14 +167,14 @@ export function CouponsPanel({ initialCoupons }: { initialCoupons: Coupon[] }) {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1b222c]">
+            <tbody className="divide-y divide-line">
               {coupons.map(c => (
                 <tr key={c.id} className="hover:bg-surface2 transition-colors">
                   <td className="px-6 py-3">
                     <span className="font-mono text-sm font-semibold text-brand">{c.code}</span>
                     {c.description && <div className="text-xs text-faint">{c.description}</div>}
                   </td>
-                  <td className="px-6 py-3 text-sm text-white">
+                  <td className="px-6 py-3 text-sm text-fg">
                     {c.discount_type === 'percent' ? `${c.discount_value}%` : `R$ ${c.discount_value}`}
                   </td>
                   <td className="px-6 py-3 text-sm text-muted">
