@@ -300,7 +300,7 @@ async function aiReplyWithScheduling(
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5'
 
   const convo: any[] = messages.map((m) => ({ role: m.role, content: m.content }))
 

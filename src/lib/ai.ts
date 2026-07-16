@@ -30,7 +30,7 @@ function resolveProvider(): 'anthropic' | 'groq' {
 
 const PROVIDER = resolveProvider()
 
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5'
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
 
 export async function chatComplete({ system, messages, maxTokens = 1024 }: ChatOptions): Promise<string> {
