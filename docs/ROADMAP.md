@@ -1,7 +1,7 @@
 # UProCRM — Roadmap
 
 Estado e próximos passos do produto. Atualizar conforme as coisas andam.
-Última atualização: 2026-07-07.
+Última atualização: 2026-07-16.
 
 ## ✅ Concluído (recente)
 - Número próprio conectado e validado (mensagem chegando no CRM ponta a ponta)
@@ -35,6 +35,19 @@ Bot de IA como vendedor para lojas que usam o botão "Comprar no WhatsApp" (a me
 - **Fase B — Carrinho pré-preenchido:** montar a URL "adicionar ao carrinho" da plataforma (padrão varia: Loja Integrada `/carrinho/adicionar/{id}`, Nuvemshop `/comprar/{id}`, Tray `?add_to_cart=`, WooCommerce `?add-to-cart=`, VTEX `/checkout/cart/add?sku=`, Shopify `/cart/{variant}:1`). Bot manda o link e o cliente finaliza a compra na própria loja (sem integrar pagamento).
 - **Plataforma do 1º cliente (bonitasnaweb.com.br): Tray.** Tem **Tray Commerce API** (OAuth token) → obter produto/preço/estoque/variações de forma confiável (a página bloqueia fetch server-side com 403, então usar a API). Tray também tem link nativo de adicionar ao carrinho (confirmar formato exato na doc na implementação).
 - Pendências para começar: credenciais da Tray API do cliente (consumer_key/secret + code) e confirmar o padrão da URL de carrinho da Tray.
+
+### 3. Plano **Promaster** — bot vendedor por feed XML de produtos (RAG)
+Nova categoria de plano (acima do Pro). O tenant cadastra a **URL de um feed XML de produtos** e o bot vira um vendedor de e-commerce: responde sobre catálogo, preço, marca e disponibilidade, e **manda o link da página do produto** para o cliente concluir a compra na própria loja (sem integração de pagamento).
+
+- **Formato do feed:** Google Merchant / RSS 2.0 (`<rss xmlns:g>` → `<channel>` → `<item>`). Exportado por Tray, Nuvemshop, VTEX, WooCommerce, Shopify, Bling — cobre a maioria. 1º caso validado: `bonitasnaweb.com.br` (~1.000+ SKUs, cosméticos).
+  - Obs.: o servidor do feed pode bloquear fetch em ambientes restritos (403), mas em produção (Railway) baixa normal.
+- **Mapeamento dos campos** (item → tabela `product` no schema do tenant):
+  - `g:id`→feed_id (chave do upsert) · `title` · `description` (full-text) · `g:price` (`"R$ 189,90"` → **tirar "R$ " e trocar vírgula por ponto**) · `g:sale_price` (opcional) · `g:availability` (`in stock`/`out of stock`) · `g:brand` · `g:product_type`→category · `g:image_link` (+`additional_image_link`) · **`link`→url (é o que o bot envia)** · `g:gtin`/`g:mpn` · `g:installment` (months+amount).
+  - Variações (cor/tom/tamanho) vêm como **SKUs separados** — sem aninhamento, cada `<item>` é um produto.
+- **Fase 1 — Ingestão + Sync:** campo `products_feed_url` no tenant; parser do RSS (namespace `g:`); tabela `product` com `tsvector` (título+marca+categoria+descrição) e índices em `brand`, `price`, `in_stock`; **cron horário** re-baixa o XML e faz upsert (marca ausentes como fora de estoque — reaproveita a infra de cron de agendamentos).
+- **Fase 2 — Bot (tool use, como `SCHEDULING_TOOLS`):** `buscar_produtos(query, marca?, preco_max?, so_em_estoque?)` → top N; `detalhes_produto(id)` → ficha + imagem + parcelamento + **link**. Só os produtos recuperados entram no prompt (RAG) → custo de token baixo.
+- **Fechamento:** apenas **link da página do produto** (decisão do cliente) — sem Mercado Pago nesse plano. Cliente conclui na plataforma.
+- **Escala:** ~1.000 SKUs → **full-text do Postgres basta**. `pgvector`/busca semântica fica para uma Fase 3 futura (perguntas vagas tipo "algo pra loiro sem amarelar"), só se justificar.
 
 ### Responsividade mobile (em andamento)
 O app era desktop-first; passada para funcionar bem no celular (o atendente usa via PWA).
