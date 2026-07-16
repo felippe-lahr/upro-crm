@@ -39,6 +39,11 @@ model Tenant {
   booking_gap_min        Int   @default(0)
   booking_min_notice_min Int   @default(0)
 
+  // Promaster — catálogo de produtos por feed XML (Google Merchant/RSS 2.0)
+  products_feed_url   String?
+  products_synced_at  DateTime?
+  products_count      Int      @default(0)
+
   mp_subscription_id  String?
   mp_access_token     String?  // token MP do lojista (recebe os sinais de agendamento) — criptografado
   stripe_customer_id  String?
@@ -312,4 +317,30 @@ model Appointment {
 
   @@index([start_at])
   @@map("appointments")
+}
+
+// ─── Catálogo Promaster (tenant-scoped) ──────────────────────────────────────
+// Produtos importados do feed XML (Google Merchant/RSS 2.0). Sincronizados por
+// cron; o bot vendedor consulta esta tabela e envia o link da página do produto.
+model Product {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  feed_id      String   @unique // <g:id> do feed — chave do upsert
+  title        String
+  description  String?
+  brand        String?
+  category     String?  // <g:product_type> (breadcrumb)
+  price        Decimal? @db.Decimal(12, 2)
+  sale_price   Decimal? @db.Decimal(12, 2)
+  in_stock     Boolean  @default(true)
+  url          String?  // <link> — página do produto (o bot envia isto)
+  image        String?
+  gtin         String?
+  sku          String?  // <g:mpn>
+  installments Json?    // { months, amount } de <g:installment>
+  synced_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([brand])
+  @@index([in_stock])
+  @@map("products")
 }

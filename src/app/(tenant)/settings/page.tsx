@@ -26,6 +26,9 @@ interface TenantSettings {
   handoff_pause: boolean
   keep_responding_after_human: boolean
   mp_connected?: boolean
+  products_feed_url?: string | null
+  products_synced_at?: string | null
+  products_count?: number
 }
 
 function MercadoPagoConnect({ connected }: { connected: boolean }) {
@@ -68,6 +71,67 @@ function MercadoPagoConnect({ connected }: { connected: boolean }) {
         </div>
       )}
       {msg && <p className="mt-2 text-sm text-brand">{msg}</p>}
+    </section>
+  )
+}
+
+function ProductFeed({ initialUrl, syncedAt, count }: { initialUrl: string; syncedAt: string | null; count: number }) {
+  const [url, setUrl] = useState(initialUrl)
+  const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+  const [lastSync, setLastSync] = useState(syncedAt)
+  const [total, setTotal] = useState(count)
+
+  async function saveUrl(newUrl: string | null) {
+    setSaving(true); setMsg(''); setErr('')
+    const res = await fetch('/api/tenant/settings', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ products_feed_url: newUrl })
+    })
+    setSaving(false)
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setErr(d.error || 'Falha ao salvar'); return }
+    setMsg(newUrl ? 'Feed salvo.' : 'Feed removido.')
+  }
+
+  async function syncNow() {
+    setSyncing(true); setMsg(''); setErr('')
+    // Salva a URL antes de sincronizar, garantindo que o backend use a atual.
+    await saveUrl(url.trim() || null)
+    const res = await fetch('/api/tenant/products/sync', { method: 'POST' })
+    const d = await res.json().catch(() => ({}))
+    setSyncing(false)
+    if (!res.ok || !d.ok) { setErr(d.error || 'Falha na sincronização'); return }
+    setTotal(d.total); setLastSync(new Date().toISOString())
+    setMsg(`Sincronizado: ${d.total} produtos (${d.upserted} atualizados, ${d.outOfStock} fora de estoque).`)
+  }
+
+  return (
+    <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+      <h2 className="mb-1 font-semibold text-fg">Catálogo de produtos (Promaster)</h2>
+      <p className="mb-4 text-sm text-muted">
+        Cole a URL do seu <strong>feed XML de produtos</strong> (padrão Google Merchant/RSS 2.0, exportado por Tray, Nuvemshop, VTEX, WooCommerce, Shopify, Bling).
+        O bot passa a responder sobre catálogo, preço e disponibilidade, enviando o link da página do produto para o cliente concluir a compra.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="url" value={url} onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://sualoja.com.br/xml/feed.xml"
+          className="min-w-[18rem] flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none"
+        />
+        <button onClick={() => saveUrl(url.trim() || null)} disabled={saving || syncing} className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-fg hover:bg-surface2 disabled:opacity-50">Salvar</button>
+        <button onClick={syncNow} disabled={syncing || saving || !url.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50">
+          {syncing ? 'Sincronizando…' : 'Sincronizar agora'}
+        </button>
+      </div>
+      <p className="mt-3 text-xs text-faint">
+        {total > 0 ? `${total} produtos no catálogo` : 'Nenhum produto sincronizado ainda'}
+        {lastSync ? ` · última sincronização ${new Date(lastSync).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}
+        {' · '}sincroniza automaticamente a cada hora.
+      </p>
+      {msg && <p className="mt-2 text-sm text-brand">{msg}</p>}
+      {err && <p className="mt-2 text-sm text-red-500">{err}</p>}
     </section>
   )
 }
@@ -229,7 +293,9 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
 
-  const isPro = settings?.plan === 'pro'
+  // Promaster inclui tudo do Pro (bot com IA) + catálogo de produtos.
+  const isPromaster = settings?.plan === 'promaster'
+  const isPro = settings?.plan === 'pro' || isPromaster
 
   const [replies, setReplies] = useState<QuickReply[]>([])
   const [shortcut, setShortcut] = useState('')
@@ -511,6 +577,14 @@ export default function SettingsPage() {
 
       {/* Mercado Pago (recebe os sinais de agendamento) */}
       <MercadoPagoConnect connected={!!(settings as any)?.mp_connected} />
+
+      {isPromaster && (
+        <ProductFeed
+          initialUrl={settings.products_feed_url || ''}
+          syncedAt={settings.products_synced_at || null}
+          count={settings.products_count || 0}
+        />
+      )}
 
       {/* Bot com IA — exclusivo do Pro */}
       <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
