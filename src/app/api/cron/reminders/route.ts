@@ -3,6 +3,32 @@ export const dynamic = 'force-dynamic'
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { sendWhatsAppButtons } from '@/lib/bot'
 import { sendAppointmentEmail } from '@/lib/email'
+import { syncTenantProducts } from '@/lib/product-feed'
+
+// Sincroniza o catálogo Promaster no máximo ~1x/hora por tenant, mesmo que este
+// cron rode a cada ~15 min. Assim não é preciso configurar um job separado.
+const PRODUCT_SYNC_THROTTLE_MS = 55 * 60 * 1000
+
+async function syncPromasterCatalogs(now: Date): Promise<number> {
+  let synced = 0
+  const tenants = await globalPrisma.tenant.findMany({
+    where: { status: 'active', products_feed_url: { not: null } },
+    select: { id: true, schema_name: true, products_feed_url: true, products_synced_at: true }
+  }).catch(() => [])
+
+  for (const t of tenants) {
+    if (!t.schema_name) continue
+    const last = t.products_synced_at ? new Date(t.products_synced_at).getTime() : 0
+    if (now.getTime() - last < PRODUCT_SYNC_THROTTLE_MS) continue // ainda dentro da janela
+    try {
+      const r = await syncTenantProducts(t)
+      if (r.ok) synced++
+    } catch (e) {
+      console.error('[cron reminders] sync de catálogo falhou', t.schema_name, e)
+    }
+  }
+  return synced
+}
 
 /**
  * Cron de lembretes. Deve ser chamado periodicamente (ex: a cada 15 min) com
@@ -107,5 +133,8 @@ export async function GET(req: Request) {
     }
   }
 
-  return Response.json({ ok: true, tenants: tenants.length, reminders_sent: sent })
+  // Sincroniza os catálogos Promaster (throttle de ~1h por tenant). Best-effort.
+  const catalogsSynced = await syncPromasterCatalogs(now).catch(() => 0)
+
+  return Response.json({ ok: true, tenants: tenants.length, reminders_sent: sent, catalogs_synced: catalogsSynced })
 }

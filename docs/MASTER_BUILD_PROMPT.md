@@ -319,7 +319,10 @@ Sessão de afiliado por cookie próprio.
   `/api/quick-replies`, `/api/broadcasts`, `/api/leads/stage`, `/api/funnel/config`,
   `/api/coupons/validate`, `/api/tenant/settings`.
 - **Cron**: `/api/cron/reminders` (protegido por `CRON_SECRET`, fallback
-  `NEXTAUTH_SECRET`).
+  `NEXTAUTH_SECRET`). Este cron também sincroniza os catálogos Promaster
+  (feed XML) com throttle de ~1h por tenant — não requer job separado.
+  `/api/cron/sync-products` existe como endpoint dedicado (mesmo token) caso
+  se queira um agendamento próprio horário.
 - **Admin**: `/api/admin/{activate,config,coupons,make-superadmin,migrate-schemas}`,
   `/api/admin/affiliates` (+ `/commissions`), `/api/admin/tenants/delete`.
 
