@@ -181,8 +181,8 @@ async function processIncomingMessage(
     type: message.type
   }))
 
-  // Bot com IA: exclusivo do plano Pro
-  if (tenant.plan === 'pro' && tenant.bot_enabled) {
+  // Bot com IA: planos Pro e Promaster
+  if (['pro', 'promaster'].includes(tenant.plan) && tenant.bot_enabled) {
     if (resolvedText) {
       // Mostra "digitando…" enquanto a IA elabora a resposta (e marca como lida).
       await sendTypingIndicator(tenant, message.id).catch(() => {})

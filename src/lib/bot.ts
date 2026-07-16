@@ -3,6 +3,7 @@ import { decrypt } from './crypto'
 import { chatComplete } from './ai'
 import { getAvailableSlots, brDateTime, weekdayName } from './scheduling'
 import { sendAppointmentEmail } from './email'
+import { searchProducts, getProductById } from './products'
 
 /**
  * Lê o histórico da conversa e extrai dados estruturados do lead para o CRM:
@@ -137,6 +138,35 @@ const SCHEDULING_TOOLS = [
   }
 ]
 
+// Ferramentas do catálogo de produtos (plano Promaster).
+const PRODUCT_TOOLS = [
+  {
+    name: 'buscar_produtos',
+    description: 'Busca produtos no catálogo da loja por termo, marca, preço máximo e disponibilidade. Use SEMPRE antes de citar qualquer produto, preço ou link — nunca invente produtos.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Termos da busca (ex.: "shampoo cabelo cacheado", "protetor solar facial")' },
+        marca: { type: 'string', description: 'Filtrar por marca (opcional)' },
+        preco_max: { type: 'number', description: 'Preço máximo em reais (opcional)' },
+        so_em_estoque: { type: 'boolean', description: 'Se true, retorna apenas produtos em estoque (opcional)' }
+      },
+      required: ['query']
+    }
+  },
+  {
+    name: 'detalhes_produto',
+    description: 'Retorna a ficha completa de um produto (preço, promoção, parcelamento, disponibilidade e link da página) pelo id retornado por buscar_produtos.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'id do produto retornado por buscar_produtos' }
+      },
+      required: ['id']
+    }
+  }
+]
+
 async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: string | null; duration: number; label: string; gap: number; minNotice: number; chargeMode: string; chargeValue: number; holdMinutes: number; price: number }> {
   const toObj = (s: any) => ({ id: s.id, duration: s.duration_min, label: s.name, gap: s.gap_min || 0, minNotice: s.min_notice_min || 0, chargeMode: s.charge_mode || 'none', chargeValue: Number(s.charge_value) || 0, holdMinutes: s.hold_minutes || 30, price: Number(s.price) || 0 })
   if (name) {
@@ -173,6 +203,26 @@ interface SchedulingCtx {
 async function runSchedulingTool(name: string, input: any, ctx: SchedulingCtx): Promise<string> {
   const { tenantPrisma } = ctx
   try {
+    if (name === 'buscar_produtos') {
+      const produtos = await searchProducts(tenantPrisma, {
+        query: input.query, brand: input.marca,
+        priceMax: typeof input.preco_max === 'number' ? input.preco_max : undefined,
+        inStockOnly: input.so_em_estoque === true, limit: 6
+      })
+      if (!produtos.length) return JSON.stringify({ produtos: [], aviso: 'Nenhum produto encontrado com esses critérios. Sugira ao cliente refinar a busca ou tente outra marca/termo.' })
+      // Envia dados enxutos (o link só na ficha, para o bot não vazar links errados).
+      return JSON.stringify({ produtos: produtos.map((p) => ({ id: p.id, titulo: p.title, marca: p.brand, preco: p.price, promocao: p.sale_price, em_estoque: p.in_stock })) })
+    }
+    if (name === 'detalhes_produto') {
+      const p = await getProductById(tenantPrisma, String(input.id))
+      if (!p) return JSON.stringify({ ok: false, erro: 'Produto não encontrado. Use buscar_produtos para obter ids válidos.' })
+      return JSON.stringify({
+        ok: true, id: p.id, titulo: p.title, marca: p.brand, categoria: p.category,
+        preco: p.price != null ? Number(p.price) : null,
+        promocao: p.sale_price != null ? Number(p.sale_price) : null,
+        parcelamento: p.installments || null, em_estoque: p.in_stock, link: p.url
+      })
+    }
     if (name === 'verificar_horarios') {
       const svc = await resolveService(tenantPrisma, input.servico)
       const slots = await getAvailableSlots(tenantPrisma, input.data, svc.duration, svc.gap, svc.minNotice, svc.id)
@@ -293,10 +343,11 @@ async function runSchedulingTool(name: string, input: any, ctx: SchedulingCtx): 
   return JSON.stringify({ ok: false, erro: 'Ferramenta desconhecida' })
 }
 
-async function aiReplyWithScheduling(
+async function aiReplyWithTools(
   system: string,
   messages: { role: 'user' | 'assistant'; content: string }[],
-  ctx: SchedulingCtx
+  ctx: SchedulingCtx,
+  tools: any[]
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -306,7 +357,7 @@ async function aiReplyWithScheduling(
 
   for (let i = 0; i < 5; i++) {
     const res: any = await anthropic.messages.create({
-      model, max_tokens: 1024, system, tools: SCHEDULING_TOOLS as any, messages: convo
+      model, max_tokens: 1024, system, tools: tools as any, messages: convo
     })
     if (res.stop_reason === 'tool_use') {
       convo.push({ role: 'assistant', content: res.content })
@@ -429,31 +480,46 @@ export async function processBotResponse(
     (process.env.AI_PROVIDER || '').toLowerCase() === 'anthropic' ||
     (process.env.ANTHROPIC_API_KEY || '').startsWith('sk-ant')
   let schedulingOn = false
+  let catalogOn = false
   if (useAnthropic) {
     try { schedulingOn = (await tenantPrisma.availability.count()) > 0 } catch { schedulingOn = false }
+    try { catalogOn = (await tenantPrisma.product.count()) > 0 } catch { catalogOn = false }
   }
 
   let botReply: string
-  if (schedulingOn) {
-    const todayName = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long' })
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) // AAAA-MM-DD
-    const hint = `\n\nAGENDAMENTO (regras rígidas):\n` +
-      `- Hoje é ${todayName}, ${today} (fuso de São Paulo, UTC-3).\n` +
-      `- NUNCA calcule o dia da semana de uma data você mesmo. Sempre use o campo "dia_semana" retornado pelas ferramentas e repita esse valor ao cliente.\n` +
-      `- SEMPRE chame verificar_horarios antes de oferecer ou agendar qualquer horário. Ofereça apenas os horários que ela retornar.\n` +
-      `- Só use agendar com data e hora que apareceram em verificar_horarios. Se a ferramenta retornar erro ou lista vazia, informe o cliente e sugira outro dia. Nunca invente disponibilidade.\n` +
-      `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.\n` +
-      `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".\n` +
-      `- Descubra PARA QUEM é o atendimento: pergunte se é para a própria pessoa ou para outra (ex.: filho, parente). No campo "nome" passe SEMPRE o participante (quem será atendido) — é o nome que aparece na agenda. Se for para outra pessoa, passe também "agendado_por" com o nome de quem está agendando. Se for para a própria pessoa, deixe "agendado_por" vazio.\n` +
-      `- Alguns serviços exigem um sinal via Pix. Se agendar retornar "aguardando_pagamento", NÃO diga que está confirmado: informe o valor e o prazo, e explique que a cobrança Pix foi enviada e o horário será garantido após o pagamento.\n` +
-      `- Se o cliente já tem um agendamento e quer mudar de dia/horário (remarcar), use a ferramenta "reagendar" (ela cancela o horário anterior e cria o novo). NUNCA use "agendar" para uma remarcação, senão o horário antigo fica duplicado na agenda.`
+  if (useAnthropic && (schedulingOn || catalogOn)) {
+    let hint = ''
+    if (schedulingOn) {
+      const todayName = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long' })
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) // AAAA-MM-DD
+      hint += `\n\nAGENDAMENTO (regras rígidas):\n` +
+        `- Hoje é ${todayName}, ${today} (fuso de São Paulo, UTC-3).\n` +
+        `- NUNCA calcule o dia da semana de uma data você mesmo. Sempre use o campo "dia_semana" retornado pelas ferramentas e repita esse valor ao cliente.\n` +
+        `- SEMPRE chame verificar_horarios antes de oferecer ou agendar qualquer horário. Ofereça apenas os horários que ela retornar.\n` +
+        `- Só use agendar com data e hora que apareceram em verificar_horarios. Se a ferramenta retornar erro ou lista vazia, informe o cliente e sugira outro dia. Nunca invente disponibilidade.\n` +
+        `- Antes de agendar, confirme com o cliente o serviço, a data e o horário.\n` +
+        `- Antes de chamar agendar, peça o nome e o e-mail do cliente (o e-mail serve para enviarmos a confirmação). Passe ambos para a ferramenta agendar nos campos "nome" e "email".\n` +
+        `- Descubra PARA QUEM é o atendimento: pergunte se é para a própria pessoa ou para outra (ex.: filho, parente). No campo "nome" passe SEMPRE o participante (quem será atendido) — é o nome que aparece na agenda. Se for para outra pessoa, passe também "agendado_por" com o nome de quem está agendando. Se for para a própria pessoa, deixe "agendado_por" vazio.\n` +
+        `- Alguns serviços exigem um sinal via Pix. Se agendar retornar "aguardando_pagamento", NÃO diga que está confirmado: informe o valor e o prazo, e explique que a cobrança Pix foi enviada e o horário será garantido após o pagamento.\n` +
+        `- Se o cliente já tem um agendamento e quer mudar de dia/horário (remarcar), use a ferramenta "reagendar" (ela cancela o horário anterior e cria o novo). NUNCA use "agendar" para uma remarcação, senão o horário antigo fica duplicado na agenda.`
+    }
+    if (catalogOn) {
+      hint += `\n\nCATÁLOGO DE PRODUTOS (regras rígidas):\n` +
+        `- Você tem acesso ao catálogo real da loja. SEMPRE chame buscar_produtos antes de citar qualquer produto, preço ou disponibilidade. NUNCA invente produtos, preços ou links.\n` +
+        `- Ofereça no máximo 2 a 3 opções por vez, com nome, marca e preço, de forma objetiva.\n` +
+        `- Para enviar o LINK de um produto, chame detalhes_produto e use exatamente o campo "link" retornado. Nunca escreva um link que não veio da ferramenta.\n` +
+        `- Se o produto estiver "em_estoque": false, avise que está indisponível no momento e ofereça uma alternativa (nova busca).\n` +
+        `- Mencione o preço promocional e o parcelamento quando existirem. Ao fechar, mande o link e diga que é só finalizar a compra na página.\n` +
+        `- Se buscar_produtos não retornar nada, peça mais detalhes (marca, tipo, faixa de preço) em vez de inventar.`
+    }
     let mpToken: string | null = null
     if (tenant.mp_access_token) { try { mpToken = decrypt(tenant.mp_access_token) } catch { mpToken = null } }
-    botReply = await aiReplyWithScheduling(basePrompt + GUARDRAIL + welcome + hint, messages, {
+    const tools = [...(schedulingOn ? SCHEDULING_TOOLS : []), ...(catalogOn ? PRODUCT_TOOLS : [])]
+    botReply = await aiReplyWithTools(basePrompt + GUARDRAIL + welcome + hint, messages, {
       tenantPrisma, contactId: contact.id, contactName: current?.name || null, businessName: tenant.name, replyTo: tenant.email,
       tenantId: tenant.id, schemaName: tenant.schema_name, mpAccessToken: mpToken,
       waTenant: { phone_number_id: tenant.phone_number_id, whatsapp_token: tenant.whatsapp_token }, contactPhone: from
-    })
+    }, tools)
   } else {
     botReply = await chatComplete({ maxTokens: 1024, system: basePrompt + GUARDRAIL + welcome, messages })
   }
