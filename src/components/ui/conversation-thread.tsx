@@ -216,7 +216,7 @@ export function ConversationThread({
                 {m.sent_by_bot && (
                   <span className="mb-0.5 block text-[10px] uppercase opacity-70">🤖 bot</span>
                 )}
-                <p className="whitespace-pre-wrap">{m.content || '[mídia]'}</p>
+                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.content || '[mídia]'}</p>
                 <span className="mt-1 block text-right text-[10px] opacity-60">
                   {new Date(m.timestamp).toLocaleTimeString('pt-BR', {
                     hour: '2-digit',
