@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -37,6 +37,35 @@ export function AppShell({
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
+  // Badge ao vivo: começa com o valor do servidor e se atualiza sozinho.
+  const [unreadLive, setUnreadLive] = useState(unread)
+  useEffect(() => { setUnreadLive(unread) }, [unread])
+
+  const refreshUnread = useCallback(async () => {
+    try {
+      const r = await fetch('/api/conversations/unread', { cache: 'no-store' })
+      if (!r.ok) return
+      const d = await r.json()
+      if (typeof d.unread === 'number') setUnreadLive(d.unread)
+    } catch { /* ignora falhas transitórias */ }
+  }, [])
+
+  useEffect(() => {
+    // Atualiza a cada 30s e quando a aba volta ao foco (ex.: PWA reaberto).
+    const timer = setInterval(refreshUnread, 30000)
+    const onFocus = () => refreshUnread()
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [refreshUnread])
+
+  // Ao abrir uma conversa ela é marcada como vista no servidor; revalida logo em seguida.
+  useEffect(() => { refreshUnread() }, [pathname, refreshUnread])
+
   // Numa conversa aberta, o próprio cabeçalho do contato (com "voltar") já fica no
   // topo — esconde a barra global no mobile para não empilhar duas barras.
   const hideMobileTopBar = /^\/conversations\/[^/]+$/.test(pathname || '')
@@ -44,7 +73,7 @@ export function AppShell({
   const nav: NavDef[] = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/funnel', icon: KanbanSquare, label: 'Funil de Vendas' },
-    { href: '/conversations', icon: MessageSquare, label: 'Conversas', badge: unread },
+    { href: '/conversations', icon: MessageSquare, label: 'Conversas', badge: unreadLive },
     { href: '/agenda', icon: CalendarDays, label: 'Agenda' },
     { href: '/contacts', icon: Users, label: 'Contatos' },
     { href: '/broadcasts', icon: Megaphone, label: 'Disparos' },
@@ -134,9 +163,9 @@ export function AppShell({
             <img src="/logo-upro-novo.png" alt="UProCRM" className="h-7 w-7 rounded-lg" />
             <span className="font-bold tracking-tight text-fg">UProCRM</span>
           </Link>
-          {unread > 0 && (
+          {unreadLive > 0 && (
             <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-xs font-semibold text-white">
-              {unread > 99 ? '99+' : unread}
+              {unreadLive > 99 ? '99+' : unreadLive}
             </span>
           )}
         </header>
