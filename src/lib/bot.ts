@@ -389,6 +389,7 @@ export async function processBotResponse(
     keep_responding_after_human?: boolean
     booking_gap_min?: number
     booking_min_notice_min?: number
+    scheduling_enabled?: boolean
     mp_access_token?: string | null
   },
   userText: string,
@@ -482,7 +483,11 @@ export async function processBotResponse(
   let schedulingOn = false
   let catalogOn = false
   if (useAnthropic) {
-    try { schedulingOn = (await tenantPrisma.availability.count()) > 0 } catch { schedulingOn = false }
+    if (tenant.scheduling_enabled === false) {
+      schedulingOn = false
+    } else {
+      try { schedulingOn = (await tenantPrisma.availability.count()) > 0 } catch { schedulingOn = false }
+    }
     try { catalogOn = (await tenantPrisma.product.count()) > 0 } catch { catalogOn = false }
   }
 

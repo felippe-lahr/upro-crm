@@ -42,6 +42,28 @@ export function AgendaClient() {
   const [showConfig, setShowConfig] = useState(false)
   const [error, setError] = useState('')
   const [view, setView] = useState<'day' | 'month'>('day')
+  const [schedulingEnabled, setSchedulingEnabled] = useState<boolean | null>(null)
+  const [savingToggle, setSavingToggle] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/tenant/settings', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setSchedulingEnabled(d.scheduling_enabled !== false) })
+      .catch(() => {})
+  }, [])
+
+  async function toggleScheduling() {
+    if (schedulingEnabled === null || savingToggle) return
+    const next = !schedulingEnabled
+    setSavingToggle(true)
+    setSchedulingEnabled(next) // otimista
+    const r = await fetch('/api/tenant/settings', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduling_enabled: next })
+    }).catch(() => null)
+    if (!r || !r.ok) setSchedulingEnabled(!next) // reverte em caso de erro
+    setSavingToggle(false)
+  }
 
   const loadAppts = useCallback(async () => {
     const from = new Date(day); const to = new Date(day); to.setHours(23, 59, 59)
@@ -91,6 +113,25 @@ export function AgendaClient() {
           </button>
         </div>
       </div>
+
+      {schedulingEnabled !== null && (
+        <div className={`mb-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${schedulingEnabled ? 'border-line bg-surface' : 'border-amber-500/30 bg-amber-500/5'}`}>
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-fg">Agendamento pelo bot</div>
+            <p className="mt-0.5 text-xs text-muted">Quando desativado, o bot não oferece nem marca horários. Você continua agendando manualmente por aqui.</p>
+          </div>
+          <button
+            onClick={toggleScheduling}
+            disabled={savingToggle}
+            role="switch"
+            aria-checked={schedulingEnabled}
+            title={schedulingEnabled ? 'Desativar agendamento pelo bot' : 'Ativar agendamento pelo bot'}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${schedulingEnabled ? 'bg-brand' : 'bg-surface2'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${schedulingEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+      )}
 
       {showConfig && <ConfigPanel services={services} onServices={loadServices} />}
 

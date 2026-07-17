@@ -36,6 +36,7 @@ model Tenant {
   funnel_labels       Json?    // { stageId: label } — nomes personalizados das etapas (Pro)
   loss_reasons        Json?    // string[] — até 10 motivos de perda (Pro)
 
+  scheduling_enabled     Boolean @default(true)  // Agenda: quando off, o bot nunca oferece nem marca horários
   booking_gap_min        Int   @default(0)
   booking_min_notice_min Int   @default(0)
 

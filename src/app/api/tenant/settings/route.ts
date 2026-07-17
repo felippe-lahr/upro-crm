@@ -19,6 +19,7 @@ export async function GET() {
       bot_enabled: true, bot_prompt: true, trial_ends_at: true,
       menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
       handoff_pause: true, keep_responding_after_human: true,
+      scheduling_enabled: true,
       products_feed_url: true, products_synced_at: true, products_count: true,
       mp_access_token: true
     }
@@ -38,7 +39,8 @@ export async function PATCH(req: Request) {
   const tenantId = (session!.user as any).tenantId
   const body = await req.json()
   const { bot_enabled, bot_prompt, menu_bot_enabled, menu_bot_greeting, menu_bot_options,
-    handoff_pause, keep_responding_after_human, mp_access_token, products_feed_url } = body
+    handoff_pause, keep_responding_after_human, mp_access_token, products_feed_url,
+    scheduling_enabled } = body
 
   // Token do Mercado Pago do lojista (recebe os sinais). '' limpa; undefined mantém.
   let mpTokenData: { mp_access_token?: string | null } = {}
@@ -90,13 +92,14 @@ export async function PATCH(req: Request) {
       ...(normalizedOptions !== undefined && { menu_bot_options: normalizedOptions }),
       ...(handoff_pause !== undefined && { handoff_pause }),
       ...(keep_responding_after_human !== undefined && { keep_responding_after_human }),
+      ...(scheduling_enabled !== undefined && { scheduling_enabled: !!scheduling_enabled }),
       ...(products_feed_url !== undefined && { products_feed_url: products_feed_url ? String(products_feed_url).trim() : null }),
       ...mpTokenData
     },
     select: {
       id: true, bot_enabled: true, bot_prompt: true,
       menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
-      handoff_pause: true, keep_responding_after_human: true
+      handoff_pause: true, keep_responding_after_human: true, scheduling_enabled: true
     }
   })
 
