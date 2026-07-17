@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { getTenantPrisma } from '@/lib/prisma-tenant'
 import Link from 'next/link'
 import { ImportContacts } from '@/components/ui/import-contacts'
+import { DeleteContact } from './contact-actions'
 
 export default async function ContactsPage() {
   const session = await auth()
@@ -57,6 +58,7 @@ export default async function ContactsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Telefone</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Etiquetas</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Desde</th>
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-faint">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -87,6 +89,11 @@ export default async function ContactsPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-faint">
                     {new Date(c.created_at).toLocaleDateString('pt-BR')}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex justify-end">
+                      <DeleteContact contactId={c.id} name={c.name || c.phone} />
+                    </div>
                   </td>
                 </tr>
               ))}
