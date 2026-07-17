@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Lock, ShieldCheck, Check, Tag, CreditCard, Loader2, MessageSquare } from 'lucide-react'
+import { Lock, ShieldCheck, Check, Tag, CreditCard, Loader2 } from 'lucide-react'
 
 interface SaasConfig {
   price_basic: number
@@ -213,9 +213,8 @@ function CheckoutContent() {
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white shadow-lg shadow-brand/25">
-              <MessageSquare className="h-4 w-4" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-upro-novo.png" alt="UProCRM" className="h-8 w-8 rounded-lg" />
             <span className="font-bold tracking-tight">UProCRM</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted">
