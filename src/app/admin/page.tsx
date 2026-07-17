@@ -1,4 +1,6 @@
 import { auth } from '@/lib/auth'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { CouponsPanel } from './coupons-panel'
@@ -43,7 +45,12 @@ export default async function AdminPage() {
           <img src="/logo-upro-novo.png" alt="UProCRM" className="h-7 w-7 rounded-md" />
           <span className="font-bold text-fg">UProCRM Admin</span>
         </div>
-        <span className="text-xs text-faint">Painel do SaaS</span>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm text-muted transition-colors hover:border-brand/40 hover:text-brand"
+        >
+          <ArrowLeft className="h-4 w-4" /> Voltar ao dashboard
+        </Link>
       </div>
 
       <div className="p-8 space-y-8">
