@@ -1,9 +1,18 @@
 # UProCRM — Roadmap
 
 Estado e próximos passos do produto. Atualizar conforme as coisas andam.
-Última atualização: 2026-07-16.
+Última atualização: 2026-07-17.
 
 ## ✅ Concluído (recente)
+- **Plano Promaster completo** (bot vendedor por feed XML/RAG) — ingestão, sync, tools do bot, planos no admin/landing/checkout/Mercado Pago. Ver seção 3 abaixo. 1º cliente ativo (bonitasnaweb.com.br, ~541 produtos sincronizados).
+- **Admin — editar tenant** (plano, status, nome/e-mail, estender trial, redefinir senha) via modal no painel.
+- **Admin — planos e preços** com 4 tiers (trial/básico/pro/promaster) em admin, landing e checkout + Mercado Pago (mensal/anual).
+- **Admin — tema claro corrigido** (logo e textos brancos ilegíveis) + botão "Voltar ao dashboard" no painel.
+- **Agenda — toggle de agendamento pelo bot** (`scheduling_enabled`): quando off, as ferramentas de agendamento nem são passadas ao modelo → o bot nunca oferece nem marca horários.
+- **Contatos — excluir contato na lista** (funciona no PWA/mobile), com modal de confirmação.
+- **Chat — fim da rolagem horizontal no PWA** (quebra de URLs/palavras longas nas mensagens).
+- **Badge de conversas não vistas** no topo (PWA): conta conversas (não mensagens) com mensagem recebida após a última abertura; marca como vista ao abrir. Não interfere nos push.
+- **Modelo default de IA corrigido** para `claude-sonnet-5` (`lib/ai.ts` e `lib/bot.ts`).
 - Número próprio conectado e validado (mensagem chegando no CRM ponta a ponta)
 - Wizard de conexão de número próprio em `/settings` (sem `curl`)
 - Upload de logo do cliente → foto de perfil do WhatsApp Business
@@ -36,7 +45,9 @@ Bot de IA como vendedor para lojas que usam o botão "Comprar no WhatsApp" (a me
 - **Plataforma do 1º cliente (bonitasnaweb.com.br): Tray.** Tem **Tray Commerce API** (OAuth token) → obter produto/preço/estoque/variações de forma confiável (a página bloqueia fetch server-side com 403, então usar a API). Tray também tem link nativo de adicionar ao carrinho (confirmar formato exato na doc na implementação).
 - Pendências para começar: credenciais da Tray API do cliente (consumer_key/secret + code) e confirmar o padrão da URL de carrinho da Tray.
 
-### 3. Plano **Promaster** — bot vendedor por feed XML de produtos (RAG)
+### ✅ 3. Plano **Promaster** — bot vendedor por feed XML de produtos (RAG) — IMPLEMENTADO
+> **Implementado e em produção** (Fase 1 + Fase 2). 1º cliente ativo: bonitasnaweb.com.br (~541 produtos). Sync piggyback no cron de lembretes (re-sincroniza catálogos com feed a cada ~55min). Fechamento = só link da página (sem pagamento). Fase 3 (pgvector/busca semântica) segue como futuro opcional. Detalhes de referência abaixo.
+
 Nova categoria de plano (acima do Pro). O tenant cadastra a **URL de um feed XML de produtos** e o bot vira um vendedor de e-commerce: responde sobre catálogo, preço, marca e disponibilidade, e **manda o link da página do produto** para o cliente concluir a compra na própria loja (sem integração de pagamento).
 
 - **Formato do feed:** Google Merchant / RSS 2.0 (`<rss xmlns:g>` → `<channel>` → `<item>`). Exportado por Tray, Nuvemshop, VTEX, WooCommerce, Shopify, Bling — cobre a maioria. 1º caso validado: `bonitasnaweb.com.br` (~1.000+ SKUs, cosméticos).
@@ -52,11 +63,11 @@ Nova categoria de plano (acima do Pro). O tenant cadastra a **URL de um feed XML
 ### Responsividade mobile (em andamento)
 O app era desktop-first; passada para funcionar bem no celular (o atendente usa via PWA).
 - ✅ Shell responsivo: sidebar vira drawer com hambúrguer (animado); conteúdo full-width; item ativo destacado.
-- ✅ Conversas: sem overflow horizontal; cabeçalho compacto (status vira bolinhas no mobile); barra global oculta na conversa aberta (sem gap); campo de mensagem 16px (sem zoom iOS) + botão Enviar full-width abaixo.
+- ✅ Conversas: sem overflow horizontal (mensagens com URL/palavra longa quebram — `break-words`/`overflow-wrap:anywhere`); cabeçalho compacto (status vira bolinhas no mobile); barra global oculta na conversa aberta (sem gap); campo de mensagem 16px (sem zoom iOS) + botão Enviar full-width abaixo.
 - ✅ Funil: botão "mover" em cada card (tap-to-move) além do drag no desktop.
 - ✅ Agenda: barra de ações quebra linha; cards com ações em linha própria.
 - ✅ Dashboard: cards 2 colunas no mobile; alerta empilha.
-- ✅ Contatos: tabela com rolagem horizontal; padding reduzido no mobile.
+- ✅ Contatos: tabela com rolagem horizontal; padding reduzido no mobile; **excluir contato direto na lista** (modal de confirmação, funciona no PWA).
 - ✅ Padding responsivo (p-4 sm:p-8) em todas as telas do painel.
 - 🔜 Opcional futuro: áreas de toque maiores, safe-area no notch.
 
@@ -90,5 +101,6 @@ Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 - Prompt de bot por cliente (ex.: Cinthia Claro Arquitetura) — configurado via campo bot_prompt no tenant.
 
 ## 💡 Backlog / ideias
+- **Badge de não vistas — evoluções (obs.):** o `last_read_at` é **global por conta** (não por atendente) — decisão consciente (YAGNI): hoje o acesso é por um login de tenant, então funciona bem. Quando existir multi-atendente com logins separados, evoluir para leitura por usuário (tabela `conversation_reads` por usuário+contato; o `last_read_at` atual vira fallback). Ideias de melhoria de UX: (a) **badge ao vivo** — hoje só atualiza ao navegar (server-rendered); fazer auto-refresh a cada ~30s; (b) **ordenar a lista** colocando as conversas não vistas no topo.
 - Preview da foto de perfil atual do WhatsApp dentro de `/settings`
 - Two-track: SaaS self-service (Tech Provider) + projetos customizados número próprio (já suportado, manter)
