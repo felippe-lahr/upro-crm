@@ -5,6 +5,7 @@ import { CouponsPanel } from './coupons-panel'
 import { PricingPanel } from './pricing-panel'
 import { AffiliatesPanel } from './affiliates-panel'
 import { ConfirmDelete } from './confirm-delete'
+import { EditTenant } from './edit-tenant'
 
 export default async function AdminPage() {
   const session = await auth()
@@ -128,14 +129,17 @@ export default async function AdminPage() {
                     <td className="px-6 py-4 text-sm text-faint">
                       {new Date(t.created_at).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <ConfirmDelete
-                        title={`Excluir "${t.name}"?`}
-                        description="O tenant, seus usuários, conversas, mensagens e o banco de dados dedicado serão apagados permanentemente."
-                        endpoint="/api/admin/tenants/delete"
-                        method="POST"
-                        payload={{ tenantId: t.id }}
-                      />
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <EditTenant tenant={{ id: t.id, name: t.name, email: t.email, status: t.status, plan: t.plan }} />
+                        <ConfirmDelete
+                          title={`Excluir "${t.name}"?`}
+                          description="O tenant, seus usuários, conversas, mensagens e o banco de dados dedicado serão apagados permanentemente."
+                          endpoint="/api/admin/tenants/delete"
+                          method="POST"
+                          payload={{ tenantId: t.id }}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
