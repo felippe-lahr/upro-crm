@@ -15,6 +15,10 @@ export default async function ConversationPage({
   const db = getTenantPrisma(schemaName)
 
   const contact = await db.contact.findUnique({ where: { id: contactId } })
+  if (contact) {
+    // Marca a conversa como vista ao abrir (zera o badge de não vistas desta conversa).
+    await db.contact.update({ where: { id: contactId }, data: { last_read_at: new Date() } }).catch(() => {})
+  }
   if (!contact) {
     return (
       <div className="p-8">

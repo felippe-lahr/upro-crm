@@ -182,6 +182,7 @@ model Contact {
   ai_summary   String?
   loss_reason  String?  // motivo da perda (quando stage = perdido)
   tags         String[] @default([])
+  last_read_at DateTime? // última vez que um atendente abriu esta conversa (para o badge de não vistas)
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 

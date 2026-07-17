@@ -13,14 +13,14 @@ export default async function ConversationsPage() {
     content: string | null
     direction: string
     timestamp: Date
-    contact: { name: string | null; phone: string; tags: string[] }
+    contact: { name: string | null; phone: string; tags: string[]; last_read_at: Date | null }
   }[] = []
 
   if (schemaName) {
     try {
       const db = getTenantPrisma(schemaName)
       messages = await db.message.findMany({
-        include: { contact: { select: { name: true, phone: true, tags: true } } },
+        include: { contact: { select: { name: true, phone: true, tags: true, last_read_at: true } } },
         orderBy: { timestamp: 'desc' },
         take: 400
       })
@@ -43,7 +43,12 @@ export default async function ConversationsPage() {
     lastContent: msgs[0].content,
     lastDirection: msgs[0].direction,
     lastTimestamp: msgs[0].timestamp.toISOString(),
-    unread: msgs.filter((m) => m.direction === 'inbound').length
+    // Não vistas: mensagens recebidas mais novas que a última abertura da conversa.
+    unread: (() => {
+      const lastRead = msgs[0].contact.last_read_at
+      const cutoff = lastRead ? new Date(lastRead).getTime() : 0
+      return msgs.filter((m) => m.direction === 'inbound' && new Date(m.timestamp).getTime() > cutoff).length
+    })()
   }))
 
   const allTags = Array.from(new Set(conversations.flatMap((c) => c.tags))).sort()

@@ -24,7 +24,18 @@ export default async function TenantLayout({
   if (schemaName) {
     try {
       const db = getTenantPrisma(schemaName)
-      unread = await db.conversation.count({ where: { status: 'open' } })
+      // Conversas (= contatos) com mensagem recebida mais nova do que a última vez
+      // que o atendente abriu a conversa. Conta conversas, não mensagens.
+      const rows: { count: bigint }[] = await db.$queryRaw`
+        SELECT COUNT(*)::bigint AS count
+        FROM contacts c
+        WHERE EXISTS (
+          SELECT 1 FROM messages m
+          WHERE m.contact_id = c.id
+            AND m.direction = 'inbound'
+            AND m.timestamp > COALESCE(c.last_read_at, to_timestamp(0))
+        )`
+      unread = Number(rows?.[0]?.count ?? 0)
     } catch {
       // schema not provisioned yet
     }
