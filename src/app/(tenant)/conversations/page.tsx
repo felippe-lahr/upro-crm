@@ -13,19 +13,31 @@ export default async function ConversationsPage() {
     content: string | null
     direction: string
     timestamp: Date
-    contact: { name: string | null; phone: string; tags: string[]; last_read_at: Date | null }
+    contact: { name: string | null; phone: string; tags: string[] }
   }[] = []
 
+  // Mapa contato → última leitura, buscado à parte para que uma eventual
+  // ausência da coluna (schema em migração) NÃO derrube a lista de conversas.
+  const lastReadByContact = new Map<string, number>()
+
   if (schemaName) {
+    const db = getTenantPrisma(schemaName)
     try {
-      const db = getTenantPrisma(schemaName)
       messages = await db.message.findMany({
-        include: { contact: { select: { name: true, phone: true, tags: true, last_read_at: true } } },
+        include: { contact: { select: { name: true, phone: true, tags: true } } },
         orderBy: { timestamp: 'desc' },
         take: 400
       })
     } catch {
       // schema not provisioned
+    }
+    try {
+      const reads: { id: string; last_read_at: Date | null }[] = await db.contact.findMany({
+        select: { id: true, last_read_at: true }
+      })
+      for (const r of reads) if (r.last_read_at) lastReadByContact.set(r.id, new Date(r.last_read_at).getTime())
+    } catch {
+      // coluna ainda não migrada — trata tudo como não lido (não quebra a lista)
     }
   }
 
@@ -45,8 +57,7 @@ export default async function ConversationsPage() {
     lastTimestamp: msgs[0].timestamp.toISOString(),
     // Não vistas: mensagens recebidas mais novas que a última abertura da conversa.
     unread: (() => {
-      const lastRead = msgs[0].contact.last_read_at
-      const cutoff = lastRead ? new Date(lastRead).getTime() : 0
+      const cutoff = lastReadByContact.get(contactId) ?? 0
       return msgs.filter((m) => m.direction === 'inbound' && new Date(m.timestamp).getTime() > cutoff).length
     })()
   }))
