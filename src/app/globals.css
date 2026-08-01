@@ -81,12 +81,14 @@ body {
 .animate-pulse-ring { animation: pulse-ring 2s infinite; }
 .typing-dot { animation: typing-dot 1.4s infinite; }
 
-/* Carrossel de telas dentro do iPhone (4 slides: S1, S2, S3, S1 → loop sem salto). */
+/* Carrossel de telas dentro do iPhone (4 slides: S1, S2, S3, S1 → loop sem salto).
+   O elemento animado tem a altura das 4 telas somadas, então cada tela = 25%
+   (translateY em % é relativo à altura do próprio elemento, não da janela). */
 @keyframes screen-carousel {
   0%, 24%   { transform: translateY(0%); }
-  32%, 57%  { transform: translateY(-100%); }
-  65%, 90%  { transform: translateY(-200%); }
-  98%, 100% { transform: translateY(-300%); }
+  32%, 57%  { transform: translateY(-25%); }
+  65%, 90%  { transform: translateY(-50%); }
+  98%, 100% { transform: translateY(-75%); }
 }
 .animate-screens { animation: screen-carousel 15s cubic-bezier(0.7, 0, 0.2, 1) infinite; }
 
