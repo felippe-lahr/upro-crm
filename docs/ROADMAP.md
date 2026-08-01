@@ -20,9 +20,10 @@ Estado e próximos passos do produto. Atualizar conforme as coisas andam.
 - App da Meta migrado para **Provedor de Tecnologia (Independent Tech Provider)**
 - **App Review enviado** (whatsapp_business_messaging, whatsapp_business_management, public_profile) — status "Análise em andamento"
 - Conta de revisão sem acesso ao `/admin` (`analyst@uprocrm.com.br`, role admin no tenant master)
+- ✅ **App Review da Meta APROVADO** (28/07/2026) — `whatsapp_business_messaging`, `whatsapp_business_management`, `public_profile` aprovados. → executar o checklist de segurança pós-aprovação (abaixo).
 
 ## ⏳ Em andamento
-- **App Review da Meta** — aguardando resposta (prazo até ~20 dias). Não apagar `analyst@`, não desconectar o WhatsApp da conta master, não rotacionar `NEXTAUTH_SECRET` até aprovar.
+- **Checklist de segurança pós-aprovação** — agora liberado (ver seção 🔒 abaixo): apagar `analyst@`, rotacionar secrets no Railway, trocar senhas de teste.
 
 ## 🔜 Próximos passos (ordenados)
 
