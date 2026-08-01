@@ -45,7 +45,7 @@ const themeScript = `
 (function () {
   try {
     var t = localStorage.getItem('theme');
-    if (!t) t = 'light';
+    if (!t) t = 'dark';
     document.documentElement.classList.toggle('dark', t === 'dark');
   } catch (e) {}
 })();
