@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
+import { probeBotReply } from '@/lib/bot'
 
 const HUMAN_TAKEOVER_MINUTES = 30
 
@@ -86,10 +87,18 @@ export async function GET(req: Request) {
     blockers.push(`erro ao ler schema do tenant: ${e?.message || e}`)
   }
 
+  // ?run=1 executa a geração de resposta com o prompt real (sem enviar ao WhatsApp).
+  let probe: any = null
+  if (url.searchParams.get('run')) {
+    const text = url.searchParams.get('text') || 'Olá'
+    probe = await probeBotReply(t, text)
+  }
+
   return Response.json({
     tenant: { name: t.name, email: t.email },
     config,
     botBranchWouldRun,
+    probe,
     contactChecked: contact ? { name: contact.name, phone: contact.phone, id: contact.id } : null,
     takeover,
     lastMessages,

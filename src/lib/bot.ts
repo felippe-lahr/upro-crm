@@ -723,3 +723,53 @@ export async function sendWhatsAppMessage(
     throw new Error(`WhatsApp send failed: ${err}`)
   }
 }
+
+/**
+ * Sondagem de diagnóstico: reproduz a decisão do bot para um tenant e
+ * gera uma resposta com o PROMPT REAL, capturando o caminho e o erro.
+ * NÃO envia nada pro WhatsApp. Usado por /api/admin/bot-diagnose?run=1.
+ */
+export async function probeBotReply(
+  tenant: { schema_name: string; bot_prompt: string | null; name?: string; email?: string | null; scheduling_enabled?: boolean; mp_access_token?: string | null; phone_number_id?: string; whatsapp_token?: string; id?: string },
+  userText: string
+): Promise<any> {
+  const tenantPrisma = getTenantPrisma(tenant.schema_name)
+  const useAnthropic =
+    (process.env.AI_PROVIDER || '').toLowerCase() === 'anthropic' ||
+    (process.env.ANTHROPIC_API_KEY || '').startsWith('sk-ant')
+
+  let schedulingOn = false
+  let catalogOn = false
+  let availabilityCount = 0
+  let productCount = 0
+  if (useAnthropic) {
+    if (tenant.scheduling_enabled === false) schedulingOn = false
+    else { try { availabilityCount = await tenantPrisma.availability.count(); schedulingOn = availabilityCount > 0 } catch (e: any) { schedulingOn = false } }
+    try { productCount = await tenantPrisma.product.count(); catalogOn = productCount > 0 } catch { catalogOn = false }
+  }
+
+  const basePrompt = tenant.bot_prompt || 'Você é um assistente de atendimento ao cliente. Seja sempre educado, claro e prestativo.'
+  const messages = [{ role: 'user' as const, content: userText }]
+  const path = useAnthropic && (schedulingOn || catalogOn) ? 'aiReplyWithTools' : 'chatComplete'
+
+  const started = Date.now()
+  try {
+    let reply: string
+    if (path === 'aiReplyWithTools') {
+      const tools = [...(schedulingOn ? SCHEDULING_TOOLS : []), ...(catalogOn ? PRODUCT_TOOLS : [])]
+      let mpToken: string | null = null
+      if (tenant.mp_access_token) { try { mpToken = decrypt(tenant.mp_access_token) } catch { mpToken = null } }
+      reply = await aiReplyWithTools(basePrompt + GUARDRAIL, messages, {
+        tenantPrisma, contactId: 'diagnose', contactName: null, businessName: tenant.name || '', replyTo: tenant.email || null,
+        tenantId: tenant.id || '', schemaName: tenant.schema_name, mpAccessToken: mpToken,
+        waTenant: { phone_number_id: tenant.phone_number_id || '', whatsapp_token: tenant.whatsapp_token || '' }, contactPhone: 'diagnose'
+      } as any, tools)
+    } else {
+      reply = await chatComplete({ maxTokens: 512, system: basePrompt + GUARDRAIL, messages })
+    }
+    return { ok: true, path, useAnthropic, schedulingOn, catalogOn, availabilityCount, productCount, ms: Date.now() - started, reply }
+  } catch (e: any) {
+    return { ok: false, path, useAnthropic, schedulingOn, catalogOn, availabilityCount, productCount, ms: Date.now() - started,
+      error: e?.message || String(e), status: e?.status ?? e?.statusCode ?? null, type: e?.error?.type ?? e?.type ?? null }
+  }
+}
