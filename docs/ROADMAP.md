@@ -94,8 +94,19 @@ Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 
 ## 🔒 Pós-aprovação (checklist de segurança)
 - Apagar o usuário `analyst@uprocrm.com.br`
-- Rotacionar `NEXTAUTH_SECRET`, `ENCRYPTION_KEY` e `META_APP_SECRET` no Railway (apareceram em URLs/prints)
+- Rotacionar `NEXTAUTH_SECRET`, `ENCRYPTION_KEY` e `META_APP_SECRET` no Railway (apareceram em URLs/prints) — **NEXTAUTH_SECRET voltou a aparecer em prints durante a depuração do bot (ago/2026); prioridade**
 - Trocar senhas de contas de teste
+
+## 🩺 Diagnóstico / suporte (ferramentas permanentes)
+Endpoints token-guarded (`?token=<NEXTAUTH_SECRET>`) para depurar o bot sem acesso aos logs do Railway:
+- **`/api/admin/ai-health`** — faz uma chamada de IA real e devolve provider/modelo/chaves + o erro exato (billing, auth, modelo).
+- **`/api/admin/bot-diagnose?email=<tenant>[&phone=][&run=1&text=]`** — mostra os flags do tenant (plano, `bot_enabled`, `handoff_pause`, pausa de 30 min, WhatsApp), as últimas mensagens do contato e, com `run=1`, **gera a resposta com o prompt real** (sem enviar ao WhatsApp), capturando caminho (`chatComplete`/`aiReplyWithTools`) e erro.
+
+### 🐛 Bug resolvido — "bot teclando mas não responde" (causa raiz)
+- **Sintoma:** IA com crédito e chave OK, `ai-health` respondia "OK", mas o bot ficava mudo no WhatsApp (várias mensagens sem resposta, sem ser a pausa de 30 min).
+- **Causa:** o `claude-sonnet-5` vem com **thinking adaptativo ligado por padrão** → a resposta traz um bloco `thinking` antes do `text`. O `chatAnthropic` (`lib/ai.ts`) lia só `response.content[0]`; como o primeiro bloco era o thinking, retornava **string vazia** e o bot caía em `if (!botReply) return`. O `ai-health` passava porque o prompt trivial não disparava thinking.
+- **Correção:** `chatComplete` passou a **filtrar e concatenar todos os blocos `type: text`** (o caminho de tools já fazia isso). Vale para qualquer tenant no caminho `chatComplete` (sem horários/catálogo).
+- **Pendência de segurança:** `NEXTAUTH_SECRET` apareceu em prints durante a depuração → **rotacionar** (ver checklist pós-aprovação).
 
 ## ✅ Melhorias recentes do bot / UX
 - Indicador "digitando…" no WhatsApp antes do bot responder (Cloud API typing_indicator + status:read → marca como lida). Vale para bot IA e menu bot.
