@@ -51,7 +51,13 @@ async function chatAnthropic(system: string, messages: ChatMessage[], maxTokens:
     messages
   })
 
-  return response.content[0].type === 'text' ? response.content[0].text : ''
+  // Com thinking adaptativo (padrão no Sonnet 5), a resposta pode ter um bloco
+  // "thinking" antes do texto. Junta TODOS os blocos de texto, não só o primeiro.
+  return (response.content || [])
+    .filter((b: any) => b.type === 'text')
+    .map((b: any) => b.text)
+    .join('\n')
+    .trim()
 }
 
 async function chatGroq(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
