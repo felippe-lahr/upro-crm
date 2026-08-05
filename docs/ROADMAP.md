@@ -86,8 +86,18 @@ Bot coleta infos definidas no prompt, classifica e encaminha o resumo da convers
 - Entrega: WhatsApp (exige template fora da janela 24h), **e-mail** ou **API da Digisac** (sem template, mais limpo).
 - Caso concreto: cliente que usa Digisac — bot pré-atende e joga o resumo na Digisac.
 
+### 4.0 Resumo do atendimento configurável pelo prompt (Pro) — ESPECIFICADO, pré-requisito do 4.1
+Hoje o resumo (`ai_summary`) é gerado por um **prompt FIXO** em `extractContactInfo` (`bot.ts`) → JSON `{name, email, summary, qualified}`, resumo de 1–2 frases. Tornar o **conteúdo do resumo definível pelo negócio**.
+
+- **Campo novo (Tenant, Pro):** `summary_instructions String?` — o cliente descreve o que o resumo deve conter e em que formato. Ex.: *"Inclua sempre: nome, telefone, e-mail e serviço de interesse; se houver, orçamento e prazo."*
+- **Como injetar:** o prompt de extração passa a combinar (a) **contexto do negócio** — reaproveitar o `bot_prompt` como pano de fundo para o extrator entender o domínio — e (b) as **`summary_instructions`** ("monte o resumo seguindo estas orientações"). Continua respondendo em JSON; o campo `summary` passa a seguir as instruções.
+- **Telefone:** já disponível (é o número do contato) — incluir automaticamente quando as instruções pedirem, sem depender do cliente digitar.
+- **Fallback:** `summary_instructions` vazio → mantém o comportamento fixo atual (não quebra quem já usa).
+- **Formato livre:** permitir tanto texto corrido quanto rótulos ("Nome: … / Serviço: …"), conforme o cliente descrever.
+- **UI/API:** campo de texto em Configurações (gated a `['pro','promaster']`), via `/api/tenant/settings`.
+
 ### 4.1 Encaminhar resumo do atendimento para WhatsApp do gestor (Pro) — ESPECIFICADO, a implementar
-Quando o bot qualifica um lead, enviar automaticamente o **resumo do atendimento (`ai_summary`)** para um **número de WhatsApp cadastrado** (o gestor/dono). Decisões já tomadas com o cliente:
+Quando o bot qualifica um lead, enviar automaticamente o **resumo do atendimento (`ai_summary`)** para um **número de WhatsApp cadastrado** (o gestor/dono). **Depende do 4.0** (o resumo já sai no formato que o negócio quer). Decisões já tomadas com o cliente:
 
 - **Método de envio: TEMPLATE aprovado** (não é dentro da janela 24h). Mensagem iniciada pelo negócio → a Meta exige template. Precisa existir/estar aprovado na **WABA de cada tenant**.
 - **Gatilho: ao qualificar o lead — 1x por lead.** Reaproveitar a transição que já existe em `extractContactInfo` (`bot.ts`): `if (data.qualified && current.stage === 'novo_lead') → em_atendimento`. Enviar exatamente nessa transição (dispara uma única vez por contato). Opcional: gravar `summary_forwarded_at` no Contact como trava extra anti-duplicação.
