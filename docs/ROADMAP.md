@@ -86,6 +86,27 @@ Bot coleta infos definidas no prompt, classifica e encaminha o resumo da convers
 - Entrega: WhatsApp (exige template fora da janela 24h), **e-mail** ou **API da Digisac** (sem template, mais limpo).
 - Caso concreto: cliente que usa Digisac — bot pré-atende e joga o resumo na Digisac.
 
+### 4.1 Encaminhar resumo do atendimento para WhatsApp do gestor (Pro) — ESPECIFICADO, a implementar
+Quando o bot qualifica um lead, enviar automaticamente o **resumo do atendimento (`ai_summary`)** para um **número de WhatsApp cadastrado** (o gestor/dono). Decisões já tomadas com o cliente:
+
+- **Método de envio: TEMPLATE aprovado** (não é dentro da janela 24h). Mensagem iniciada pelo negócio → a Meta exige template. Precisa existir/estar aprovado na **WABA de cada tenant**.
+- **Gatilho: ao qualificar o lead — 1x por lead.** Reaproveitar a transição que já existe em `extractContactInfo` (`bot.ts`): `if (data.qualified && current.stage === 'novo_lead') → em_atendimento`. Enviar exatamente nessa transição (dispara uma única vez por contato). Opcional: gravar `summary_forwarded_at` no Contact como trava extra anti-duplicação.
+- **Destino: um número por conta (tenant), em Configurações.** Também exibir/editar no painel da conversa, **abaixo do bloco "Resumo (IA)"** (só reflete o mesmo número global do tenant).
+- **Exclusivo do plano Pro** (e Promaster, que é Pro + catálogo).
+
+**Desenho técnico:**
+- **Schema (Tenant, público):** `summary_forward_enabled Boolean @default(false)`, `summary_forward_number String?` (E.164, só dígitos), `summary_forward_template String?` (nome do template aprovado; default ex.: `resumo_atendimento`).
+- **Template na WABA:** categoria *utility*, idioma `pt_BR`, corpo com 1–2 parâmetros. Ex.: corpo = `Novo resumo de atendimento ({{1}}):\n\n{{2}}` → `{{1}}` = nome/telefone do contato, `{{2}}` = `ai_summary`. Duas opções de provisionamento: (a) **auto-criar** via WhatsApp Business Management API `POST /{waba_id}/message_templates` quando o tenant ativa a função (aprovação é assíncrona — guardar o nome e só enviar após aprovado); (b) o operador cria manualmente e cadastra o nome. Recomendação: auto-criar, com fallback claro se ainda não aprovado.
+- **Envio:** nova função `sendWhatsAppTemplate(tenant, to, templateName, lang, bodyParams[])` espelhando `sendWhatsAppMessage`/`sendWhatsAppButtons` (POST em `graph.facebook.com/v21.0/{phone_number_id}/messages`, `type: "template"`, `components: [{ type: "body", parameters: [{type:"text", text:...}] }]`). Token via `decrypt(tenant.whatsapp_token)`.
+- **Ponto de disparo:** `extractContactInfo` passa a receber os campos de forward do tenant (ou retornar `{ qualifiedNow, summary }` para o webhook, que já tem o tenant completo, fazer o envio). Enviar só se `summary_forward_enabled && summary_forward_number && summary_forward_template` e a transição de qualificação ocorreu. Tudo em try/catch silencioso (nunca quebrar o atendimento).
+- **Config API/UI:** estender `/api/tenant/settings` (GET/PATCH) com os 3 campos, gated a `['pro','promaster']`; campos em `settings/page.tsx` (componente novo tipo "Encaminhar resumo") e um campo espelho abaixo do resumo em `conversation-thread.tsx`.
+
+**Riscos/observações:**
+- Template precisa estar **aprovado** antes do primeiro envio — prever estado "aguardando aprovação".
+- Validar o número de destino (E.164) e evitar enviar para o próprio número do tenant.
+- Custo: cada envio é uma conversa *utility* iniciada pelo negócio (tarifada pela Meta) — avisar o cliente.
+- Alternativa mais simples que ficou **descartada** pelo cliente: enviar por **e-mail** (sem template/janela).
+
 ### 5. Disparo em massa (templates)
 Envio de mensagens em massa via templates aprovados (respeitando janela de 24h e categorias). Depende de templates aprovados na WABA.
 
