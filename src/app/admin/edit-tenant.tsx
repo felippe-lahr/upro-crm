@@ -9,6 +9,7 @@ interface TenantLite {
   email: string
   status: string
   plan: string
+  feature_summary_forward?: boolean
 }
 
 const PLANS = [
@@ -35,12 +36,13 @@ export function EditTenant({ tenant }: { tenant: TenantLite }) {
   const [plan, setPlan] = useState(tenant.plan)
   const [trialDays, setTrialDays] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [featureSummaryForward, setFeatureSummaryForward] = useState(!!tenant.feature_summary_forward)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   function reset() {
     setName(tenant.name); setEmail(tenant.email); setStatus(tenant.status); setPlan(tenant.plan)
-    setTrialDays(''); setNewPassword(''); setError('')
+    setTrialDays(''); setNewPassword(''); setFeatureSummaryForward(!!tenant.feature_summary_forward); setError('')
   }
 
   async function save() {
@@ -51,6 +53,7 @@ export function EditTenant({ tenant }: { tenant: TenantLite }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenantId: tenant.id, name, email, status, plan,
+          featureSummaryForward,
           ...(trialDays !== '' ? { trialDays: Number(trialDays) } : {}),
           ...(newPassword ? { newPassword } : {})
         })
@@ -111,6 +114,18 @@ export function EditTenant({ tenant }: { tenant: TenantLite }) {
                 <label className="mb-1 block text-xs text-muted">Nova senha do login</label>
                 <input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="mín. 8 caracteres (opcional)" className={fieldCls} />
               </div>
+            </div>
+
+            {/* Entitlements (features de nicho liberadas por tenant) */}
+            <div className="mt-4 rounded-lg border border-line bg-background p-3">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-faint">Recursos liberados</div>
+              <label className="flex cursor-pointer items-start gap-2.5 py-1">
+                <input type="checkbox" checked={featureSummaryForward} onChange={(e) => setFeatureSummaryForward(e.target.checked)} className="mt-0.5" />
+                <span className="text-sm text-fg">
+                  Encaminhar resumo por WhatsApp
+                  <span className="block text-xs text-muted">Libera, nas Configurações do cliente, o envio automático do resumo do atendimento para um número (via template).</span>
+                </span>
+              </label>
             </div>
 
             {error && <p className="mt-3 text-xs text-red-500">{error}</p>}

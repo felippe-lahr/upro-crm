@@ -12,7 +12,11 @@ import { searchProducts, getProductById } from './products'
  * são silenciosas para nunca quebrar o atendimento.
  */
 export async function extractContactInfo(
-  tenant: { schema_name: string; bot_prompt?: string | null; summary_instructions?: string | null },
+  tenant: {
+    schema_name: string; bot_prompt?: string | null; summary_instructions?: string | null
+    feature_summary_forward?: boolean; summary_forward_number?: string | null; summary_forward_template?: string | null
+    phone_number_id?: string; whatsapp_token?: string
+  },
   contact: { id: string }
 ) {
   try {
@@ -75,10 +79,39 @@ export async function extractContactInfo(
     if (data.name && !current.name) update.name = String(data.name).slice(0, 120)
     if (data.email && /\S+@\S+\.\S+/.test(data.email)) update.email = String(data.email).slice(0, 160)
     if (data.summary) update.ai_summary = String(data.summary).slice(0, 1500)
-    if (data.qualified && current.stage === 'novo_lead') update.stage = 'em_atendimento'
+    // Qualificação: dispara uma única vez (novo_lead → em_atendimento)
+    const qualifiedNow = !!(data.qualified && current.stage === 'novo_lead')
+    if (qualifiedNow) update.stage = 'em_atendimento'
 
     if (Object.keys(update).length > 0) {
       await tenantPrisma.contact.update({ where: { id: contact.id }, data: update })
+    }
+
+    // 4.1 — Encaminhar o resumo para o WhatsApp do gestor (1x por lead), via template.
+    // Só quando: entitlement ligado + número + template configurados + ainda não enviado.
+    if (
+      qualifiedNow &&
+      tenant.feature_summary_forward &&
+      tenant.summary_forward_number &&
+      tenant.summary_forward_template &&
+      tenant.phone_number_id && tenant.whatsapp_token &&
+      !(current as any).summary_forwarded_at &&
+      (update.ai_summary || current.ai_summary)
+    ) {
+      try {
+        const who = update.name || current.name || current.phone || 'Contato'
+        const label = `${who}${current.phone ? ` (${current.phone})` : ''}`
+        const resumo = String(update.ai_summary || current.ai_summary)
+        await sendWhatsAppTemplate(
+          { phone_number_id: tenant.phone_number_id, whatsapp_token: tenant.whatsapp_token },
+          String(tenant.summary_forward_number).replace(/\D/g, ''),
+          tenant.summary_forward_template,
+          [label, resumo]
+        )
+        await tenantPrisma.contact.update({ where: { id: contact.id }, data: { summary_forwarded_at: new Date() } })
+      } catch (e) {
+        console.error('[extractContactInfo] encaminhar resumo falhou', (e as any)?.message || e)
+      }
     }
   } catch (err) {
     console.error('[extractContactInfo] failed', err)
@@ -733,6 +766,47 @@ export async function sendWhatsAppMessage(
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`WhatsApp send failed: ${err}`)
+  }
+}
+
+/**
+ * Envia uma mensagem de TEMPLATE aprovado (mensagem iniciada pelo negócio,
+ * fora da janela de 24h). Usado para encaminhar o resumo ao gestor (4.1).
+ * bodyParams preenchem as variáveis {{1}}, {{2}}... do corpo do template.
+ * Parâmetros de template não podem ter quebras de linha nem 4+ espaços.
+ */
+export async function sendWhatsAppTemplate(
+  tenant: { phone_number_id: string; whatsapp_token: string },
+  to: string,
+  templateName: string,
+  bodyParams: string[],
+  lang = 'pt_BR'
+) {
+  const token = decrypt(tenant.whatsapp_token)
+  const clean = (s: string) => String(s || '').replace(/\s*\n\s*/g, ' · ').replace(/\s{4,}/g, '   ').trim()
+
+  const res = await fetch(
+    `https://graph.facebook.com/v21.0/${tenant.phone_number_id}/messages`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: lang },
+          components: [{ type: 'body', parameters: bodyParams.map((p) => ({ type: 'text', text: clean(p) })) }]
+        }
+      })
+    }
+  )
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`WhatsApp template send failed: ${err}`)
   }
 }
 

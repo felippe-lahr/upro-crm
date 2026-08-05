@@ -138,7 +138,7 @@ export default async function AdminPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        <EditTenant tenant={{ id: t.id, name: t.name, email: t.email, status: t.status, plan: t.plan }} />
+                        <EditTenant tenant={{ id: t.id, name: t.name, email: t.email, status: t.status, plan: t.plan, feature_summary_forward: t.feature_summary_forward }} />
                         <ConfirmDelete
                           title={`Excluir "${t.name}"?`}
                           description="O tenant, seus usuários, conversas, mensagens e o banco de dados dedicado serão apagados permanentemente."

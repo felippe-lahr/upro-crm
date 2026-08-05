@@ -34,6 +34,11 @@ model Tenant {
   handoff_pause              Boolean  @default(false)
   keep_responding_after_human Boolean @default(false)
 
+  // 4.1 — encaminhar resumo do atendimento para WhatsApp do gestor (feature de nicho)
+  feature_summary_forward  Boolean @default(false) // entitlement ligado SÓ pelo superadmin
+  summary_forward_number   String? // destino E.164 (só dígitos)
+  summary_forward_template String? // nome do template aprovado na WABA
+
   funnel_labels       Json?    // { stageId: label } — nomes personalizados das etapas (Pro)
   loss_reasons        Json?    // string[] — até 10 motivos de perda (Pro)
 
@@ -184,6 +189,7 @@ model Contact {
   loss_reason  String?  // motivo da perda (quando stage = perdido)
   tags         String[] @default([])
   last_read_at DateTime? // última vez que um atendente abriu esta conversa (para o badge de não vistas)
+  summary_forwarded_at DateTime? // 4.1 — quando o resumo já foi encaminhado (trava anti-duplicação)
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 

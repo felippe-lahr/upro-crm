@@ -20,6 +20,7 @@ export async function GET() {
       menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
       handoff_pause: true, keep_responding_after_human: true,
       scheduling_enabled: true,
+      feature_summary_forward: true, summary_forward_number: true, summary_forward_template: true,
       products_feed_url: true, products_synced_at: true, products_count: true,
       mp_access_token: true
     }
@@ -40,7 +41,8 @@ export async function PATCH(req: Request) {
   const body = await req.json()
   const { bot_enabled, bot_prompt, menu_bot_enabled, menu_bot_greeting, menu_bot_options,
     handoff_pause, keep_responding_after_human, mp_access_token, products_feed_url,
-    scheduling_enabled, summary_instructions } = body
+    scheduling_enabled, summary_instructions,
+    summary_forward_number, summary_forward_template } = body
 
   // Token do Mercado Pago do lojista (recebe os sinais). '' limpa; undefined mantém.
   let mpTokenData: { mp_access_token?: string | null } = {}
@@ -48,12 +50,20 @@ export async function PATCH(req: Request) {
     mpTokenData = { mp_access_token: mp_access_token ? encrypt(String(mp_access_token).trim()) : null }
   }
 
+  const forwardTouched = summary_forward_number !== undefined || summary_forward_template !== undefined
   // Bot com IA é exclusivo dos planos Pro e Promaster
-  if (bot_enabled === true || products_feed_url !== undefined || summary_instructions !== undefined) {
+  if (bot_enabled === true || products_feed_url !== undefined || summary_instructions !== undefined || forwardTouched) {
     const current = await globalPrisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { plan: true }
+      select: { plan: true, feature_summary_forward: true }
     })
+    // Encaminhar resumo: só quando o superadmin liberou o entitlement para este tenant.
+    if (forwardTouched && !current?.feature_summary_forward) {
+      return Response.json(
+        { error: 'Recurso não habilitado para esta conta.' },
+        { status: 403 }
+      )
+    }
     if (bot_enabled === true && !['pro', 'promaster'].includes(current?.plan || '')) {
       return Response.json(
         { error: 'O Bot com IA está disponível apenas nos planos Pro e Promaster.' },
@@ -101,6 +111,8 @@ export async function PATCH(req: Request) {
       ...(handoff_pause !== undefined && { handoff_pause }),
       ...(keep_responding_after_human !== undefined && { keep_responding_after_human }),
       ...(scheduling_enabled !== undefined && { scheduling_enabled: !!scheduling_enabled }),
+      ...(summary_forward_number !== undefined && { summary_forward_number: summary_forward_number ? String(summary_forward_number).replace(/\D/g, '').slice(0, 20) : null }),
+      ...(summary_forward_template !== undefined && { summary_forward_template: summary_forward_template ? String(summary_forward_template).trim().slice(0, 120) : null }),
       ...(products_feed_url !== undefined && { products_feed_url: products_feed_url ? String(products_feed_url).trim() : null }),
       ...mpTokenData
     },

@@ -96,7 +96,9 @@ Hoje o resumo (`ai_summary`) é gerado por um **prompt FIXO** em `extractContact
 - **Formato livre:** permitir tanto texto corrido quanto rótulos ("Nome: … / Serviço: …"), conforme o cliente descrever.
 - **UI/API:** campo de texto em Configurações (gated a `['pro','promaster']`), via `/api/tenant/settings`.
 
-### 4.1 Encaminhar resumo do atendimento para WhatsApp do gestor (Pro) — ESPECIFICADO, a implementar
+### ✅ 4.1 Encaminhar resumo do atendimento para WhatsApp do gestor (Pro) — IMPLEMENTADO
+> **Implementado.** Falta só, por tenant: (1) admin liga o entitlement no modal "Editar tenant"; (2) criar o template na WABA via `/api/admin/create-summary-template?token=&email=` (aguardar aprovação da Meta); (3) o cliente preenche número + nome do template em Configurações. Envio dispara ao qualificar o lead (1x), com trava `summary_forwarded_at`.
+
 Quando o bot qualifica um lead, enviar automaticamente o **resumo do atendimento (`ai_summary`)** para um **número de WhatsApp cadastrado** (o gestor/dono). **Depende do 4.0** (o resumo já sai no formato que o negócio quer). Decisões já tomadas com o cliente:
 
 - **Método de envio: TEMPLATE aprovado** (não é dentro da janela 24h). Mensagem iniciada pelo negócio → a Meta exige template. Precisa existir/estar aprovado na **WABA de cada tenant**.
