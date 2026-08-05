@@ -101,8 +101,10 @@ Quando o bot qualifica um lead, enviar automaticamente o **resumo do atendimento
 
 - **Método de envio: TEMPLATE aprovado** (não é dentro da janela 24h). Mensagem iniciada pelo negócio → a Meta exige template. Precisa existir/estar aprovado na **WABA de cada tenant**.
 - **Gatilho: ao qualificar o lead — 1x por lead.** Reaproveitar a transição que já existe em `extractContactInfo` (`bot.ts`): `if (data.qualified && current.stage === 'novo_lead') → em_atendimento`. Enviar exatamente nessa transição (dispara uma única vez por contato). Opcional: gravar `summary_forwarded_at` no Contact como trava extra anti-duplicação.
-- **Destino: um número por conta (tenant), em Configurações.** Também exibir/editar no painel da conversa, **abaixo do bloco "Resumo (IA)"** (só reflete o mesmo número global do tenant).
-- **Exclusivo do plano Pro** (e Promaster, que é Pro + catálogo).
+- **Destino: um número por conta (tenant), em Configurações.** Também exibir/editar no painel da conversa, **abaixo do bloco "Resumo (IA)"** (só reflete o mesmo número global do tenant). **Campo dedicado e validado (E.164)** — decidido NÃO colocar o número solto no `bot_prompt` (risco de dígito errado → destino errado; sem validação). Evolução futura possível: **roteamento por rótulo** (lista de destinos validados + prompt escolhe o setor) — ver item 4 "Roteamento inteligente".
+- **Liberação por tenant, controlada pelo superadmin (entitlement).** Esta é uma feature de nicho (uso inicial: ~2 clientes), então **NÃO** exposta a todo o Pro. Novo campo `feature_summary_forward Boolean @default(false)` no Tenant, ligado/desligado **só no painel admin** (modal "Editar tenant"). A seção de config (número + on/off) só **aparece nas Configurações do cliente quando essa flag está ligada**; para os demais, fica invisível. Ligar para um novo cliente = um clique no admin, sem deploy.
+- **Escopo do gate:** prender **o encaminhamento (4.1)** atrás de `feature_summary_forward`. O **4.0 (resumo configurável)** fica como melhoria geral do Pro (útil a todos); se preferir esconder o pacote inteiro, prender os dois na mesma flag (decisão aberta — default: só o 4.1 gated).
+- **Exclusivo do plano Pro** (e Promaster) **+ entitlement do admin**.
 
 **Desenho técnico:**
 - **Schema (Tenant, público):** `summary_forward_enabled Boolean @default(false)`, `summary_forward_number String?` (E.164, só dígitos), `summary_forward_template String?` (nome do template aprovado; default ex.: `resumo_atendimento`).
