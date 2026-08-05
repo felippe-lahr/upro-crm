@@ -16,7 +16,7 @@ export async function GET() {
     select: {
       id: true, name: true, email: true, plan: true, status: true,
       whatsapp_connected: true, phone_number_id: true, waba_id: true,
-      bot_enabled: true, bot_prompt: true, trial_ends_at: true,
+      bot_enabled: true, bot_prompt: true, summary_instructions: true, trial_ends_at: true,
       menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
       handoff_pause: true, keep_responding_after_human: true,
       scheduling_enabled: true,
@@ -40,7 +40,7 @@ export async function PATCH(req: Request) {
   const body = await req.json()
   const { bot_enabled, bot_prompt, menu_bot_enabled, menu_bot_greeting, menu_bot_options,
     handoff_pause, keep_responding_after_human, mp_access_token, products_feed_url,
-    scheduling_enabled } = body
+    scheduling_enabled, summary_instructions } = body
 
   // Token do Mercado Pago do lojista (recebe os sinais). '' limpa; undefined mantém.
   let mpTokenData: { mp_access_token?: string | null } = {}
@@ -49,7 +49,7 @@ export async function PATCH(req: Request) {
   }
 
   // Bot com IA é exclusivo dos planos Pro e Promaster
-  if (bot_enabled === true || products_feed_url !== undefined) {
+  if (bot_enabled === true || products_feed_url !== undefined || summary_instructions !== undefined) {
     const current = await globalPrisma.tenant.findUnique({
       where: { id: tenantId },
       select: { plan: true }
@@ -57,6 +57,13 @@ export async function PATCH(req: Request) {
     if (bot_enabled === true && !['pro', 'promaster'].includes(current?.plan || '')) {
       return Response.json(
         { error: 'O Bot com IA está disponível apenas nos planos Pro e Promaster.' },
+        { status: 403 }
+      )
+    }
+    // Resumo configurável é exclusivo do Pro/Promaster.
+    if (summary_instructions !== undefined && !['pro', 'promaster'].includes(current?.plan || '')) {
+      return Response.json(
+        { error: 'O resumo configurável está disponível apenas nos planos Pro e Promaster.' },
         { status: 403 }
       )
     }
@@ -87,6 +94,7 @@ export async function PATCH(req: Request) {
     data: {
       ...(bot_enabled !== undefined && { bot_enabled }),
       ...(bot_prompt !== undefined && { bot_prompt }),
+      ...(summary_instructions !== undefined && { summary_instructions: summary_instructions ? String(summary_instructions).slice(0, 2000) : null }),
       ...(menu_bot_enabled !== undefined && { menu_bot_enabled }),
       ...(menu_bot_greeting !== undefined && { menu_bot_greeting }),
       ...(normalizedOptions !== undefined && { menu_bot_options: normalizedOptions }),
@@ -97,7 +105,7 @@ export async function PATCH(req: Request) {
       ...mpTokenData
     },
     select: {
-      id: true, bot_enabled: true, bot_prompt: true,
+      id: true, bot_enabled: true, bot_prompt: true, summary_instructions: true,
       menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
       handoff_pause: true, keep_responding_after_human: true, scheduling_enabled: true
     }

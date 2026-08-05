@@ -12,7 +12,7 @@ import { searchProducts, getProductById } from './products'
  * são silenciosas para nunca quebrar o atendimento.
  */
 export async function extractContactInfo(
-  tenant: { schema_name: string },
+  tenant: { schema_name: string; bot_prompt?: string | null; summary_instructions?: string | null },
   contact: { id: string }
 ) {
   try {
@@ -35,17 +35,29 @@ export async function extractContactInfo(
 
     if (!transcript.trim()) return
 
+    // Resumo configurável (4.0): se o negócio definiu summary_instructions, o campo
+    // "summary" é montado seguindo essas orientações, usando o bot_prompt como
+    // contexto do domínio. Sem instruções → mantém o resumo padrão de 1-2 frases.
+    const summaryGuide = tenant.summary_instructions?.trim()
+      ? `- summary: monte SEGUINDO estritamente estas orientações do negócio (o que incluir e o formato):\n"""${tenant.summary_instructions.trim().slice(0, 1200)}"""\n` +
+        `  Telefone do contato (use se as orientações pedirem telefone): ${current.phone || 'desconhecido'}. NUNCA invente dados que não estejam na conversa. `
+      : '- summary: resumo de 1 a 2 frases do que o cliente quer/precisa, em português. '
+    const businessContext = tenant.bot_prompt?.trim()
+      ? `\n\nContexto do negócio (apenas para você entender o domínio; não copie literalmente):\n"""${tenant.bot_prompt.trim().slice(0, 2000)}"""`
+      : ''
+
     const raw = await chatComplete({
-      maxTokens: 400,
+      maxTokens: 500,
       system:
         'Você extrai dados de um lead a partir de uma conversa de atendimento. ' +
         'Responda APENAS com um JSON válido, sem texto extra, no formato: ' +
         '{"name": string|null, "email": string|null, "summary": string, "qualified": boolean}. ' +
         '- name: nome da pessoa/responsável, se mencionado. ' +
         '- email: e-mail, se mencionado (valide formato básico). ' +
-        '- summary: resumo de 1 a 2 frases do que o cliente quer/precisa, em português. ' +
+        summaryGuide +
         '- qualified: true se já dá para entender claramente o interesse/necessidade do cliente. ' +
-        'Use null quando a informação não aparecer. NUNCA invente dados.',
+        'Use null quando a informação não aparecer. NUNCA invente dados.' +
+        businessContext,
       messages: [{ role: 'user', content: transcript }]
     })
 
@@ -62,7 +74,7 @@ export async function extractContactInfo(
     const update: any = {}
     if (data.name && !current.name) update.name = String(data.name).slice(0, 120)
     if (data.email && /\S+@\S+\.\S+/.test(data.email)) update.email = String(data.email).slice(0, 160)
-    if (data.summary) update.ai_summary = String(data.summary).slice(0, 500)
+    if (data.summary) update.ai_summary = String(data.summary).slice(0, 1500)
     if (data.qualified && current.stage === 'novo_lead') update.stage = 'em_atendimento'
 
     if (Object.keys(update).length > 0) {

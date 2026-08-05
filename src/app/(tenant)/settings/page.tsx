@@ -19,6 +19,7 @@ interface TenantSettings {
   phone_number_id: string | null
   bot_enabled: boolean
   bot_prompt: string | null
+  summary_instructions: string | null
   trial_ends_at: string | null
   menu_bot_enabled: boolean
   menu_bot_greeting: string | null
@@ -284,6 +285,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<TenantSettings | null>(null)
   const [botEnabled, setBotEnabled] = useState(false)
   const [botPrompt, setBotPrompt] = useState('')
+  const [summaryInstructions, setSummaryInstructions] = useState('')
   const [menuBotEnabled, setMenuBotEnabled] = useState(false)
   const [menuGreeting, setMenuGreeting] = useState('')
   const [menuOptions, setMenuOptions] = useState<MenuOption[]>([])
@@ -313,6 +315,7 @@ export default function SettingsPage() {
         setSettings(data)
         setBotEnabled(data.bot_enabled)
         setBotPrompt(data.bot_prompt || '')
+        setSummaryInstructions(data.summary_instructions || '')
         setMenuBotEnabled(data.menu_bot_enabled)
         setMenuGreeting(data.menu_bot_greeting || '')
         setMenuOptions(
@@ -343,6 +346,7 @@ export default function SettingsPage() {
       body: JSON.stringify({
         bot_enabled: isPro ? botEnabled : false,
         bot_prompt: botPrompt,
+        ...(isPro ? { summary_instructions: summaryInstructions } : {}),
         menu_bot_enabled: menuBotEnabled,
         menu_bot_greeting: menuGreeting,
         menu_bot_options: menuOptions.filter((o) => o.label.trim()),
@@ -644,6 +648,25 @@ export default function SettingsPage() {
               Quanto mais informação você colocar aqui (horários, valores, regras), melhor o bot
               responde. Ele usa tudo isso como base de conhecimento.
             </p>
+
+            {/* Resumo do atendimento configurável (4.0) */}
+            <div className="mt-5 border-t border-line pt-5">
+              <label className="mb-2 block text-sm font-medium text-fg">
+                O que o resumo do atendimento deve conter
+              </label>
+              <textarea
+                value={summaryInstructions}
+                onChange={(e) => setSummaryInstructions(e.target.value)}
+                rows={4}
+                placeholder="Ex: No resumo, sempre inclua o nome do cliente, telefone, e-mail e o serviço de interesse. Se houver, adicione orçamento e prazo desejado. Formato: 'Nome: … / Telefone: … / Serviço: … / Observações: …'"
+                className="w-full resize-none rounded-lg border border-line bg-background px-4 py-3 text-sm text-fg focus:border-brand focus:outline-none"
+              />
+              <p className="mt-2 text-xs text-faint">
+                Orienta o resumo gerado pela IA em cada atendimento (aparece no painel da conversa).
+                Deixe em branco para usar o resumo padrão (1–2 frases). O telefone do contato é
+                incluído automaticamente quando você pedir.
+              </p>
+            </div>
 
             {/* Opções de comportamento */}
             <div className="mt-5 space-y-4 border-t border-line pt-5">
