@@ -86,7 +86,7 @@ Bot coleta infos definidas no prompt, classifica e encaminha o resumo da convers
 - Entrega: WhatsApp (exige template fora da janela 24h), **e-mail** ou **API da Digisac** (sem template, mais limpo).
 - Caso concreto: cliente que usa Digisac — bot pré-atende e joga o resumo na Digisac.
 
-### 4.0 Resumo do atendimento configurável pelo prompt (Pro) — ESPECIFICADO, pré-requisito do 4.1
+### 4.0 Resumo do atendimento configurável pelo prompt (Pro, GERAL) — ESPECIFICADO, pré-requisito do 4.1
 Hoje o resumo (`ai_summary`) é gerado por um **prompt FIXO** em `extractContactInfo` (`bot.ts`) → JSON `{name, email, summary, qualified}`, resumo de 1–2 frases. Tornar o **conteúdo do resumo definível pelo negócio**.
 
 - **Campo novo (Tenant, Pro):** `summary_instructions String?` — o cliente descreve o que o resumo deve conter e em que formato. Ex.: *"Inclua sempre: nome, telefone, e-mail e serviço de interesse; se houver, orçamento e prazo."*
@@ -103,7 +103,7 @@ Quando o bot qualifica um lead, enviar automaticamente o **resumo do atendimento
 - **Gatilho: ao qualificar o lead — 1x por lead.** Reaproveitar a transição que já existe em `extractContactInfo` (`bot.ts`): `if (data.qualified && current.stage === 'novo_lead') → em_atendimento`. Enviar exatamente nessa transição (dispara uma única vez por contato). Opcional: gravar `summary_forwarded_at` no Contact como trava extra anti-duplicação.
 - **Destino: um número por conta (tenant), em Configurações.** Também exibir/editar no painel da conversa, **abaixo do bloco "Resumo (IA)"** (só reflete o mesmo número global do tenant). **Campo dedicado e validado (E.164)** — decidido NÃO colocar o número solto no `bot_prompt` (risco de dígito errado → destino errado; sem validação). Evolução futura possível: **roteamento por rótulo** (lista de destinos validados + prompt escolhe o setor) — ver item 4 "Roteamento inteligente".
 - **Liberação por tenant, controlada pelo superadmin (entitlement).** Esta é uma feature de nicho (uso inicial: ~2 clientes), então **NÃO** exposta a todo o Pro. Novo campo `feature_summary_forward Boolean @default(false)` no Tenant, ligado/desligado **só no painel admin** (modal "Editar tenant"). A seção de config (número + on/off) só **aparece nas Configurações do cliente quando essa flag está ligada**; para os demais, fica invisível. Ligar para um novo cliente = um clique no admin, sem deploy.
-- **Escopo do gate:** prender **o encaminhamento (4.1)** atrás de `feature_summary_forward`. O **4.0 (resumo configurável)** fica como melhoria geral do Pro (útil a todos); se preferir esconder o pacote inteiro, prender os dois na mesma flag (decisão aberta — default: só o 4.1 gated).
+- **Escopo do gate (DECIDIDO):** prender **apenas o encaminhamento (4.1)** atrás de `feature_summary_forward`. O **4.0 (resumo configurável)** é **geral do Pro** — liberado para todos os tenants Pro/Promaster, sem entitlement.
 - **Exclusivo do plano Pro** (e Promaster) **+ entitlement do admin**.
 
 **Desenho técnico:**
