@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { auth } from '@/lib/auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { encrypt } from '@/lib/crypto'
+import { getSummaryTemplateStatus } from '@/lib/whatsapp-templates'
 
 export async function GET() {
   const session = await auth()
@@ -21,14 +22,24 @@ export async function GET() {
       handoff_pause: true, keep_responding_after_human: true,
       scheduling_enabled: true,
       feature_summary_forward: true, summary_forward_number: true, summary_forward_template: true,
+      whatsapp_token: true,
       products_feed_url: true, products_synced_at: true, products_count: true,
       mp_access_token: true
     }
   })
 
-  // Nunca devolve o token; apenas se está conectado.
-  const { mp_access_token, ...rest } = tenant || {}
-  return Response.json({ ...rest, mp_connected: !!mp_access_token })
+  // Se o recurso está liberado, consulta o status do template (best-effort).
+  let summary_template_status: string | null = null
+  let summary_template_rejected: string | undefined
+  if (tenant?.feature_summary_forward && tenant.waba_id && tenant.whatsapp_token) {
+    const st = await getSummaryTemplateStatus({ waba_id: tenant.waba_id, whatsapp_token: tenant.whatsapp_token })
+    summary_template_status = st.status
+    summary_template_rejected = st.rejected_reason
+  }
+
+  // Nunca devolve tokens; apenas o que a UI precisa.
+  const { mp_access_token, whatsapp_token, ...rest } = tenant || {}
+  return Response.json({ ...rest, mp_connected: !!mp_access_token, summary_template_status, summary_template_rejected })
 }
 
 export async function PATCH(req: Request) {

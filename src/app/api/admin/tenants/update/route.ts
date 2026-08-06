@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { auth } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
+import { createSummaryTemplate, SUMMARY_TEMPLATE_NAME } from '@/lib/whatsapp-templates'
 
 const ALLOWED_PLANS = ['trial', 'basic', 'pro', 'promaster']
 const ALLOWED_STATUS = ['active', 'suspended', 'pending_payment', 'trial', 'cancelled']
@@ -57,6 +58,21 @@ export async function POST(req: Request) {
     select: { id: true, name: true, email: true, status: true, plan: true, trial_ends_at: true }
   })
 
+  // Ao LIGAR o entitlement de encaminhar resumo, cria o template na WABA
+  // automaticamente (best-effort) e já grava o nome — sem passo manual.
+  let templateCreate: any = null
+  const t: any = tenant
+  if (featureSummaryForward === true && !t.feature_summary_forward) {
+    if (t.waba_id && t.whatsapp_token) {
+      templateCreate = await createSummaryTemplate({ waba_id: t.waba_id, whatsapp_token: t.whatsapp_token })
+      if (templateCreate.ok) {
+        await globalPrisma.tenant.update({ where: { id: tenantId }, data: { summary_forward_template: templateCreate.name } })
+      }
+    } else {
+      templateCreate = { ok: false, error: 'WhatsApp não conectado — template será criado quando o número for conectado', name: SUMMARY_TEMPLATE_NAME }
+    }
+  }
+
   // Mantém o e-mail do login em sincronia com o e-mail do tenant.
   if (newEmail && newEmail !== tenant.email) {
     await globalPrisma.tenantUser.updateMany({
@@ -82,5 +98,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return Response.json({ ok: true, tenant: updated })
+  return Response.json({ ok: true, tenant: updated, templateCreate })
 }

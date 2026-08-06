@@ -23,6 +23,8 @@ interface TenantSettings {
   feature_summary_forward?: boolean
   summary_forward_number?: string | null
   summary_forward_template?: string | null
+  summary_template_status?: string | null
+  summary_template_rejected?: string | null
   trial_ends_at: string | null
   menu_bot_enabled: boolean
   menu_bot_greeting: string | null
@@ -290,7 +292,6 @@ export default function SettingsPage() {
   const [botPrompt, setBotPrompt] = useState('')
   const [summaryInstructions, setSummaryInstructions] = useState('')
   const [summaryForwardNumber, setSummaryForwardNumber] = useState('')
-  const [summaryForwardTemplate, setSummaryForwardTemplate] = useState('')
   const [menuBotEnabled, setMenuBotEnabled] = useState(false)
   const [menuGreeting, setMenuGreeting] = useState('')
   const [menuOptions, setMenuOptions] = useState<MenuOption[]>([])
@@ -322,7 +323,6 @@ export default function SettingsPage() {
         setBotPrompt(data.bot_prompt || '')
         setSummaryInstructions(data.summary_instructions || '')
         setSummaryForwardNumber(data.summary_forward_number || '')
-        setSummaryForwardTemplate(data.summary_forward_template || '')
         setMenuBotEnabled(data.menu_bot_enabled)
         setMenuGreeting(data.menu_bot_greeting || '')
         setMenuOptions(
@@ -354,7 +354,7 @@ export default function SettingsPage() {
         bot_enabled: isPro ? botEnabled : false,
         bot_prompt: botPrompt,
         ...(isPro ? { summary_instructions: summaryInstructions } : {}),
-        ...(settings?.feature_summary_forward ? { summary_forward_number: summaryForwardNumber, summary_forward_template: summaryForwardTemplate } : {}),
+        ...(settings?.feature_summary_forward ? { summary_forward_number: summaryForwardNumber } : {}),
         menu_bot_enabled: menuBotEnabled,
         menu_bot_greeting: menuGreeting,
         menu_bot_options: menuOptions.filter((o) => o.label.trim()),
@@ -686,29 +686,30 @@ export default function SettingsPage() {
                   Quando o bot qualifica um lead, o resumo é enviado automaticamente (uma vez por
                   lead) para o número abaixo, via mensagem de template aprovada.
                 </p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Número de destino (com DDI/DDD)</label>
-                    <input
-                      value={summaryForwardNumber}
-                      onChange={(e) => setSummaryForwardNumber(e.target.value)}
-                      placeholder="Ex: 5511999998888"
-                      className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Nome do template aprovado</label>
-                    <input
-                      value={summaryForwardTemplate}
-                      onChange={(e) => setSummaryForwardTemplate(e.target.value)}
-                      placeholder="Ex: resumo_atendimento"
-                      className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
-                    />
-                  </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Número de destino (com DDI/DDD)</label>
+                  <input
+                    value={summaryForwardNumber}
+                    onChange={(e) => setSummaryForwardNumber(e.target.value)}
+                    placeholder="Ex: 5511999998888"
+                    className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
+                  />
                 </div>
+                {/* Status do template (gerenciado automaticamente) */}
+                {(() => {
+                  const st = settings?.summary_template_status
+                  const map: Record<string, { txt: string; cls: string }> = {
+                    APPROVED: { txt: '✓ Pronto para enviar (template aprovado)', cls: 'text-green-600' },
+                    PENDING: { txt: '⏳ Template em análise pela Meta (costuma levar minutos)', cls: 'text-amber-600' },
+                    REJECTED: { txt: `✕ Template recusado${settings?.summary_template_rejected ? ` (${settings.summary_template_rejected})` : ''} — fale com o suporte`, cls: 'text-red-500' },
+                    NONE: { txt: 'Template ainda não criado — fale com o suporte', cls: 'text-muted' }
+                  }
+                  const info = st ? map[st] : null
+                  return info ? <p className={`mt-2 text-xs ${info.cls}`}>{info.txt}</p> : null
+                })()}
                 <p className="mt-2 text-xs text-faint">
-                  Deixe o número em branco para desativar. O template precisa estar aprovado na sua
-                  conta do WhatsApp (idioma pt_BR, com 2 variáveis: contato e resumo).
+                  Deixe o número em branco para desativar. O resumo só é enviado quando o template
+                  estiver aprovado.
                 </p>
               </div>
             )}
