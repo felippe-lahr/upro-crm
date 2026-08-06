@@ -31,11 +31,15 @@ export async function createSummaryTemplate(
           type: 'BODY',
           // Precisa de texto fixo suficiente em relação às 2 variáveis, senão a
           // Meta recusa (subcode 2388293: "muitas variáveis para a extensão").
+          // Regras da Meta: variável não pode ficar no início nem no fim do texto,
+          // e precisa de texto fixo suficiente. Por isso há texto antes de {{1}} e
+          // depois de {{2}}.
           text:
             'Você recebeu um novo resumo de atendimento pelo seu assistente virtual no UProCRM. ' +
             'Confira os dados abaixo e entre em contato com o cliente assim que possível.\n\n' +
             'Contato: {{1}}\n\n' +
-            'Resumo do atendimento:\n{{2}}',
+            'Resumo do atendimento: {{2}}\n\n' +
+            'Mensagem automática do seu CRM. Bom atendimento!',
           example: { body_text: [['João (5511999998888)', 'Cliente quer projeto de interiores e pediu um orçamento.']] }
         }
       ]
