@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
   const result = await createSummaryTemplate({ waba_id: t.waba_id, whatsapp_token: t.whatsapp_token })
   if (!result.ok) {
-    return Response.json({ ok: false, error: result.error }, { status: 200 })
+    return Response.json({ ok: false, error: result.error, detail: result.detail, subcode: result.subcode }, { status: 200 })
   }
 
   await globalPrisma.tenant.update({ where: { id: t.id }, data: { summary_forward_template: result.name } })

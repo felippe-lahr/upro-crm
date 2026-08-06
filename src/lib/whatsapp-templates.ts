@@ -14,7 +14,7 @@ type WabaTenant = { waba_id?: string | null; whatsapp_token?: string | null }
 export async function createSummaryTemplate(
   tenant: WabaTenant,
   name = SUMMARY_TEMPLATE_NAME
-): Promise<{ ok: boolean; name: string; status?: string; error?: string; alreadyExists?: boolean }> {
+): Promise<{ ok: boolean; name: string; status?: string; error?: string; detail?: string; subcode?: number; alreadyExists?: boolean }> {
   if (!tenant.waba_id || !tenant.whatsapp_token) return { ok: false, name, error: 'Tenant sem WABA/token' }
   let token: string
   try { token = decrypt(tenant.whatsapp_token) } catch { return { ok: false, name, error: 'Falha ao ler token' } }
@@ -45,11 +45,14 @@ export async function createSummaryTemplate(
   if (res.ok) return { ok: true, name, status: data?.status || 'PENDING' }
 
   // Nome já usado → tratamos como sucesso (o template existe, o envio vai usá-lo).
-  const msg: string = data?.error?.message || ''
-  if (res.status === 400 && /already exists|nome.*existe|already been used/i.test(msg)) {
+  const err = data?.error || {}
+  const msg: string = err.message || ''
+  const detail: string = err.error_user_msg || err.error_user_title || ''
+  const subcode: number | undefined = err.error_subcode
+  if (res.status === 400 && /already exists|nome.*existe|already been used/i.test(msg + ' ' + detail)) {
     return { ok: true, name, alreadyExists: true }
   }
-  return { ok: false, name, error: msg || 'Falha ao criar template' }
+  return { ok: false, name, error: msg || 'Falha ao criar template', detail, subcode }
 }
 
 /**
