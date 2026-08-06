@@ -29,7 +29,13 @@ export async function createSummaryTemplate(
       components: [
         {
           type: 'BODY',
-          text: 'Novo resumo de atendimento ({{1}}):\n\n{{2}}',
+          // Precisa de texto fixo suficiente em relação às 2 variáveis, senão a
+          // Meta recusa (subcode 2388293: "muitas variáveis para a extensão").
+          text:
+            'Você recebeu um novo resumo de atendimento pelo seu assistente virtual no UProCRM. ' +
+            'Confira os dados abaixo e entre em contato com o cliente assim que possível.\n\n' +
+            'Contato: {{1}}\n\n' +
+            'Resumo do atendimento:\n{{2}}',
           example: { body_text: [['João (5511999998888)', 'Cliente quer projeto de interiores e pediu um orçamento.']] }
         }
       ]
