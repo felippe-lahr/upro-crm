@@ -711,6 +711,16 @@ export default function SettingsPage() {
                   Deixe o número em branco para desativar. O resumo só é enviado quando o template
                   estiver aprovado.
                 </p>
+
+                {/* Aviso de custo + pré-requisito de pagamento */}
+                <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-xs text-muted">
+                  <p className="font-medium text-amber-600">💳 Custo e requisito de pagamento</p>
+                  <ul className="mt-1.5 list-disc space-y-1 pl-4">
+                    <li>Cada resumo enviado é uma <strong>mensagem de utilidade cobrada pela Meta</strong> (poucos centavos por envio — o valor exato aparece na sua conta do WhatsApp/Meta). É <strong>1 mensagem por lead qualificado</strong>.</li>
+                    <li>O <strong>atendimento normal do bot</strong> com o cliente <strong>não é cobrado</strong> por mensagem.</li>
+                    <li>Para o envio funcionar, sua <strong>conta do WhatsApp Business precisa ter forma de pagamento e moeda configuradas</strong>. Sem isso, a Meta aceita mas não entrega (erro de faturamento).</li>
+                  </ul>
+                </div>
               </div>
             )}
 
