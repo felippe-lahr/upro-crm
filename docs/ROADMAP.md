@@ -97,7 +97,11 @@ Hoje o resumo (`ai_summary`) é gerado por um **prompt FIXO** em `extractContact
 - **UI/API:** campo de texto em Configurações (gated a `['pro','promaster']`), via `/api/tenant/settings`.
 
 ### ✅ 4.1 Encaminhar resumo do atendimento para WhatsApp do gestor (Pro) — IMPLEMENTADO
-> **Implementado.** Falta só, por tenant: (1) admin liga o entitlement no modal "Editar tenant"; (2) criar o template na WABA via `/api/admin/create-summary-template?token=&email=` (aguardar aprovação da Meta); (3) o cliente preenche número + nome do template em Configurações. Envio dispara ao qualificar o lead (1x), com trava `summary_forwarded_at`.
+> **Implementado.** Falta só, por tenant: (1) admin liga o entitlement no modal "Editar tenant" (cria o template na WABA automaticamente); (2) o cliente preenche o número em Configurações (nome do template é automático; selo mostra status de aprovação). Envio dispara ao qualificar o lead (1x), com trava `summary_forwarded_at`.
+>
+> ⚠️ **PRÉ-REQUISITO OBRIGATÓRIO — billing da WABA do cliente:** template é mensagem **cobrada** (iniciada pelo negócio). Se a WhatsApp Business Account do cliente **não tiver forma de pagamento + moeda/país configurados**, a Meta **aceita mas NÃO entrega** — falha com **erro 131042** ("Business eligibility payment issue / currency is not configured"). As respostas do bot funcionam mesmo assim (janela de 24h), mas o template não. Correção (na conta Meta do cliente): Central de faturamento → adicionar cartão + definir país/moeda para a WABA. Diagnóstico: `bot-diagnose?...&forwardtest=1` → depois ler `last_send_status` (status `delivered` = ok; `failed`+131042 = billing pendente). Confirmado em produção com Cinthia Claro (ago/2026).
+>
+> **Ferramentas de suporte:** `create-summary-template` e `summary-template-status` (token-guarded); `bot-diagnose?...&forwardtest=1` dispara envio de teste e captura `last_send_status` (callback de entrega da Meta, gravado pelo webhook).
 
 Quando o bot qualifica um lead, enviar automaticamente o **resumo do atendimento (`ai_summary`)** para um **número de WhatsApp cadastrado** (o gestor/dono). **Depende do 4.0** (o resumo já sai no formato que o negócio quer). Decisões já tomadas com o cliente:
 
