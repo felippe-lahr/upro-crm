@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
-import { probeBotReply } from '@/lib/bot'
+import { probeBotReply, sendWhatsAppTemplate } from '@/lib/bot'
+import { getSummaryTemplateStatus } from '@/lib/whatsapp-templates'
 
 const HUMAN_TAKEOVER_MINUTES = 30
 
@@ -94,11 +95,52 @@ export async function GET(req: Request) {
     probe = await probeBotReply(t, text)
   }
 
+  // Diagnóstico do encaminhamento de resumo (4.1)
+  const forward: any = {
+    feature_summary_forward: !!t.feature_summary_forward,
+    summary_forward_number: t.summary_forward_number || null,
+    summary_forward_template: t.summary_forward_template || null
+  }
+  if (t.feature_summary_forward) {
+    const st = await getSummaryTemplateStatus({ waba_id: t.waba_id, whatsapp_token: t.whatsapp_token }, t.summary_forward_template || undefined)
+    forward.template_status = st.status
+    if (st.rejected_reason) forward.template_rejected = st.rejected_reason
+    // Estado do contato verificado (para entender o gatilho de qualificação)
+    if (contact) {
+      forward.contact_stage = contact.stage
+      forward.contact_has_summary = !!contact.ai_summary
+      forward.contact_summary_forwarded_at = (contact as any).summary_forwarded_at || null
+    }
+    // Por que não encaminhou?
+    if (!t.summary_forward_number) forward.blocker = 'número de destino vazio'
+    else if (!t.summary_forward_template) forward.blocker = 'template não configurado'
+    else if (st.status !== 'APPROVED') forward.blocker = `template não aprovado (status: ${st.status})`
+    else if (contact && contact.stage !== 'novo_lead' && !(contact as any).summary_forwarded_at) forward.blocker = 'contato já saiu de "novo_lead" sem disparar (qualificou antes de configurar, ou nunca passou por novo_lead→em_atendimento). Teste com um número NOVO.'
+    else if (contact && (contact as any).summary_forwarded_at) forward.blocker = 'já encaminhado uma vez para este contato (trava anti-duplicação)'
+    else forward.blocker = null
+
+    // ?forwardtest=1 → dispara o template AGORA para o número configurado (teste real de envio)
+    if (url.searchParams.get('forwardtest') && t.summary_forward_number && t.summary_forward_template && t.phone_number_id && t.whatsapp_token) {
+      try {
+        await sendWhatsAppTemplate(
+          { phone_number_id: t.phone_number_id, whatsapp_token: t.whatsapp_token },
+          String(t.summary_forward_number).replace(/\D/g, ''),
+          t.summary_forward_template,
+          ['Teste UProCRM (diagnóstico)', 'Este é um envio de teste do encaminhamento de resumo. Se você recebeu, está tudo funcionando.']
+        )
+        forward.forwardtest = { ok: true, sentTo: String(t.summary_forward_number).replace(/\D/g, '') }
+      } catch (e: any) {
+        forward.forwardtest = { ok: false, error: e?.message || String(e) }
+      }
+    }
+  }
+
   return Response.json({
     tenant: { name: t.name, email: t.email },
     config,
     botBranchWouldRun,
     probe,
+    forward,
     contactChecked: contact ? { name: contact.name, phone: contact.phone, id: contact.id } : null,
     takeover,
     lastMessages,
