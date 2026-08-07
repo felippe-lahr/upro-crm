@@ -122,13 +122,20 @@ export async function GET(req: Request) {
     // ?forwardtest=1 → dispara o template AGORA para o número configurado (teste real de envio)
     if (url.searchParams.get('forwardtest') && t.summary_forward_number && t.summary_forward_template && t.phone_number_id && t.whatsapp_token) {
       try {
-        await sendWhatsAppTemplate(
+        const resp: any = await sendWhatsAppTemplate(
           { phone_number_id: t.phone_number_id, whatsapp_token: t.whatsapp_token },
           String(t.summary_forward_number).replace(/\D/g, ''),
           t.summary_forward_template,
           ['Teste UProCRM (diagnóstico)', 'Este é um envio de teste do encaminhamento de resumo. Se você recebeu, está tudo funcionando.']
         )
-        forward.forwardtest = { ok: true, sentTo: String(t.summary_forward_number).replace(/\D/g, '') }
+        forward.forwardtest = {
+          ok: true,
+          sentTo: String(t.summary_forward_number).replace(/\D/g, ''),
+          wa_id: resp?.contacts?.[0]?.wa_id || null,
+          input: resp?.contacts?.[0]?.input || null,
+          message_id: resp?.messages?.[0]?.id || null,
+          raw: resp
+        }
       } catch (e: any) {
         forward.forwardtest = { ok: false, error: e?.message || String(e) }
       }

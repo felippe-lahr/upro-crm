@@ -808,6 +808,8 @@ export async function sendWhatsAppTemplate(
     const err = await res.text()
     throw new Error(`WhatsApp template send failed: ${err}`)
   }
+  // Resposta traz message id e contacts[].wa_id (número que a Meta resolveu).
+  return await res.json().catch(() => ({}))
 }
 
 /**
