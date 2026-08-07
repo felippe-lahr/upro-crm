@@ -38,6 +38,7 @@ model Tenant {
   feature_summary_forward  Boolean @default(false) // entitlement ligado SÓ pelo superadmin
   summary_forward_number   String? // destino E.164 (só dígitos)
   summary_forward_template String? // nome do template aprovado na WABA
+  last_send_status         Json?   // diagnóstico: último status de entrega recebido da Meta (delivered/failed + erro)
 
   funnel_labels       Json?    // { stageId: label } — nomes personalizados das etapas (Pro)
   loss_reasons        Json?    // string[] — até 10 motivos de perda (Pro)

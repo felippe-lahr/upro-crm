@@ -72,6 +72,19 @@ export async function POST(req: Request) {
   const messages = changes?.value?.messages || []
   const contacts = changes?.value?.contacts || []
 
+  // Callbacks de status de entrega (sent/delivered/read/failed) — guarda o
+  // último para diagnóstico, e SEMPRE o último com erro (não sobrescreve por sucesso).
+  const statuses = changes?.value?.statuses || []
+  if (statuses.length > 0) {
+    const s = statuses[statuses.length - 1]
+    const snapshot = {
+      id: s?.id, status: s?.status, recipient_id: s?.recipient_id,
+      timestamp: s?.timestamp, errors: s?.errors || null, at: new Date().toISOString()
+    }
+    const data: any = { last_send_status: snapshot }
+    globalPrisma.tenant.update({ where: { id: tenant.id }, data }).catch(() => {})
+  }
+
   for (const message of messages) {
     const contactInfo = contacts[0]
     await processIncomingMessage(tenant as any, message, contactInfo)

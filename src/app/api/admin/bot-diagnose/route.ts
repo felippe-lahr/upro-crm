@@ -148,6 +148,7 @@ export async function GET(req: Request) {
     botBranchWouldRun,
     probe,
     forward,
+    last_send_status: t.last_send_status || null,
     contactChecked: contact ? { name: contact.name, phone: contact.phone, id: contact.id } : null,
     takeover,
     lastMessages,
