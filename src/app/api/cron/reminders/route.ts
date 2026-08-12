@@ -4,6 +4,7 @@ import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { sendWhatsAppButtons } from '@/lib/bot'
 import { sendAppointmentEmail } from '@/lib/email'
 import { syncTenantProducts } from '@/lib/product-feed'
+import { forwardPendingSummaries } from '@/lib/summary-forward'
 
 // Sincroniza o catálogo Promaster no máximo ~1x/hora por tenant, mesmo que este
 // cron rode a cada ~15 min. Assim não é preciso configurar um job separado.
@@ -136,5 +137,8 @@ export async function GET(req: Request) {
   // Sincroniza os catálogos Promaster (throttle de ~1h por tenant). Best-effort.
   const catalogsSynced = await syncPromasterCatalogs(now).catch(() => 0)
 
-  return Response.json({ ok: true, tenants: tenants.length, reminders_sent: sent, catalogs_synced: catalogsSynced })
+  // Encaminha resumos completos (4.1) das conversas que assentaram. Best-effort.
+  const summariesForwarded = await forwardPendingSummaries(now).catch(() => 0)
+
+  return Response.json({ ok: true, tenants: tenants.length, reminders_sent: sent, catalogs_synced: catalogsSynced, summaries_forwarded: summariesForwarded })
 }

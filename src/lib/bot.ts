@@ -86,33 +86,9 @@ export async function extractContactInfo(
     if (Object.keys(update).length > 0) {
       await tenantPrisma.contact.update({ where: { id: contact.id }, data: update })
     }
-
-    // 4.1 — Encaminhar o resumo para o WhatsApp do gestor (1x por lead), via template.
-    // Só quando: entitlement ligado + número + template configurados + ainda não enviado.
-    if (
-      qualifiedNow &&
-      tenant.feature_summary_forward &&
-      tenant.summary_forward_number &&
-      tenant.summary_forward_template &&
-      tenant.phone_number_id && tenant.whatsapp_token &&
-      !(current as any).summary_forwarded_at &&
-      (update.ai_summary || current.ai_summary)
-    ) {
-      try {
-        const who = update.name || current.name || current.phone || 'Contato'
-        const label = `${who}${current.phone ? ` (${current.phone})` : ''}`
-        const resumo = String(update.ai_summary || current.ai_summary)
-        await sendWhatsAppTemplate(
-          { phone_number_id: tenant.phone_number_id, whatsapp_token: tenant.whatsapp_token },
-          String(tenant.summary_forward_number).replace(/\D/g, ''),
-          tenant.summary_forward_template,
-          [label, resumo]
-        )
-        await tenantPrisma.contact.update({ where: { id: contact.id }, data: { summary_forwarded_at: new Date() } })
-      } catch (e) {
-        console.error('[extractContactInfo] encaminhar resumo falhou', (e as any)?.message || e)
-      }
-    }
+    // Obs.: o encaminhamento do resumo (4.1) NÃO acontece aqui. Ele é feito por
+    // uma varredura no cron (forwardPendingSummaries) quando a conversa assenta,
+    // para enviar o resumo COMPLETO (igual ao do CRM) — e não a versão inicial.
   } catch (err) {
     console.error('[extractContactInfo] failed', err)
   }
