@@ -55,11 +55,12 @@ export async function extractContactInfo(
       system:
         'Você extrai dados de um lead a partir de uma conversa de atendimento. ' +
         'Responda APENAS com um JSON válido, sem texto extra, no formato: ' +
-        '{"name": string|null, "email": string|null, "summary": string, "qualified": boolean}. ' +
+        '{"name": string|null, "email": string|null, "summary": string, "qualified": boolean, "concluded": boolean}. ' +
         '- name: nome da pessoa/responsável, se mencionado. ' +
         '- email: e-mail, se mencionado (valide formato básico). ' +
         summaryGuide +
         '- qualified: true se já dá para entender claramente o interesse/necessidade do cliente. ' +
+        '- concluded: true APENAS se a conversa parece ter chegado ao fim (o cliente se despediu, agradeceu, disse que era só isso, ou já obteve o que precisava e não há pergunta pendente). Se ainda parece em andamento, use false. ' +
         'Use null quando a informação não aparecer. NUNCA invente dados.' +
         businessContext,
       messages: [{ role: 'user', content: transcript }]
@@ -86,9 +87,36 @@ export async function extractContactInfo(
     if (Object.keys(update).length > 0) {
       await tenantPrisma.contact.update({ where: { id: contact.id }, data: update })
     }
-    // Obs.: o encaminhamento do resumo (4.1) NÃO acontece aqui. Ele é feito por
-    // uma varredura no cron (forwardPendingSummaries) quando a conversa assenta,
-    // para enviar o resumo COMPLETO (igual ao do CRM) — e não a versão inicial.
+
+    // 4.1 — Encaminhar o resumo COMPLETO ao gestor assim que a conversa CONCLUIR
+    // (o bot detecta a despedida/fim). É o caminho imediato ("logo após a conversa").
+    // Conversas que ficam no ar sem despedida são pegas pela varredura do cron
+    // (forwardPendingSummaries) como rede de segurança.
+    const resumoAtual = update.ai_summary || current.ai_summary
+    if (
+      data.concluded === true &&
+      resumoAtual &&
+      tenant.feature_summary_forward &&
+      tenant.summary_forward_number &&
+      tenant.summary_forward_template &&
+      tenant.phone_number_id && tenant.whatsapp_token &&
+      !(current as any).summary_forwarded_at
+    ) {
+      try {
+        const who = update.name || current.name || current.phone || 'Contato'
+        const label = `${who}${current.phone ? ` (${current.phone})` : ''}`
+        await sendWhatsAppTemplate(
+          { phone_number_id: tenant.phone_number_id, whatsapp_token: tenant.whatsapp_token },
+          String(tenant.summary_forward_number).replace(/\D/g, ''),
+          tenant.summary_forward_template,
+          [label, String(resumoAtual).slice(0, 900)]
+        )
+        await tenantPrisma.contact.update({ where: { id: contact.id }, data: { summary_forwarded_at: new Date() } })
+      } catch (e) {
+        // Se falhar (ex.: template ainda não aprovado), o cron tenta de novo depois.
+        console.error('[extractContactInfo] encaminhar resumo (concluído) falhou', (e as any)?.message || e)
+      }
+    }
   } catch (err) {
     console.error('[extractContactInfo] failed', err)
   }
