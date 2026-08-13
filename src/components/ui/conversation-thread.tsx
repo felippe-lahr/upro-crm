@@ -220,7 +220,8 @@ export function ConversationThread({
                 <span className="mt-1 block text-right text-[10px] opacity-60">
                   {new Date(m.timestamp).toLocaleTimeString('pt-BR', {
                     hour: '2-digit',
-                    minute: '2-digit'
+                    minute: '2-digit',
+                    timeZone: 'America/Sao_Paulo'
                   })}
                 </span>
               </div>

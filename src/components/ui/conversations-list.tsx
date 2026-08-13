@@ -167,12 +167,12 @@ export function ConversationsList({
                   <span className="flex-shrink-0 text-right text-xs text-faint">
                     <span className="block">
                       {new Date(conv.lastTimestamp).toLocaleDateString('pt-BR', {
-                        day: '2-digit', month: '2-digit', year: '2-digit'
+                        day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'America/Sao_Paulo'
                       })}
                     </span>
                     <span className="block text-[10px]">
                       {new Date(conv.lastTimestamp).toLocaleTimeString('pt-BR', {
-                        hour: '2-digit', minute: '2-digit'
+                        hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
                       })}
                     </span>
                   </span>
