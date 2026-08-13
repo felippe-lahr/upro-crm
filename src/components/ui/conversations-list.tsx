@@ -105,6 +105,7 @@ export function ConversationsList({
             <span className="text-xs text-faint">De:</span>
             <input
               type="date"
+              lang="pt-BR"
               value={customFrom}
               max={customTo || undefined}
               onChange={(e) => setCustomFrom(e.target.value)}
@@ -113,6 +114,7 @@ export function ConversationsList({
             <span className="text-xs text-faint">até:</span>
             <input
               type="date"
+              lang="pt-BR"
               value={customTo}
               min={customFrom || undefined}
               onChange={(e) => setCustomTo(e.target.value)}
