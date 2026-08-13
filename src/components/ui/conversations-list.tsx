@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { DatePickerBR } from './date-picker-br'
 
 export interface ConversationItem {
   contactId: string
@@ -103,23 +104,9 @@ export function ConversationsList({
         {datePreset === 'custom' && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-faint">De:</span>
-            <input
-              type="date"
-              lang="pt-BR"
-              value={customFrom}
-              max={customTo || undefined}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
-            />
+            <DatePickerBR value={customFrom} max={customTo || undefined} onChange={setCustomFrom} />
             <span className="text-xs text-faint">até:</span>
-            <input
-              type="date"
-              lang="pt-BR"
-              value={customTo}
-              min={customFrom || undefined}
-              onChange={(e) => setCustomTo(e.target.value)}
-              className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
-            />
+            <DatePickerBR value={customTo} min={customFrom || undefined} onChange={setCustomTo} />
             {(customFrom || customTo) && (
               <button
                 onClick={() => { setCustomFrom(''); setCustomTo('') }}
