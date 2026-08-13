@@ -18,12 +18,24 @@ const DATE_PRESETS = [
   { id: 'all', label: 'Todas' },
   { id: 'today', label: 'Hoje' },
   { id: '7d', label: '7 dias' },
-  { id: '30d', label: '30 dias' }
+  { id: '30d', label: '30 dias' },
+  { id: 'custom', label: 'Período' }
 ]
 
-function withinPreset(iso: string, preset: string): boolean {
+function withinPreset(iso: string, preset: string, from?: string, to?: string): boolean {
   if (preset === 'all') return true
   const d = new Date(iso).getTime()
+  if (preset === 'custom') {
+    if (from) {
+      const start = new Date(from + 'T00:00:00').getTime()
+      if (d < start) return false
+    }
+    if (to) {
+      const end = new Date(to + 'T23:59:59').getTime()
+      if (d > end) return false
+    }
+    return true
+  }
   const now = Date.now()
   const days = preset === 'today' ? 1 : preset === '7d' ? 7 : 30
   if (preset === 'today') {
@@ -43,6 +55,8 @@ export function ConversationsList({
 }) {
   const [search, setSearch] = useState('')
   const [datePreset, setDatePreset] = useState('all')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   const [activeTags, setActiveTags] = useState<string[]>([])
 
   function toggleTag(t: string) {
@@ -55,11 +69,11 @@ export function ConversationsList({
         const q = search.toLowerCase()
         if (!(c.name || '').toLowerCase().includes(q) && !c.phone.includes(q)) return false
       }
-      if (!withinPreset(c.lastTimestamp, datePreset)) return false
+      if (!withinPreset(c.lastTimestamp, datePreset, customFrom, customTo)) return false
       if (activeTags.length > 0 && !activeTags.some((t) => c.tags.includes(t))) return false
       return true
     })
-  }, [conversations, search, datePreset, activeTags])
+  }, [conversations, search, datePreset, customFrom, customTo, activeTags])
 
   return (
     <div>
@@ -86,6 +100,34 @@ export function ConversationsList({
             ))}
           </div>
         </div>
+        {datePreset === 'custom' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-faint">De:</span>
+            <input
+              type="date"
+              value={customFrom}
+              max={customTo || undefined}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
+            />
+            <span className="text-xs text-faint">até:</span>
+            <input
+              type="date"
+              value={customTo}
+              min={customFrom || undefined}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
+            />
+            {(customFrom || customTo) && (
+              <button
+                onClick={() => { setCustomFrom(''); setCustomTo('') }}
+                className="text-xs text-faint hover:text-red-400"
+              >
+                limpar
+              </button>
+            )}
+          </div>
+        )}
         {allTags.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-faint">Etiquetas:</span>
@@ -133,11 +175,17 @@ export function ConversationsList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-sm font-medium text-fg">{conv.name || conv.phone}</span>
-                  <span className="flex-shrink-0 text-xs text-faint">
-                    {new Date(conv.lastTimestamp).toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                  <span className="flex-shrink-0 text-right text-xs text-faint">
+                    <span className="block">
+                      {new Date(conv.lastTimestamp).toLocaleDateString('pt-BR', {
+                        day: '2-digit', month: '2-digit', year: '2-digit'
+                      })}
+                    </span>
+                    <span className="block text-[10px]">
+                      {new Date(conv.lastTimestamp).toLocaleTimeString('pt-BR', {
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </span>
                   </span>
                 </div>
                 <p className="mt-0.5 truncate text-sm text-muted">
