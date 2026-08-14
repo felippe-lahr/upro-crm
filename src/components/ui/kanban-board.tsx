@@ -12,6 +12,7 @@ export interface LeadCard {
   phone: string
   email: string | null
   notes: string | null
+  ai_summary: string | null
   stage: string
   deal_value: string | null
   lastMessage: string | null
@@ -419,17 +420,33 @@ function LeadDetailModal({ lead, stages, availableTags, onClose, onSave }: {
   const addableTags = availableTags.filter((t) => !tags.includes(t))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-surface p-5" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center gap-3">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
+      <div
+        className="flex h-full w-full max-w-md animate-[slideIn_0.2s_ease-out] flex-col border-l border-line bg-surface shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Cabeçalho fixo */}
+        <div className="flex items-center gap-3 border-b border-line p-5">
           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-semibold text-brand">
             {(lead.name || lead.phone)[0].toUpperCase()}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h3 className="truncate text-base font-semibold text-fg">{lead.name || lead.phone}</h3>
             <p className="truncate text-xs text-faint">{lead.phone}</p>
           </div>
+          <button onClick={onClose} className="flex-shrink-0 rounded-md p-1.5 text-faint hover:bg-brand/5 hover:text-fg" aria-label="Fechar">✕</button>
         </div>
+
+        {/* Corpo rolável */}
+        <div className="flex-1 overflow-y-auto p-5">
+        {lead.ai_summary && (
+          <div className="mb-4">
+            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted"><span>✨</span> Resumo (IA)</label>
+            <p className="rounded-lg border border-purple-500/20 bg-purple-500/5 px-3 py-2 text-xs leading-relaxed text-muted">
+              {lead.ai_summary}
+            </p>
+          </div>
+        )}
 
         <div className="mb-4">
           <label className="mb-1.5 block text-xs font-medium text-muted">Etiquetas</label>
@@ -492,17 +509,18 @@ function LeadDetailModal({ lead, stages, availableTags, onClose, onSave }: {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted">Observações</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full resize-none rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className="w-full resize-none rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
           </div>
         </div>
+        </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        {/* Rodapé fixo com ações */}
+        <div className="flex flex-wrap gap-2 border-t border-line p-4">
           <button onClick={save} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Salvar</button>
           <Link href={`/conversations/${lead.id}`} className="rounded-lg border border-brand px-4 py-2 text-sm font-medium text-brand hover:bg-brand/5">Abrir conversa</Link>
           {waPhone && (
             <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">WhatsApp</a>
           )}
-          <button onClick={onClose} className="ml-auto rounded-lg px-4 py-2 text-sm text-muted hover:text-fg">Fechar</button>
         </div>
       </div>
     </div>
