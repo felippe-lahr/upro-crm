@@ -26,6 +26,7 @@ model Tenant {
   bot_enabled         Boolean  @default(false)
   bot_prompt          String?
   summary_instructions String? // Pro: orienta o que o resumo (ai_summary) deve conter e o formato
+  lead_tags           String[] @default([]) // Pro: taxonomia de etiquetas que a IA pode aplicar aos leads
 
   menu_bot_enabled    Boolean  @default(false)
   menu_bot_greeting   String?

@@ -171,6 +171,17 @@ async function processIncomingMessage(
     }
   })
 
+  // Origem: mensagem vinda de anúncio "Click to WhatsApp" → taggeia o lead.
+  if (message.referral) {
+    const tags: string[] = dbContact.tags || []
+    if (!tags.includes('anúncio')) {
+      await tenantPrisma.contact.update({
+        where: { id: dbContact.id },
+        data: { tags: [...tags, 'anúncio'] }
+      }).catch(() => {})
+    }
+  }
+
   // Notificação push para os atendentes do tenant (best-effort).
   sendPushToTenant(tenant.id, {
     title: dbContact.name || dbContact.phone || 'Nova mensagem',

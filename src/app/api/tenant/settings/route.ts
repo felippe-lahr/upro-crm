@@ -17,7 +17,7 @@ export async function GET() {
     select: {
       id: true, name: true, email: true, plan: true, status: true,
       whatsapp_connected: true, phone_number_id: true, waba_id: true,
-      bot_enabled: true, bot_prompt: true, summary_instructions: true, trial_ends_at: true,
+      bot_enabled: true, bot_prompt: true, summary_instructions: true, lead_tags: true, trial_ends_at: true,
       menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
       handoff_pause: true, keep_responding_after_human: true,
       scheduling_enabled: true,
@@ -52,7 +52,7 @@ export async function PATCH(req: Request) {
   const body = await req.json()
   const { bot_enabled, bot_prompt, menu_bot_enabled, menu_bot_greeting, menu_bot_options,
     handoff_pause, keep_responding_after_human, mp_access_token, products_feed_url,
-    scheduling_enabled, summary_instructions,
+    scheduling_enabled, summary_instructions, lead_tags,
     summary_forward_number, summary_forward_template } = body
 
   // Token do Mercado Pago do lojista (recebe os sinais). '' limpa; undefined mantém.
@@ -63,7 +63,7 @@ export async function PATCH(req: Request) {
 
   const forwardTouched = summary_forward_number !== undefined || summary_forward_template !== undefined
   // Bot com IA é exclusivo dos planos Pro e Promaster
-  if (bot_enabled === true || products_feed_url !== undefined || summary_instructions !== undefined || forwardTouched) {
+  if (bot_enabled === true || products_feed_url !== undefined || summary_instructions !== undefined || forwardTouched || lead_tags !== undefined) {
     const current = await globalPrisma.tenant.findUnique({
       where: { id: tenantId },
       select: { plan: true, feature_summary_forward: true }
@@ -95,6 +95,23 @@ export async function PATCH(req: Request) {
         { status: 403 }
       )
     }
+    // Etiquetas automáticas são exclusivas do Pro/Promaster.
+    if (lead_tags !== undefined && !['pro', 'promaster'].includes(current?.plan || '')) {
+      return Response.json(
+        { error: 'As etiquetas automáticas estão disponíveis apenas nos planos Pro e Promaster.' },
+        { status: 403 }
+      )
+    }
+  }
+
+  // Normaliza a taxonomia de etiquetas (trim, únicas, sem vazias, limites).
+  let normalizedLeadTags
+  if (lead_tags !== undefined) {
+    normalizedLeadTags = Array.from(new Set(
+      (Array.isArray(lead_tags) ? lead_tags : [])
+        .map((t: any) => String(t).trim().slice(0, 30))
+        .filter(Boolean)
+    )).slice(0, 40)
   }
 
   // Normaliza as opções do menu (id estável, no máximo 3 botões)
@@ -116,6 +133,7 @@ export async function PATCH(req: Request) {
       ...(bot_enabled !== undefined && { bot_enabled }),
       ...(bot_prompt !== undefined && { bot_prompt }),
       ...(summary_instructions !== undefined && { summary_instructions: summary_instructions ? String(summary_instructions).slice(0, 2000) : null }),
+      ...(normalizedLeadTags !== undefined && { lead_tags: normalizedLeadTags }),
       ...(menu_bot_enabled !== undefined && { menu_bot_enabled }),
       ...(menu_bot_greeting !== undefined && { menu_bot_greeting }),
       ...(normalizedOptions !== undefined && { menu_bot_options: normalizedOptions }),

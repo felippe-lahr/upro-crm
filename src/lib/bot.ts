@@ -15,7 +15,7 @@ export async function extractContactInfo(
   tenant: {
     schema_name: string; bot_prompt?: string | null; summary_instructions?: string | null
     feature_summary_forward?: boolean; summary_forward_number?: string | null; summary_forward_template?: string | null
-    phone_number_id?: string; whatsapp_token?: string
+    phone_number_id?: string; whatsapp_token?: string; lead_tags?: string[]
   },
   contact: { id: string }
 ) {
@@ -50,17 +50,25 @@ export async function extractContactInfo(
       ? `\n\nContexto do negócio (apenas para você entender o domínio; não copie literalmente):\n"""${tenant.bot_prompt.trim().slice(0, 2000)}"""`
       : ''
 
+    // Auto-etiquetagem: a IA escolhe tags EXCLUSIVAMENTE da taxonomia do tenant.
+    const taxonomy = (tenant.lead_tags || []).map((s) => String(s).trim()).filter(Boolean).slice(0, 40)
+    const tagsField = taxonomy.length ? ', "tags": string[]' : ''
+    const tagsGuide = taxonomy.length
+      ? `- tags: escolha 0 ou mais etiquetas que descrevem este lead, EXCLUSIVAMENTE desta lista (copie exatamente, sem inventar nem criar novas): [${taxonomy.map((t) => `"${t}"`).join(', ')}]. Se nenhuma se aplica, use []. `
+      : ''
+
     const raw = await chatComplete({
       maxTokens: 500,
       system:
         'Você extrai dados de um lead a partir de uma conversa de atendimento. ' +
         'Responda APENAS com um JSON válido, sem texto extra, no formato: ' +
-        '{"name": string|null, "email": string|null, "summary": string, "qualified": boolean, "concluded": boolean}. ' +
+        `{"name": string|null, "email": string|null, "summary": string, "qualified": boolean, "concluded": boolean${tagsField}}. ` +
         '- name: nome da pessoa/responsável, se mencionado. ' +
         '- email: e-mail, se mencionado (valide formato básico). ' +
         summaryGuide +
         '- qualified: true se já dá para entender claramente o interesse/necessidade do cliente. ' +
         '- concluded: true APENAS se a conversa parece ter chegado ao fim (o cliente se despediu, agradeceu, disse que era só isso, ou já obteve o que precisava e não há pergunta pendente). Se ainda parece em andamento, use false. ' +
+        tagsGuide +
         'Use null quando a informação não aparecer. NUNCA invente dados.' +
         businessContext,
       messages: [{ role: 'user', content: transcript }]
@@ -83,6 +91,15 @@ export async function extractContactInfo(
     // Qualificação: dispara uma única vez (novo_lead → em_atendimento)
     const qualifiedNow = !!(data.qualified && current.stage === 'novo_lead')
     if (qualifiedNow) update.stage = 'em_atendimento'
+
+    // Auto-tags: só aceita as que estão na taxonomia; faz UNIÃO com as manuais.
+    if (taxonomy.length && Array.isArray(data.tags)) {
+      const allow = new Set(taxonomy)
+      const picked = data.tags.map((t: any) => String(t).trim()).filter((t: string) => allow.has(t))
+      const currentTags: string[] = current.tags || []
+      const merged = Array.from(new Set([...currentTags, ...picked]))
+      if (merged.length !== currentTags.length) update.tags = merged
+    }
 
     if (Object.keys(update).length > 0) {
       await tenantPrisma.contact.update({ where: { id: contact.id }, data: update })

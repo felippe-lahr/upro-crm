@@ -20,6 +20,7 @@ interface TenantSettings {
   bot_enabled: boolean
   bot_prompt: string | null
   summary_instructions: string | null
+  lead_tags?: string[]
   feature_summary_forward?: boolean
   summary_forward_number?: string | null
   summary_forward_template?: string | null
@@ -291,6 +292,8 @@ export default function SettingsPage() {
   const [botEnabled, setBotEnabled] = useState(false)
   const [botPrompt, setBotPrompt] = useState('')
   const [summaryInstructions, setSummaryInstructions] = useState('')
+  const [leadTags, setLeadTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState('')
   const [summaryForwardNumber, setSummaryForwardNumber] = useState('')
   const [menuBotEnabled, setMenuBotEnabled] = useState(false)
   const [menuGreeting, setMenuGreeting] = useState('')
@@ -322,6 +325,7 @@ export default function SettingsPage() {
         setBotEnabled(data.bot_enabled)
         setBotPrompt(data.bot_prompt || '')
         setSummaryInstructions(data.summary_instructions || '')
+        setLeadTags(Array.isArray(data.lead_tags) ? data.lead_tags : [])
         setSummaryForwardNumber(data.summary_forward_number || '')
         setMenuBotEnabled(data.menu_bot_enabled)
         setMenuGreeting(data.menu_bot_greeting || '')
@@ -353,7 +357,7 @@ export default function SettingsPage() {
       body: JSON.stringify({
         bot_enabled: isPro ? botEnabled : false,
         bot_prompt: botPrompt,
-        ...(isPro ? { summary_instructions: summaryInstructions } : {}),
+        ...(isPro ? { summary_instructions: summaryInstructions, lead_tags: leadTags } : {}),
         ...(settings?.feature_summary_forward ? { summary_forward_number: summaryForwardNumber } : {}),
         menu_bot_enabled: menuBotEnabled,
         menu_bot_greeting: menuGreeting,
@@ -673,6 +677,64 @@ export default function SettingsPage() {
                 Orienta o resumo gerado pela IA em cada atendimento (aparece no painel da conversa).
                 Deixe em branco para usar o resumo padrão (1–2 frases). O telefone do contato é
                 incluído automaticamente quando você pedir.
+              </p>
+            </div>
+
+            {/* Etiquetas automáticas (taxonomia + auto-tag da IA) */}
+            <div className="mt-5 border-t border-line pt-5">
+              <label className="mb-2 block text-sm font-medium text-fg">
+                Etiquetas automáticas dos leads
+              </label>
+              <p className="mb-3 text-xs text-faint">
+                Cadastre as etiquetas que fazem sentido para o seu negócio. A IA aplica
+                automaticamente as que combinam com cada lead (e você pode ajustar manualmente na
+                conversa). Ela só usa etiquetas desta lista — nunca inventa novas.
+              </p>
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {leadTags.map((t) => (
+                  <span key={t} className="flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-1 text-xs text-brand">
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => setLeadTags(leadTags.filter((x) => x !== t))}
+                      className="hover:text-red-400"
+                      aria-label={`Remover ${t}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {leadTags.length === 0 && <span className="text-xs text-faint">Nenhuma etiqueta cadastrada.</span>}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const t = tagInput.trim().slice(0, 30)
+                      if (t && !leadTags.includes(t) && leadTags.length < 40) setLeadTags([...leadTags, t])
+                      setTagInput('')
+                    }
+                  }}
+                  placeholder="Ex: orçamento, reforma, alta prioridade… (Enter para adicionar)"
+                  className="flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = tagInput.trim().slice(0, 30)
+                    if (t && !leadTags.includes(t) && leadTags.length < 40) setLeadTags([...leadTags, t])
+                    setTagInput('')
+                  }}
+                  className="rounded-lg bg-surface2 px-4 py-2 text-sm font-medium text-fg hover:bg-line"
+                >
+                  Adicionar
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-faint">
+                Leads vindos de anúncio (Click to WhatsApp) recebem a etiqueta <strong>anúncio</strong> automaticamente.
               </p>
             </div>
 

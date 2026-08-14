@@ -136,6 +136,15 @@ Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 - Rotacionar `NEXTAUTH_SECRET`, `ENCRYPTION_KEY` e `META_APP_SECRET` no Railway (apareceram em URLs/prints) — **NEXTAUTH_SECRET voltou a aparecer em prints durante a depuração do bot (ago/2026); prioridade**
 - Trocar senhas de contas de teste
 
+### ✅ 4.2 Etiquetagem automática de leads (Pro) — IMPLEMENTADO (v1)
+Tagueamento do **lead (contato)**, abordagem híbrida:
+- **Taxonomia por tenant:** campo `lead_tags` (Tenant), editável em Configurações (chips), gated a Pro/Promaster. A IA só usa etiquetas desta lista — nunca inventa.
+- **Auto-tag da IA:** no `extractContactInfo` (mesma chamada do resumo), a IA escolhe tags da taxonomia e faz **união** com as manuais (não remove o que o atendente pôs).
+- **Manuais:** continua (add/remove na conversa).
+- **Origem de anúncio (CTWA):** mensagens com `referral` recebem a etiqueta `anúncio` automaticamente (webhook).
+- Filtro por etiqueta na lista de conversas já existia.
+- **Futuro:** disparos segmentados por tag; relatórios por tag; taguear mensagem individual (baixa prioridade).
+
 ## 🩺 Diagnóstico / suporte (ferramentas permanentes)
 Endpoints token-guarded (`?token=<NEXTAUTH_SECRET>`) para depurar o bot sem acesso aos logs do Railway:
 - **`/api/admin/ai-health`** — faz uma chamada de IA real e devolve provider/modelo/chaves + o erro exato (billing, auth, modelo).
