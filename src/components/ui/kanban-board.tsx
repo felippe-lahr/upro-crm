@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { MoveRight } from 'lucide-react'
 import { FUNNEL_STAGES, LOST_STAGE_ID, type Stage } from '@/lib/funnel'
+import { DatePickerBR } from './date-picker-br'
 
 export interface LeadCard {
   id: string
@@ -23,12 +24,24 @@ const DATE_PRESETS = [
   { id: 'all', label: 'Todos' },
   { id: 'today', label: 'Hoje' },
   { id: '7d', label: '7 dias' },
-  { id: '30d', label: '30 dias' }
+  { id: '30d', label: '30 dias' },
+  { id: 'custom', label: 'Período' }
 ]
 
-function withinPreset(iso: string, preset: string): boolean {
+function withinPreset(iso: string, preset: string, from?: string, to?: string): boolean {
   if (preset === 'all') return true
   const d = new Date(iso).getTime()
+  if (preset === 'custom') {
+    if (from) {
+      const start = new Date(from + 'T00:00:00').getTime()
+      if (d < start) return false
+    }
+    if (to) {
+      const end = new Date(to + 'T23:59:59').getTime()
+      if (d > end) return false
+    }
+    return true
+  }
   if (preset === 'today') {
     const start = new Date()
     start.setHours(0, 0, 0, 0)
@@ -42,17 +55,21 @@ export function KanbanBoard({
   initialLeads,
   stages = FUNNEL_STAGES,
   lossReasons = [],
-  isPro = false
+  isPro = false,
+  availableTags = []
 }: {
   initialLeads: LeadCard[]
   stages?: Stage[]
   lossReasons?: string[]
   isPro?: boolean
+  availableTags?: string[]
 }) {
   const [leads, setLeads] = useState<LeadCard[]>(initialLeads)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overStage, setOverStage] = useState<string | null>(null)
   const [datePreset, setDatePreset] = useState('all')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   const [activeTags, setActiveTags] = useState<string[]>([])
   const [pendingLost, setPendingLost] = useState<string | null>(null) // contactId aguardando motivo
   const [config, setConfig] = useState(false)
@@ -95,11 +112,11 @@ export function KanbanBoard({
   const visibleLeads = useMemo(
     () =>
       leads.filter((l) => {
-        if (!withinPreset(l.createdAt, datePreset)) return false
+        if (!withinPreset(l.createdAt, datePreset, customFrom, customTo)) return false
         if (activeTags.length > 0 && !activeTags.some((t) => l.tags.includes(t))) return false
         return true
       }),
-    [leads, datePreset, activeTags]
+    [leads, datePreset, customFrom, customTo, activeTags]
   )
 
   function toggleTag(t: string) {
@@ -158,6 +175,22 @@ export function KanbanBoard({
             </button>
           ))}
         </div>
+        {datePreset === 'custom' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-faint">De:</span>
+            <DatePickerBR value={customFrom} max={customTo || undefined} onChange={setCustomFrom} />
+            <span className="text-xs text-faint">até:</span>
+            <DatePickerBR value={customTo} min={customFrom || undefined} onChange={setCustomTo} />
+            {(customFrom || customTo) && (
+              <button
+                onClick={() => { setCustomFrom(''); setCustomTo('') }}
+                className="text-xs text-faint hover:text-red-400"
+              >
+                limpar
+              </button>
+            )}
+          </div>
+        )}
         {allTags.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-faint">Etiquetas:</span>
@@ -206,6 +239,7 @@ export function KanbanBoard({
         <LeadDetailModal
           lead={detailLead}
           stages={stages}
+          availableTags={availableTags}
           onClose={() => setDetailId(null)}
           onSave={(patch) => updateLead(detailLead.id, patch)}
         />
@@ -352,9 +386,10 @@ function LossReasonModal({ reasons, onPick, onCancel }: {
   )
 }
 
-function LeadDetailModal({ lead, stages, onClose, onSave }: {
+function LeadDetailModal({ lead, stages, availableTags, onClose, onSave }: {
   lead: LeadCard
   stages: Stage[]
+  availableTags: string[]
   onClose: () => void
   onSave: (patch: Partial<LeadCard>) => void
 }) {
@@ -363,6 +398,10 @@ function LeadDetailModal({ lead, stages, onClose, onSave }: {
   const [dealValue, setDealValue] = useState(lead.deal_value || '')
   const [stage, setStage] = useState(lead.stage)
   const [notes, setNotes] = useState(lead.notes || '')
+  const [tags, setTags] = useState<string[]>(lead.tags)
+
+  function removeTag(t: string) { setTags((ts) => ts.filter((x) => x !== t)) }
+  function addTag(t: string) { if (t && !tags.includes(t)) setTags((ts) => [...ts, t]) }
 
   function save() {
     onSave({
@@ -370,12 +409,14 @@ function LeadDetailModal({ lead, stages, onClose, onSave }: {
       email: email.trim() || null,
       deal_value: dealValue ? String(Number(String(dealValue).replace(',', '.'))) : null,
       stage,
-      notes: notes.trim() || null
+      notes: notes.trim() || null,
+      tags
     })
     onClose()
   }
 
   const waPhone = lead.phone.replace(/\D/g, '')
+  const addableTags = availableTags.filter((t) => !tags.includes(t))
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -390,22 +431,41 @@ function LeadDetailModal({ lead, stages, onClose, onSave }: {
           </div>
         </div>
 
-        {lead.tags.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-1.5">
-            {lead.tags.map((t) => (
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-medium text-muted">Etiquetas</label>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {tags.map((t) => (
               <span
                 key={t}
                 className={
                   t.startsWith('anúncio')
-                    ? 'rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400'
-                    : 'rounded-full bg-brand/15 px-2 py-0.5 text-[11px] text-brand'
+                    ? 'flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400'
+                    : 'flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[11px] text-brand'
                 }
               >
                 {t.startsWith('anúncio') ? `📣 ${t}` : t}
+                <button onClick={() => removeTag(t)} className="hover:text-red-400" aria-label={`Remover ${t}`}>×</button>
               </span>
             ))}
+            {tags.length === 0 && <span className="text-[11px] text-faint">Nenhuma etiqueta</span>}
           </div>
-        )}
+          {addableTags.length > 0 ? (
+            <select
+              value=""
+              onChange={(e) => { if (e.target.value) addTag(e.target.value) }}
+              className="w-full rounded-lg border border-line bg-background px-3 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
+            >
+              <option value="">+ Adicionar etiqueta…</option>
+              {addableTags.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          ) : availableTags.length === 0 ? (
+            <p className="text-[11px] text-faint">Crie etiquetas em Configurações para classificar.</p>
+          ) : (
+            <p className="text-[11px] text-faint">Todas as etiquetas já foram aplicadas.</p>
+          )}
+        </div>
 
         <div className="space-y-3">
           <div>

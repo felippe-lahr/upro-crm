@@ -38,11 +38,12 @@ export default async function FunnelPage() {
   }
 
   const tenant = tenantId
-    ? await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true, funnel_labels: true, loss_reasons: true } })
+    ? await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true, funnel_labels: true, loss_reasons: true, lead_tags: true } })
     : null
   const isPro = tenant?.plan === 'pro'
   const stages = resolveStages(tenant?.funnel_labels as Record<string, string> | null)
   const lossReasons = Array.isArray(tenant?.loss_reasons) ? (tenant!.loss_reasons as string[]) : []
+  const availableTags = Array.isArray(tenant?.lead_tags) ? (tenant!.lead_tags as string[]) : []
 
   return (
     <div className="p-4 sm:p-8">
@@ -53,7 +54,7 @@ export default async function FunnelPage() {
         </p>
       </div>
 
-      <KanbanBoard initialLeads={leads} stages={stages} lossReasons={lossReasons} isPro={isPro} />
+      <KanbanBoard initialLeads={leads} stages={stages} lossReasons={lossReasons} isPro={isPro} availableTags={availableTags} />
       {leads.length === 0 && (
         <p className="mt-4 text-center text-sm text-faint">
           Os contatos do WhatsApp aparecem aqui automaticamente como leads.
