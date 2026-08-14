@@ -433,6 +433,9 @@ function LeadDetailModal({ lead, stages, availableTags, onClose, onSave }: {
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-base font-semibold text-fg">{lead.name || lead.phone}</h3>
             <p className="truncate text-xs text-faint">{lead.phone}</p>
+            <p className="truncate text-[11px] text-faint">
+              Contato desde {new Date(lead.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' })}
+            </p>
           </div>
           <button onClick={onClose} className="flex-shrink-0 rounded-md p-1.5 text-faint hover:bg-brand/5 hover:text-fg" aria-label="Fechar">✕</button>
         </div>
