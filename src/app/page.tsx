@@ -287,7 +287,7 @@ export default async function LandingPage() {
             <Link href="/exclusao-de-dados" className="text-muted transition-colors hover:text-brand">Exclusão de dados</Link>
           </div>
           <p className="text-center text-xs leading-relaxed text-faint sm:text-right">
-            © 2026 UProCRM · Studio44 Vendas e Marketing No Digital LTDA<br />
+            © 2026 UProCRM · Desenvolvido por Studio44<br />
             CNPJ 23.192.161/0001-20
           </p>
         </div>
