@@ -54,7 +54,8 @@ export default async function ConversationPage({
         ai_summary: contact.ai_summary,
         tags: contact.tags || [],
         stage: contact.stage,
-        deal_value: contact.deal_value ? String(contact.deal_value) : null
+        deal_value: contact.deal_value ? String(contact.deal_value) : null,
+        lead_source: (contact.lead_source as any) || null
       }}
       messages={messages.map((m: any) => ({
         id: m.id,

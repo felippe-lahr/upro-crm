@@ -14,6 +14,13 @@ interface Contact {
   tags: string[]
   stage: string
   deal_value: string | null
+  lead_source?: {
+    kind?: string | null
+    platform?: string | null
+    headline?: string | null
+    body?: string | null
+    source_url?: string | null
+  } | null
 }
 
 interface Msg {
@@ -284,10 +291,20 @@ export function ConversationThread({
 
       {/* Side panel: notes / tags / stage */}
       <aside className="hidden w-72 flex-col gap-5 overflow-auto border-l border-line bg-surface p-5 lg:flex">
-        {tags.includes('anúncio') && (
-          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-600 dark:text-amber-400">
-            <span className="text-base">📣</span>
-            <span>Lead veio de um anúncio (Click to WhatsApp)</span>
+        {tags.some((t) => t.startsWith('anúncio')) && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-600 dark:text-amber-400">
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <span className="text-base">📣</span>
+              <span>
+                Lead veio de anúncio
+                {contact.lead_source?.platform ? ` no ${contact.lead_source.platform}` : ' (Click to WhatsApp)'}
+              </span>
+            </div>
+            {contact.lead_source?.headline && (
+              <p className="mt-1 pl-6 text-[11px] leading-snug text-amber-700/90 dark:text-amber-300/80">
+                “{contact.lead_source.headline}”
+              </p>
+            )}
           </div>
         )}
 
@@ -325,12 +342,12 @@ export function ConversationThread({
               <span
                 key={t}
                 className={
-                  t === 'anúncio'
+                  t.startsWith('anúncio')
                     ? 'flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400'
                     : 'flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-xs text-brand'
                 }
               >
-                {t === 'anúncio' ? '📣 anúncio' : t}
+                {t.startsWith('anúncio') ? `📣 ${t}` : t}
                 <button onClick={() => removeTag(t)} className="hover:text-red-400" aria-label={`Remover ${t}`}>×</button>
               </span>
             ))}

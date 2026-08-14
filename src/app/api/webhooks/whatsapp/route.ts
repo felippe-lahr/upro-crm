@@ -171,15 +171,41 @@ async function processIncomingMessage(
     }
   })
 
-  // Origem: mensagem vinda de anúncio "Click to WhatsApp" → taggeia o lead.
+  // Origem: mensagem vinda de anúncio "Click to WhatsApp" → taggeia o lead e
+  // guarda a origem (Instagram/Facebook + título da campanha) para diferenciar as fontes.
   if (message.referral) {
+    const ref = message.referral
+    const url = String(ref.source_url || '').toLowerCase()
+    // Detecta a plataforma pelo source_url do anúncio (best-effort).
+    let platform: string | null = null
+    if (/instagram|ig\.me/.test(url)) platform = 'Instagram'
+    else if (/facebook|fb\.me|fb\.com|fb\.watch/.test(url)) platform = 'Facebook'
+
+    const sourceTag = platform ? `anúncio ${platform}` : 'anúncio'
     const tags: string[] = dbContact.tags || []
-    if (!tags.includes('anúncio')) {
-      await tenantPrisma.contact.update({
-        where: { id: dbContact.id },
-        data: { tags: [...tags, 'anúncio'] }
-      }).catch(() => {})
-    }
+    // Remove tag genérica antiga se agora temos a específica, e evita duplicar.
+    const nextTags = Array.from(new Set(
+      tags.filter((t) => t === 'anúncio' && sourceTag !== 'anúncio' ? false : true)
+    ))
+    if (!nextTags.includes(sourceTag)) nextTags.push(sourceTag)
+
+    await tenantPrisma.contact.update({
+      where: { id: dbContact.id },
+      data: {
+        tags: nextTags,
+        lead_source: {
+          kind: 'ctwa',
+          platform,
+          headline: ref.headline || null,
+          body: ref.body || null,
+          source_type: ref.source_type || null,
+          source_id: ref.source_id || null,
+          source_url: ref.source_url || null,
+          ctwa_clid: ref.ctwa_clid || null,
+          captured_at: new Date().toISOString()
+        }
+      }
+    }).catch(() => {})
   }
 
   // Notificação push para os atendentes do tenant (best-effort).
