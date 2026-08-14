@@ -1,7 +1,18 @@
 # UProCRM — Roadmap
 
 Estado e próximos passos do produto. Atualizar conforme as coisas andam.
-Última atualização: 2026-07-17.
+Última atualização: 2026-08-14.
+
+## ✅ Concluído (sessão de ago/2026)
+- **Resumo do atendimento configurável (4.0)** — `summary_instructions` por tenant guia o formato/foco do resumo gerado pela IA (Pro/Promaster).
+- **Encaminhar resumo por WhatsApp (4.1)** — envio automático do resumo completo para um número, via template aprovado (`resumo_atendimento`), disparado quando a conversa é concluída (`concluded`) + fallback no cron. Entitlement `feature_summary_forward` liberado por tenant no admin. Trava anti-duplicação (`summary_forwarded_at`). Template criado automaticamente na WABA ao ligar o recurso. **Pré-requisito de entrega:** billing da WABA configurado (ver 131042 abaixo).
+- **Etiquetas de leads (4.2)** — taxonomia por tenant (`lead_tags`), auto-tag pela IA com toggle `auto_tag_enabled`, classificação manual por dropdown na conversa. Múltiplas etiquetas coexistem.
+- **Origem de tráfego (CTWA)** — tag automática de anúncio no webhook quando a 1ª mensagem traz `referral`. Diferencia **Instagram vs Facebook** (`anúncio Instagram`/`anúncio Facebook`) e guarda detalhes em `Contact.lead_source` (plataforma, título/campanha, URL). Destaque visual âmbar 📣 na lista e na conversa + selo "Lead veio de anúncio" no painel do contato. **Não é retroativo** (só vale para leads novos que cheguem por anúncio).
+- **Lista de conversas** — data + hora nos cards (UTC-3), filtro por período personalizado com date-picker pt-BR (`DatePickerBR`, sempre dd/mm/aaaa).
+- **Funil de vendas — drawer do lead** — clicar no card abre um drawer lateral (desliza da direita) para editar nome, e-mail, valor, etapa, observações e **etiquetas** (chips + dropdown); mostra **Resumo (IA)** e a **data do contato**; botões "Abrir conversa" e "WhatsApp". Filtro por **período personalizado** também no funil.
+- **UX diversos** — logout redireciona para uprocrm.com.br **forçando tema escuro**; tema escuro é o padrão; rodapé da home "Desenvolvido por Studio44".
+- **Ferramentas de diagnóstico** (token=NEXTAUTH_SECRET): `/api/admin/ai-health`, `/api/admin/bot-diagnose` (config, `?run=1`, `?forwardtest=1`, `last_send_status`), `create-summary-template`, `summary-template-status`, `set-plan`.
+- **Correção crítica do bot mudo** — `chatAnthropic` passou a concatenar todos os blocos `type:'text'` (o `claude-sonnet-5` tem thinking ON e devolvia bloco `thinking` em `content[0]`, resultando em resposta vazia).
 
 ## ✅ Concluído (recente)
 - **Plano Promaster completo** (bot vendedor por feed XML/RAG) — ingestão, sync, tools do bot, planos no admin/landing/checkout/Mercado Pago. Ver seção 3 abaixo. 1º cliente ativo (bonitasnaweb.com.br, ~541 produtos sincronizados).
@@ -26,6 +37,22 @@ Estado e próximos passos do produto. Atualizar conforme as coisas andam.
 - **Checklist de segurança pós-aprovação** — agora liberado (ver seção 🔒 abaixo): apagar `analyst@`, rotacionar secrets no Railway, trocar senhas de teste.
 
 ## 🔜 Próximos passos (ordenados)
+
+### 0. Disparos de consentimento (iniciar conversa pedindo permissão) — DESENHADO, a implementar
+Substituir o disparo atual (texto livre, só entrega dentro da janela de 24h) por um fluxo correto e dentro da política da Meta, para **iniciar** conversas.
+- **Caso de uso:** enviar para **no máximo 30 contatos** uma mensagem pedindo **consentimento** para iniciar a conversa. Quem responde (ex.: "SIM") abre a janela de 24h e a conversa/bot flui normalmente.
+- **Por que precisa de template:** mensagem iniciada pela empresa (fora das 24h) **exige template aprovado** — texto livre não é entregue. Vale para 1 ou 30 contatos.
+- **Modelo de produto (decidido com o Felippe):**
+  - **Padrão (plano Pro):** template de consentimento **padrão criado automaticamente na WABA de cada tenant** (nome fixo, ex.: `consentimento_conversa`), com texto genérico + variáveis (`{{1}}` nome, `{{2}}` empresa). Sem passo manual — mesmo padrão do `resumo_atendimento`.
+  - **Customizado (só o admin/Felippe libera):** entitlement `feature_broadcast_custom` por tenant → destrava a edição do texto do consentimento, que gera uma versão própria (novo nome de template) e passa por nova aprovação da Meta.
+- **Escopo técnico:**
+  - Schema Tenant: `broadcast_consent_template String?`, `broadcast_consent_text String?`, `feature_broadcast_custom Boolean @default(false)`.
+  - `lib/whatsapp-templates.ts`: `CONSENT_TEMPLATE_NAME`, `createConsentTemplate(tenant, name?, bodyText?)` (categoria MARKETING, var não no início/fim, texto fixo suficiente), reaproveitar `getSummaryTemplateStatus` (é genérico por nome).
+  - `api/broadcasts` (POST): enviar via **template** (`sendWhatsAppTemplate`), **teto de 30**, seleção por **etiqueta** e/ou **manual**, pequeno intervalo entre envios, auto-criar o template padrão se ainda não existir (status NONE → cria e avisa "aguardando aprovação"), gravar entregue/falha no histórico.
+  - UI `/broadcasts`: preview do texto de consentimento, badge de status do template, seletor de etiqueta + contador de destinatários (bloqueia > 30), aviso de que a conversa só segue após o "SIM"; edição do texto só quando `feature_broadcast_custom`.
+  - Admin `edit-tenant`: toggle do entitlement `feature_broadcast_custom` (espelhar `featureSummaryForward`), auto-criar template custom ao ligar.
+- **Pré-requisitos:** billing da WABA ok (131042) + aprovação do template pela Meta (assíncrona, por conta).
+- **Texto padrão proposto (aprovar antes de criar na Meta):** "Olá {{1}}! Aqui é da {{2}}. Gostaríamos de falar com você por aqui sobre um assunto do seu interesse. Podemos continuar? Se preferir não receber, é só responder SAIR. Ficamos no aguardo para seguir com o atendimento."
 
 ### 1. Multicanal — Instagram + Messenger
 Colocar o mesmo bot para atender no Instagram Direct e no Messenger.
