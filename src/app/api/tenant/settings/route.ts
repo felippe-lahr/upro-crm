@@ -17,7 +17,7 @@ export async function GET() {
     select: {
       id: true, name: true, email: true, plan: true, status: true,
       whatsapp_connected: true, phone_number_id: true, waba_id: true,
-      bot_enabled: true, bot_prompt: true, summary_instructions: true, lead_tags: true, trial_ends_at: true,
+      bot_enabled: true, bot_prompt: true, summary_instructions: true, lead_tags: true, auto_tag_enabled: true, trial_ends_at: true,
       menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
       handoff_pause: true, keep_responding_after_human: true,
       scheduling_enabled: true,
@@ -52,7 +52,7 @@ export async function PATCH(req: Request) {
   const body = await req.json()
   const { bot_enabled, bot_prompt, menu_bot_enabled, menu_bot_greeting, menu_bot_options,
     handoff_pause, keep_responding_after_human, mp_access_token, products_feed_url,
-    scheduling_enabled, summary_instructions, lead_tags,
+    scheduling_enabled, summary_instructions, lead_tags, auto_tag_enabled,
     summary_forward_number, summary_forward_template } = body
 
   // Token do Mercado Pago do lojista (recebe os sinais). '' limpa; undefined mantém.
@@ -134,6 +134,7 @@ export async function PATCH(req: Request) {
       ...(bot_prompt !== undefined && { bot_prompt }),
       ...(summary_instructions !== undefined && { summary_instructions: summary_instructions ? String(summary_instructions).slice(0, 2000) : null }),
       ...(normalizedLeadTags !== undefined && { lead_tags: normalizedLeadTags }),
+      ...(auto_tag_enabled !== undefined && { auto_tag_enabled: !!auto_tag_enabled }),
       ...(menu_bot_enabled !== undefined && { menu_bot_enabled }),
       ...(menu_bot_greeting !== undefined && { menu_bot_greeting }),
       ...(normalizedOptions !== undefined && { menu_bot_options: normalizedOptions }),

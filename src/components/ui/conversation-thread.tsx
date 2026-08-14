@@ -54,7 +54,6 @@ export function ConversationThread({
   const [status, setStatus] = useState(conversationStatus)
   const [notes, setNotes] = useState(contact.notes || '')
   const [tags, setTags] = useState<string[]>(contact.tags)
-  const [tagInput, setTagInput] = useState('')
   const [showQuick, setShowQuick] = useState(false)
   const [savedNote, setSavedNote] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -152,15 +151,6 @@ export function ConversationThread({
     } catch {
       alert('Falha ao excluir o contato.')
     }
-  }
-
-  function addTag() {
-    const t = tagInput.trim().toLowerCase()
-    if (!t || tags.includes(t)) return
-    const next = [...tags, t]
-    setTags(next)
-    setTagInput('')
-    patchContact({ tags: next })
   }
 
   function removeTag(t: string) {
@@ -330,42 +320,31 @@ export function ConversationThread({
                 className="flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-xs text-brand"
               >
                 {t}
-                <button onClick={() => removeTag(t)} className="hover:text-brand">×</button>
+                <button onClick={() => removeTag(t)} className="hover:text-red-400" aria-label={`Remover ${t}`}>×</button>
               </span>
             ))}
             {tags.length === 0 && <span className="text-xs text-faint">Nenhuma etiqueta</span>}
           </div>
 
-          {/* Etiquetas cadastradas (taxonomia) — clique para marcar/desmarcar */}
-          {availableTags.length > 0 && (
-            <div className="mb-2">
-              <p className="mb-1 text-[10px] uppercase tracking-wider text-faint">Suas etiquetas</p>
-              <div className="flex flex-wrap gap-1.5">
-                {availableTags.map((t) => {
-                  const on = tags.includes(t)
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => toggleTag(t)}
-                      className={`rounded-full px-2 py-0.5 text-xs transition-colors ${
-                        on ? 'bg-brand text-white' : 'bg-surface2 text-muted hover:text-fg'
-                      }`}
-                    >
-                      {on ? '✓ ' : ''}{t}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+          {/* Adicionar etiqueta a partir da lista cadastrada em Configurações */}
+          {availableTags.filter((t) => !tags.includes(t)).length > 0 ? (
+            <select
+              value=""
+              onChange={(e) => { if (e.target.value) toggleTag(e.target.value) }}
+              className="w-full rounded-lg border border-line bg-background px-3 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
+            >
+              <option value="">+ Adicionar etiqueta…</option>
+              {availableTags.filter((t) => !tags.includes(t)).map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          ) : availableTags.length === 0 ? (
+            <p className="text-xs text-faint">
+              Nenhuma etiqueta cadastrada. Crie suas etiquetas em <span className="text-muted">Configurações</span>.
+            </p>
+          ) : (
+            <p className="text-xs text-faint">Todas as etiquetas já foram aplicadas.</p>
           )}
-
-          <input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addTag()}
-            placeholder="Nova etiqueta avulsa + Enter"
-            className="w-full rounded-lg border border-line bg-background px-3 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
-          />
         </div>
 
         <div>

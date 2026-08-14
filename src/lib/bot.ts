@@ -15,7 +15,7 @@ export async function extractContactInfo(
   tenant: {
     schema_name: string; bot_prompt?: string | null; summary_instructions?: string | null
     feature_summary_forward?: boolean; summary_forward_number?: string | null; summary_forward_template?: string | null
-    phone_number_id?: string; whatsapp_token?: string; lead_tags?: string[]
+    phone_number_id?: string; whatsapp_token?: string; lead_tags?: string[]; auto_tag_enabled?: boolean
   },
   contact: { id: string }
 ) {
@@ -51,7 +51,9 @@ export async function extractContactInfo(
       : ''
 
     // Auto-etiquetagem: a IA escolhe tags EXCLUSIVAMENTE da taxonomia do tenant.
-    const taxonomy = (tenant.lead_tags || []).map((s) => String(s).trim()).filter(Boolean).slice(0, 40)
+    // Só quando a classificação automática está ligada (default) — senão, tags só manuais.
+    const autoTag = tenant.auto_tag_enabled !== false
+    const taxonomy = autoTag ? (tenant.lead_tags || []).map((s) => String(s).trim()).filter(Boolean).slice(0, 40) : []
     const tagsField = taxonomy.length ? ', "tags": string[]' : ''
     const tagsGuide = taxonomy.length
       ? `- tags: escolha 0 ou mais etiquetas que descrevem este lead, EXCLUSIVAMENTE desta lista (copie exatamente, sem inventar nem criar novas): [${taxonomy.map((t) => `"${t}"`).join(', ')}]. Se nenhuma se aplica, use []. `

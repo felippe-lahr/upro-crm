@@ -293,6 +293,7 @@ export default function SettingsPage() {
   const [botPrompt, setBotPrompt] = useState('')
   const [summaryInstructions, setSummaryInstructions] = useState('')
   const [leadTags, setLeadTags] = useState<string[]>([])
+  const [autoTagEnabled, setAutoTagEnabled] = useState(true)
   const [tagInput, setTagInput] = useState('')
   const [summaryForwardNumber, setSummaryForwardNumber] = useState('')
   const [menuBotEnabled, setMenuBotEnabled] = useState(false)
@@ -326,6 +327,7 @@ export default function SettingsPage() {
         setBotPrompt(data.bot_prompt || '')
         setSummaryInstructions(data.summary_instructions || '')
         setLeadTags(Array.isArray(data.lead_tags) ? data.lead_tags : [])
+        setAutoTagEnabled(data.auto_tag_enabled !== false)
         setSummaryForwardNumber(data.summary_forward_number || '')
         setMenuBotEnabled(data.menu_bot_enabled)
         setMenuGreeting(data.menu_bot_greeting || '')
@@ -357,7 +359,7 @@ export default function SettingsPage() {
       body: JSON.stringify({
         bot_enabled: isPro ? botEnabled : false,
         bot_prompt: botPrompt,
-        ...(isPro ? { summary_instructions: summaryInstructions, lead_tags: leadTags } : {}),
+        ...(isPro ? { summary_instructions: summaryInstructions, lead_tags: leadTags, auto_tag_enabled: autoTagEnabled } : {}),
         ...(settings?.feature_summary_forward ? { summary_forward_number: summaryForwardNumber } : {}),
         menu_bot_enabled: menuBotEnabled,
         menu_bot_greeting: menuGreeting,
@@ -680,16 +682,32 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            {/* Etiquetas automáticas (taxonomia + auto-tag da IA) */}
+            {/* Etiquetas dos leads (taxonomia + classificação automática opcional) */}
             <div className="mt-5 border-t border-line pt-5">
               <label className="mb-2 block text-sm font-medium text-fg">
-                Etiquetas automáticas dos leads
+                Etiquetas dos leads
               </label>
               <p className="mb-3 text-xs text-faint">
-                Cadastre as etiquetas que fazem sentido para o seu negócio. A IA aplica
-                automaticamente as que combinam com cada lead (e você pode ajustar manualmente na
-                conversa). Ela só usa etiquetas desta lista — nunca inventa novas.
+                Cadastre as etiquetas que fazem sentido para o seu negócio. Você as aplica
+                manualmente na conversa (dropdown) — e, se ligar a classificação automática abaixo,
+                a IA também aplica sozinha as que combinam com cada lead (nunca inventa novas).
               </p>
+
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-line bg-background px-3 py-2.5">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-fg">Classificação automática pela IA</div>
+                  <p className="mt-0.5 text-xs text-muted">Quando desligado, as etiquetas são aplicadas só manualmente.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAutoTagEnabled(!autoTagEnabled)}
+                  role="switch"
+                  aria-checked={autoTagEnabled}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${autoTagEnabled ? 'bg-brand' : 'bg-surface2'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoTagEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {leadTags.map((t) => (
                   <span key={t} className="flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-1 text-xs text-brand">
