@@ -284,6 +284,13 @@ export function ConversationThread({
 
       {/* Side panel: notes / tags / stage */}
       <aside className="hidden w-72 flex-col gap-5 overflow-auto border-l border-line bg-surface p-5 lg:flex">
+        {tags.includes('anúncio') && (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+            <span className="text-base">📣</span>
+            <span>Lead veio de um anúncio (Click to WhatsApp)</span>
+          </div>
+        )}
+
         <div>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-faint">Contato</h3>
           <div className="space-y-1 text-xs">
@@ -317,9 +324,13 @@ export function ConversationThread({
             {tags.map((t) => (
               <span
                 key={t}
-                className="flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-xs text-brand"
+                className={
+                  t === 'anúncio'
+                    ? 'flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400'
+                    : 'flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-xs text-brand'
+                }
               >
-                {t}
+                {t === 'anúncio' ? '📣 anúncio' : t}
                 <button onClick={() => removeTag(t)} className="hover:text-red-400" aria-label={`Remover ${t}`}>×</button>
               </span>
             ))}
