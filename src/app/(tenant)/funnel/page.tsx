@@ -23,6 +23,8 @@ export default async function FunnelPage() {
         id: c.id,
         name: c.name,
         phone: c.phone,
+        email: c.email || null,
+        notes: c.notes || null,
         stage: c.stage || 'novo_lead',
         deal_value: c.deal_value ? String(c.deal_value) : null,
         lastMessage: c.messages?.[0]?.content || null,

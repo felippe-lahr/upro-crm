@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { MoveRight } from 'lucide-react'
 import { FUNNEL_STAGES, LOST_STAGE_ID, type Stage } from '@/lib/funnel'
 
@@ -8,6 +9,8 @@ export interface LeadCard {
   id: string
   name: string | null
   phone: string
+  email: string | null
+  notes: string | null
   stage: string
   deal_value: string | null
   lastMessage: string | null
@@ -54,6 +57,25 @@ export function KanbanBoard({
   const [pendingLost, setPendingLost] = useState<string | null>(null) // contactId aguardando motivo
   const [config, setConfig] = useState(false)
   const [menuId, setMenuId] = useState<string | null>(null) // card com o menu "mover" aberto (mobile)
+  const [detailId, setDetailId] = useState<string | null>(null) // card com o painel de detalhes aberto
+
+  const detailLead = useMemo(() => leads.find((l) => l.id === detailId) || null, [leads, detailId])
+
+  // Salva alterações de campos do lead (nome, e-mail, valor, observações) — otimista.
+  async function updateLead(contactId: string, patch: Partial<LeadCard>) {
+    const prev = leads
+    setLeads((ls) => ls.map((l) => (l.id === contactId ? { ...l, ...patch } : l)))
+    try {
+      const res = await fetch('/api/contacts/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactId, ...patch })
+      })
+      if (!res.ok) throw new Error('falhou')
+    } catch {
+      setLeads(prev) // rollback
+    }
+  }
 
   // Move via botão (toque) — respeita o fluxo de motivo de perda.
   function requestMove(contactId: string, stage: string) {
@@ -180,6 +202,15 @@ export function KanbanBoard({
         />
       )}
 
+      {detailLead && (
+        <LeadDetailModal
+          lead={detailLead}
+          stages={stages}
+          onClose={() => setDetailId(null)}
+          onSave={(patch) => updateLead(detailLead.id, patch)}
+        />
+      )}
+
       <div className="flex gap-4 overflow-x-auto pb-4">
       {stages.map((stage) => {
         const stageLeads = visibleLeads.filter((l) => l.stage === stage.id)
@@ -217,7 +248,8 @@ export function KanbanBoard({
                   draggable
                   onDragStart={() => setDragId(lead.id)}
                   onDragEnd={() => setDragId(null)}
-                  className={`cursor-grab rounded-xl border border-line bg-surface p-3 shadow-sm active:cursor-grabbing ${
+                  onClick={() => { if (!dragId) setDetailId(lead.id) }}
+                  className={`cursor-pointer rounded-xl border border-line bg-surface p-3 shadow-sm ${
                     dragId === lead.id ? 'opacity-50' : ''
                   }`}
                 >
@@ -315,6 +347,103 @@ function LossReasonModal({ reasons, onPick, onCancel }: {
           ))}
         </div>
         <button onClick={onCancel} className="mt-4 w-full rounded-lg px-3 py-2 text-sm text-muted hover:text-fg">Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
+function LeadDetailModal({ lead, stages, onClose, onSave }: {
+  lead: LeadCard
+  stages: Stage[]
+  onClose: () => void
+  onSave: (patch: Partial<LeadCard>) => void
+}) {
+  const [name, setName] = useState(lead.name || '')
+  const [email, setEmail] = useState(lead.email || '')
+  const [dealValue, setDealValue] = useState(lead.deal_value || '')
+  const [stage, setStage] = useState(lead.stage)
+  const [notes, setNotes] = useState(lead.notes || '')
+
+  function save() {
+    onSave({
+      name: name.trim() || null,
+      email: email.trim() || null,
+      deal_value: dealValue ? String(Number(String(dealValue).replace(',', '.'))) : null,
+      stage,
+      notes: notes.trim() || null
+    })
+    onClose()
+  }
+
+  const waPhone = lead.phone.replace(/\D/g, '')
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-surface p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-semibold text-brand">
+            {(lead.name || lead.phone)[0].toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-semibold text-fg">{lead.name || lead.phone}</h3>
+            <p className="truncate text-xs text-faint">{lead.phone}</p>
+          </div>
+        </div>
+
+        {lead.tags.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            {lead.tags.map((t) => (
+              <span
+                key={t}
+                className={
+                  t.startsWith('anúncio')
+                    ? 'rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400'
+                    : 'rounded-full bg-brand/15 px-2 py-0.5 text-[11px] text-brand'
+                }
+              >
+                {t.startsWith('anúncio') ? `📣 ${t}` : t}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">Nome</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">E-mail</label>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-medium text-muted">Valor (R$)</label>
+              <input value={dealValue} onChange={(e) => setDealValue(e.target.value)} inputMode="decimal" placeholder="0,00" className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-medium text-muted">Etapa</label>
+              <select value={stage} onChange={(e) => setStage(e.target.value)} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none">
+                {stages.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">Observações</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full resize-none rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none" />
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button onClick={save} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Salvar</button>
+          <Link href={`/conversations/${lead.id}`} className="rounded-lg border border-brand px-4 py-2 text-sm font-medium text-brand hover:bg-brand/5">Abrir conversa</Link>
+          {waPhone && (
+            <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">WhatsApp</a>
+          )}
+          <button onClick={onClose} className="ml-auto rounded-lg px-4 py-2 text-sm text-muted hover:text-fg">Fechar</button>
+        </div>
       </div>
     </div>
   )
