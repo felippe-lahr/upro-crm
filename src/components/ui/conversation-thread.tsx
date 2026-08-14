@@ -39,12 +39,14 @@ export function ConversationThread({
   contact,
   messages: initialMessages,
   conversationStatus,
-  quickReplies
+  quickReplies,
+  availableTags = []
 }: {
   contact: Contact
   messages: Msg[]
   conversationStatus: string
   quickReplies: QuickReply[]
+  availableTags?: string[]
 }) {
   const [messages, setMessages] = useState<Msg[]>(initialMessages)
   const [text, setText] = useState('')
@@ -163,6 +165,12 @@ export function ConversationThread({
 
   function removeTag(t: string) {
     const next = tags.filter((x) => x !== t)
+    setTags(next)
+    patchContact({ tags: next })
+  }
+
+  function toggleTag(t: string) {
+    const next = tags.includes(t) ? tags.filter((x) => x !== t) : [...tags, t]
     setTags(next)
     patchContact({ tags: next })
   }
@@ -327,11 +335,35 @@ export function ConversationThread({
             ))}
             {tags.length === 0 && <span className="text-xs text-faint">Nenhuma etiqueta</span>}
           </div>
+
+          {/* Etiquetas cadastradas (taxonomia) — clique para marcar/desmarcar */}
+          {availableTags.length > 0 && (
+            <div className="mb-2">
+              <p className="mb-1 text-[10px] uppercase tracking-wider text-faint">Suas etiquetas</p>
+              <div className="flex flex-wrap gap-1.5">
+                {availableTags.map((t) => {
+                  const on = tags.includes(t)
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => toggleTag(t)}
+                      className={`rounded-full px-2 py-0.5 text-xs transition-colors ${
+                        on ? 'bg-brand text-white' : 'bg-surface2 text-muted hover:text-fg'
+                      }`}
+                    >
+                      {on ? '✓ ' : ''}{t}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           <input
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addTag()}
-            placeholder="Adicionar etiqueta + Enter"
+            placeholder="Nova etiqueta avulsa + Enter"
             className="w-full rounded-lg border border-line bg-background px-3 py-1.5 text-xs text-fg focus:border-brand focus:outline-none"
           />
         </div>

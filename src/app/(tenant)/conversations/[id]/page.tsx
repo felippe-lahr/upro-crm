@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth'
-import { getTenantPrisma } from '@/lib/prisma-tenant'
+import { getTenantPrisma, globalPrisma } from '@/lib/prisma-tenant'
 import Link from 'next/link'
 import { ConversationThread } from '@/components/ui/conversation-thread'
 
@@ -28,7 +28,8 @@ export default async function ConversationPage({
     )
   }
 
-  const [messages, conversation, quickReplies] = await Promise.all([
+  const tenantId = (session!.user as any).tenantId
+  const [messages, conversation, quickReplies, tenant] = await Promise.all([
     db.message.findMany({
       where: { contact_id: contactId },
       orderBy: { timestamp: 'asc' },
@@ -38,7 +39,8 @@ export default async function ConversationPage({
       where: { contact_id: contactId },
       orderBy: { created_at: 'desc' }
     }),
-    db.quickReply.findMany({ orderBy: { shortcut: 'asc' } })
+    db.quickReply.findMany({ orderBy: { shortcut: 'asc' } }),
+    tenantId ? globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { lead_tags: true } }) : Promise.resolve(null)
   ])
 
   return (
@@ -63,6 +65,7 @@ export default async function ConversationPage({
       }))}
       conversationStatus={conversation?.status || 'open'}
       quickReplies={quickReplies.map((q: any) => ({ shortcut: q.shortcut, content: q.content }))}
+      availableTags={(tenant?.lead_tags as string[]) || []}
     />
   )
 }
