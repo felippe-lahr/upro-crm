@@ -4,18 +4,27 @@ import { globalPrisma } from '@/lib/prisma-tenant'
 import bcrypt from 'bcryptjs'
 
 /**
- * Cria ou promove um usuário a superadmin.
- * GET /api/admin/make-superadmin?token=<NEXTAUTH_SECRET>&email=<email>&password=<senha>
- * Se o usuário já existir no tenant, apenas eleva o role para superadmin.
- * Se não existir, cria um tenant "system" e um TenantUser com role superadmin.
+ * Cria ou promove um usuário a superadmin (BOOTSTRAP — uso único de instalação).
+ * GET /api/admin/make-superadmin?token=<ADMIN_API_SECRET|NEXTAUTH_SECRET>&email=<email>&password=<senha>
+ *
+ * SEGURANÇA: desativado por padrão. Só responde quando ENABLE_BOOTSTRAP_ADMIN=true
+ * está setado no ambiente. Como já existe um superadmin, mantenha essa variável
+ * DESLIGADA em produção e só ligue por alguns minutos se precisar recriar o acesso.
  */
 export async function GET(req: Request) {
+  // Porta dos fundos lacrada por padrão — evita criação de superadmin caso o token vaze.
+  if (process.env.ENABLE_BOOTSTRAP_ADMIN !== 'true') {
+    return Response.json({ error: 'Not found' }, { status: 404 })
+  }
+
   const url = new URL(req.url)
   const token = url.searchParams.get('token')
   const email = url.searchParams.get('email')
   const password = url.searchParams.get('password')
 
-  if (!token || token !== process.env.NEXTAUTH_SECRET) {
+  // Aceita o segredo administrativo dedicado (preferido) ou o de sessão (legado).
+  const adminSecret = process.env.ADMIN_API_SECRET || process.env.NEXTAUTH_SECRET
+  if (!token || token !== adminSecret) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
   if (!email) {
