@@ -49,6 +49,15 @@ Mensuração de leads vindos do Google Ads e envio das conversões de volta ao G
 - Config Tenant `ads_wa_number` + seção "Rastreamento de anúncios" nas Configurações (número + snippet copiável + passo a passo + download do CSV).
 - Modelo `AdClick` no schema público (criado no boot via `prisma db push`).
 
+**Ajustes feitos na validação em produção (site real da Cinthia — WordPress/BeTheme + Elementor + Social Chat/QLWAPP):**
+- **Middleware** — `/r/` liberado como rota pública (`middleware.ts`); antes o redirecionador caía em `/login`.
+- **track.js v2** — além de reescrever links `<a>`, intercepta botões que abrem via **`window.open`** (plugins de chat como Social Chat/QLWAPP e popups de formulário). Sem isso, o botão flutuante do plugin não era rastreado.
+- **Marcador invisível (zero-width)** — `lib/ad-marker.ts` codifica o código do clique em caracteres de largura zero e o embute no meio da frase; o cliente vê só o texto natural (sem `#GAD` à mostra) e **não consegue apagar o marcador**. Webhook decodifica o invisível, com fallback para o `#GAD:` visível antigo.
+- **Diagnóstico** `/api/admin/ads-diagnose?token=…[&code=…]` — lista os `AdClick` recentes e mostra se foram casados (`matched_at`).
+- **UI** — etiqueta **Google Ads** agora com o mesmo visual âmbar + corneta 📣 das de Facebook/Instagram, na lista de conversas, na conversa e no funil (cards e drawer). Instrução do **auto-tagging** ("Codificação automática = Sim") adicionada na seção de rastreamento das Configurações.
+
+**Aprendizados de teste (não são bugs):** no desktop o WhatsApp Web pede QR e **descarta o texto pré-preenchido** no login — testar no **celular** (fluxo real). Auto-tagging da conta da Cinthia confirmado LIGADO. Janela de atribuição do `track.js` fixada em **90 dias** (alinhada ao Google).
+
 **Como o Google conta a conversão off-site:** via **Importação de Conversões Offline por gclid** (o clique carrega o gclid até o CRM; o CRM devolve a conversão ao Google com esse gclid). Alternativa equivalente é **Enhanced Conversions for Leads por telefone** (o telefone temos 100%, dispensa gclid) — não implementada, fica como opção.
 
 **Pendências/refino (a fazer):**
