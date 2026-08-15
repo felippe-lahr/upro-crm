@@ -184,7 +184,7 @@ export function ConversationsList({
                 {conv.tags.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {conv.tags.map((t) => (
-                      t.startsWith('anúncio') ? (
+                      (t.startsWith('anúncio') || t === 'Google Ads') ? (
                         <span
                           key={t}
                           className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"

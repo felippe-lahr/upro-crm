@@ -342,12 +342,12 @@ export function ConversationThread({
               <span
                 key={t}
                 className={
-                  t.startsWith('anúncio')
+                  (t.startsWith('anúncio') || t === 'Google Ads')
                     ? 'flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400'
                     : 'flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-xs text-brand'
                 }
               >
-                {t.startsWith('anúncio') ? `📣 ${t}` : t}
+                {(t.startsWith('anúncio') || t === 'Google Ads') ? `📣 ${t}` : t}
                 <button onClick={() => removeTag(t)} className="hover:text-red-400" aria-label={`Remover ${t}`}>×</button>
               </span>
             ))}

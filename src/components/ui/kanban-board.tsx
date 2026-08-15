@@ -326,12 +326,21 @@ export function KanbanBoard({
                   {lead.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1 pl-9">
                       {lead.tags.map((t) => (
-                        <span
-                          key={t}
-                          className="rounded-full bg-brand/15 px-2 py-0.5 text-[11px] text-brand"
-                        >
-                          {t}
-                        </span>
+                        (t.startsWith('anúncio') || t === 'Google Ads') ? (
+                          <span
+                            key={t}
+                            className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+                          >
+                            📣 {t}
+                          </span>
+                        ) : (
+                          <span
+                            key={t}
+                            className="rounded-full bg-brand/15 px-2 py-0.5 text-[11px] text-brand"
+                          >
+                            {t}
+                          </span>
+                        )
                       ))}
                     </div>
                   )}
@@ -458,12 +467,12 @@ function LeadDetailModal({ lead, stages, availableTags, onClose, onSave }: {
               <span
                 key={t}
                 className={
-                  t.startsWith('anúncio')
+                  (t.startsWith('anúncio') || t === 'Google Ads')
                     ? 'flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400'
                     : 'flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[11px] text-brand'
                 }
               >
-                {t.startsWith('anúncio') ? `📣 ${t}` : t}
+                {(t.startsWith('anúncio') || t === 'Google Ads') ? `📣 ${t}` : t}
                 <button onClick={() => removeTag(t)} className="hover:text-red-400" aria-label={`Remover ${t}`}>×</button>
               </span>
             ))}
