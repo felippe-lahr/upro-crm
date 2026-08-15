@@ -188,10 +188,25 @@ Envio de mensagens em massa via templates aprovados (respeitando janela de 24h e
 ### 6. Refresh automático do token de 60 dias do WhatsApp
 Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 
-## 🔒 Pós-aprovação (checklist de segurança)
-- Apagar o usuário `analyst@uprocrm.com.br`
-- Rotacionar `NEXTAUTH_SECRET`, `ENCRYPTION_KEY` e `META_APP_SECRET` no Railway (apareceram em URLs/prints) — **NEXTAUTH_SECRET voltou a aparecer em prints durante a depuração do bot (ago/2026); prioridade**
-- Trocar senhas de contas de teste
+## 🔒 Segurança — revisão para comercialização (ago/2026)
+
+**✅ Feito e verificado nesta rodada:**
+- **`NEXTAUTH_SECRET` rotacionado** no Railway (invalidou o valor que vazou em URLs de diagnóstico). Login e cron confirmados OK após a troca.
+- **Backdoor `make-superadmin` lacrado** — desativado por padrão; só responde com `ENABLE_BOOTSTRAP_ADMIN=true` (mantida DESLIGADA).
+- **`ADMIN_API_SECRET` dedicado** (`lib/admin-auth.ts`) — separa a autenticação de administração/diagnóstico do secret de sessão. Aplicado nos 11 endpoints admin. **Verificado:** token novo abre, `NEXTAUTH_SECRET` é rejeitado. Usar valor **hex** (`openssl rand -hex 32`) para não quebrar na URL (base64 tem `+`/`/`).
+- **Crons** passam a exigir só `CRON_SECRET` (removido o fallback `NEXTAUTH_SECRET`).
+- **Webhook Mercado Pago** — validação de assinatura (`timingSafeEqual`) em **modo monitor** (só loga). Setar `MP_WEBHOOK_STRICT=true` para rejeitar forjados (fazer após confirmar no log que a assinatura valida num pagamento real). Log deixou de despejar o corpo inteiro.
+- **`/r/wa`** — rate limit por IP + expurgo de `AdClick` com +30 dias (no cron).
+- **Isolamento multi-tenant auditado** — todos os endpoints derivam o `schemaName` da **sessão**, nunca do input do cliente. OK.
+- **Webhook WhatsApp** — assinatura `X-Hub-Signature-256` já era validada. OK.
+
+**⏳ Pendências (pré-venda):**
+- **`ENABLE_BOOTSTRAP_ADMIN`** — manter ausente/false em produção.
+- **`MP_WEBHOOK_STRICT=true`** — ligar após validar o log num pagamento real.
+- **Rotacionar `ENCRYPTION_KEY` e `META_APP_SECRET`** — ⚠️ `ENCRYPTION_KEY` criptografa tokens de WhatsApp/Mercado Pago dos tenants; rotacionar **quebra os já salvos** → exige migração (re-encriptar). Planejar à parte.
+- Apagar o usuário `analyst@uprocrm.com.br` e trocar senhas de contas de teste.
+- (Hardening futuro) mover tokens de diagnóstico de query string para header/POST; rate limit em `/api/signup` e login; monitoramento de erros (Sentry) + backup testado.
+- **Legal/LGPD:** revisar Política de Privacidade/Termos, DPA com o lojista (ele é controlador dos dados dos leads; a plataforma é operadora), consentimento nos disparos.
 
 ### ✅ 4.2 Etiquetagem automática de leads (Pro) — IMPLEMENTADO (v1)
 Tagueamento do **lead (contato)**, abordagem híbrida:
