@@ -68,21 +68,25 @@ Mensuração de leads vindos do Google Ads e envio das conversões de volta ao G
 
 ## 🔜 Próximos passos (ordenados)
 
-### 0. Disparos de consentimento (iniciar conversa pedindo permissão) — DESENHADO, a implementar
-Substituir o disparo atual (texto livre, só entrega dentro da janela de 24h) por um fluxo correto e dentro da política da Meta, para **iniciar** conversas.
-- **Caso de uso:** enviar para **no máximo 30 contatos** uma mensagem pedindo **consentimento** para iniciar a conversa. Quem responde (ex.: "SIM") abre a janela de 24h e a conversa/bot flui normalmente.
-- **Por que precisa de template:** mensagem iniciada pela empresa (fora das 24h) **exige template aprovado** — texto livre não é entregue. Vale para 1 ou 30 contatos.
-- **Modelo de produto (decidido com o Felippe):**
-  - **Padrão (plano Pro):** template de consentimento **padrão criado automaticamente na WABA de cada tenant** (nome fixo, ex.: `consentimento_conversa`), com texto genérico + variáveis (`{{1}}` nome, `{{2}}` empresa). Sem passo manual — mesmo padrão do `resumo_atendimento`.
-  - **Customizado (só o admin/Felippe libera):** entitlement `feature_broadcast_custom` por tenant → destrava a edição do texto do consentimento, que gera uma versão própria (novo nome de template) e passa por nova aprovação da Meta.
-- **Escopo técnico:**
-  - Schema Tenant: `broadcast_consent_template String?`, `broadcast_consent_text String?`, `feature_broadcast_custom Boolean @default(false)`.
-  - `lib/whatsapp-templates.ts`: `CONSENT_TEMPLATE_NAME`, `createConsentTemplate(tenant, name?, bodyText?)` (categoria MARKETING, var não no início/fim, texto fixo suficiente), reaproveitar `getSummaryTemplateStatus` (é genérico por nome).
-  - `api/broadcasts` (POST): enviar via **template** (`sendWhatsAppTemplate`), **teto de 30**, seleção por **etiqueta** e/ou **manual**, pequeno intervalo entre envios, auto-criar o template padrão se ainda não existir (status NONE → cria e avisa "aguardando aprovação"), gravar entregue/falha no histórico.
-  - UI `/broadcasts`: preview do texto de consentimento, badge de status do template, seletor de etiqueta + contador de destinatários (bloqueia > 30), aviso de que a conversa só segue após o "SIM"; edição do texto só quando `feature_broadcast_custom`.
-  - Admin `edit-tenant`: toggle do entitlement `feature_broadcast_custom` (espelhar `featureSummaryForward`), auto-criar template custom ao ligar.
-- **Pré-requisitos:** billing da WABA ok (131042) + aprovação do template pela Meta (assíncrona, por conta).
-- **Texto padrão proposto (aprovar antes de criar na Meta):** "Olá {{1}}! Aqui é da {{2}}. Gostaríamos de falar com você por aqui sobre um assunto do seu interesse. Podemos continuar? Se preferir não receber, é só responder SAIR. Ficamos no aguardo para seguir com o atendimento."
+### ✅ 0. Disparos de consentimento (iniciar conversa pedindo permissão) — IMPLEMENTADO
+Fluxo correto e dentro da política da Meta para **iniciar** conversas via template aprovado (substitui o disparo de texto livre, que só entregava dentro da janela de 24h).
+
+**Decisão-chave (variável editável, sem re-aprovação):** em vez de gatear a edição do texto por entitlement (a ideia antiga `feature_broadcast_custom`, **descartada**), o texto que cada tenant escreve entra numa **variável `{{3}}`** do template. A estrutura é aprovada **uma vez** pela Meta; cada tenant só troca o miolo — **sem nova aprovação**. Todo tenant personaliza a própria mensagem.
+
+**Template `consentimento_conversa` (MARKETING, pt_BR):**
+> "Olá {{1}}, somos da {{2}}. {{3}}. Se tiver interesse digite SIM para continuar. Caso não queira mais receber esta mensagem digite SAIR."
+> — `{{1}}`=nome (auto), `{{2}}`=empresa (auto), `{{3}}`=frase que o tenant escreve no envio.
+
+**Implementado:**
+- `lib/whatsapp-templates.ts`: `CONSENT_TEMPLATE_NAME` + `createConsentTemplate()` (com example dos 3 params); status via `getSummaryTemplateStatus` (genérico por nome).
+- `api/broadcasts` (GET/POST): GET devolve status do modelo + etiquetas + empresa; POST envia via `sendWhatsAppTemplate` com `[nome, empresa, frase]`, **teto de 30**, exclui `opted_out`, cria o template no 1º uso (retorna 409 "aguardando aprovação"), intervalo de 400ms entre envios, grava no histórico.
+- **Opt-in/opt-out no webhook:** resposta **SAIR** → `Contact.opted_out=true` + etiqueta `opt-out` (nunca mais entra em disparo — LGPD/Meta); **SIM** → etiqueta `consentiu`.
+- UI `/broadcasts`: campo "sua mensagem" (`{{3}}`, máx. 500, 1 linha), **prévia** em tempo real, badge de status do modelo, seletor de etiqueta, avisos SIM/SAIR e de custo; botão travado até o modelo estar `APPROVED`.
+- Schema: `Tenant.broadcast_consent_template`, `Contact.opted_out`.
+
+**Pré-requisitos externos (para entregar de fato):** billing da WABA ok (erro **131042**) + aprovação do template pela Meta (assíncrona, por conta — disparada no 1º envio).
+
+**Seleção manual de contatos (`contactIds`)** já é aceita pela API; falta só a UI de marcar contato a contato (hoje a seleção é por etiqueta/todos, com teto de 30). Backlog leve.
 
 ### 1. Multicanal — Instagram + Messenger
 Colocar o mesmo bot para atender no Instagram Direct e no Messenger.
@@ -182,8 +186,8 @@ Quando o bot qualifica um lead, enviar automaticamente o **resumo do atendimento
 - Custo: cada envio é uma conversa *utility* iniciada pelo negócio (tarifada pela Meta) — avisar o cliente.
 - Alternativa mais simples que ficou **descartada** pelo cliente: enviar por **e-mail** (sem template/janela).
 
-### 5. Disparo em massa (templates)
-Envio de mensagens em massa via templates aprovados (respeitando janela de 24h e categorias). Depende de templates aprovados na WABA.
+### 5. Disparo em massa (templates) — coberto pelo item ✅ 0 (disparos de consentimento)
+Envio via templates aprovados já implementado no item 0 (teto de 30 + opt-out). Evolução futura possível: volumes maiores com fila/rate-limit dedicado e outras categorias de template.
 
 ### 6. Refresh automático do token de 60 dias do WhatsApp
 Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
