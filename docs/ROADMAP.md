@@ -1,7 +1,7 @@
 # UProCRM — Roadmap
 
 Estado e próximos passos do produto. Atualizar conforme as coisas andam.
-Última atualização: 2026-08-14.
+Última atualização: 2026-08-15.
 
 ## ✅ Concluído (sessão de ago/2026)
 - **Resumo do atendimento configurável (4.0)** — `summary_instructions` por tenant guia o formato/foco do resumo gerado pela IA (Pro/Promaster).
@@ -35,6 +35,27 @@ Estado e próximos passos do produto. Atualizar conforme as coisas andam.
 
 ## ⏳ Em andamento
 - **Checklist de segurança pós-aprovação** — agora liberado (ver seção 🔒 abaixo): apagar `analyst@`, rotacionar secrets no Railway, trocar senhas de teste.
+
+## ✅ Rastreamento de anúncios Google Ads → WhatsApp (MVP implementado)
+Mensuração de leads vindos do Google Ads e envio das conversões de volta ao Google (a conversa começa no WhatsApp, fora do site — resolvido com identificador que viaja até a conversa + reporte de volta).
+
+**Fluxo real do tenant:** anúncio → **site do próprio tenant** (domínio dele) → botão de WhatsApp → conversa. O `gclid` cai no site do tenant; por isso a captura é feita por um **snippet no site dele** (não pela URL final do anúncio).
+
+**Implementado:**
+- `public/track.js` — snippet que o tenant cola no site (`<script src=".../track.js" data-tenant="<slug>">`). Captura `gclid`/UTMs (guarda 90 dias em localStorage) e **reescreve os botões de WhatsApp** para passar pelo `/r/wa` levando o `gclid`. Só age quando há `gclid` (visitante orgânico não é tocado). Cobre botões dinâmicos (MutationObserver).
+- `/r/wa` (`src/app/r/wa/route.ts`) — recebe `t=<slug>` + `gclid`/UTMs, cria um `AdClick` (schema público) com código curto e **redireciona ao `wa.me`** do número do tenant com o marcador `#GAD:<code>` no texto.
+- Webhook do WhatsApp — casa o marcador `#GAD:<code>` da 1ª mensagem com o `AdClick`, atribui ao lead `lead_source = {kind:'google_ads', gclid, utm...}` e a etiqueta **Google Ads**.
+- Export `/api/leads/google-conversions` — CSV no formato **Importação de Conversões Offline (por gclid)** do Google Ads. Inclui leads com `gclid` que avançaram no funil.
+- Config Tenant `ads_wa_number` + seção "Rastreamento de anúncios" nas Configurações (número + snippet copiável + passo a passo + download do CSV).
+- Modelo `AdClick` no schema público (criado no boot via `prisma db push`).
+
+**Como o Google conta a conversão off-site:** via **Importação de Conversões Offline por gclid** (o clique carrega o gclid até o CRM; o CRM devolve a conversão ao Google com esse gclid). Alternativa equivalente é **Enhanced Conversions for Leads por telefone** (o telefone temos 100%, dispensa gclid) — não implementada, fica como opção.
+
+**Pendências/refino (a fazer):**
+- **Valor real da conversão:** usar o `deal_value` do lead no CSV em vez de valor fixo.
+- **Etapa = conversão configurável:** hoje o critério é fixo (saiu de `novo_lead` e não está `perdido`); permitir escolher a etapa.
+- **White-label:** servir o `track.js` e o redirect de um domínio neutro (sem `uprocrm.com.br` aparecer no site do cliente) — decidido começar pelo padrão; ligar white-label quando for posicionar para agências.
+- **Fase 3 (futuro):** envio automático das conversões via **Google Ads API** (OAuth + developer token), dispensando o CSV manual.
 
 ## 🔜 Próximos passos (ordenados)
 
