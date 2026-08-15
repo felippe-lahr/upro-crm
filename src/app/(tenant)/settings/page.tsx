@@ -868,9 +868,22 @@ export default function SettingsPage() {
               )
             })()}
             <div className="mt-3 space-y-1 text-xs text-faint">
-              <p><strong className="text-muted">1.</strong> No Google Ads, mantenha o anúncio apontando para <strong>o seu próprio site</strong> (não muda nada).</p>
+              <p><strong className="text-muted">1.</strong> No Google Ads, a <strong>URL final</strong> do anúncio é apenas <strong>o seu site</strong> (ex.: <code>https://seusite.com.br</code>), sem nenhum parâmetro.</p>
               <p><strong className="text-muted">2.</strong> Cole o código acima no seu site (rodapé). Funciona com qualquer botão de WhatsApp que já exista.</p>
-              <p><strong className="text-muted">3.</strong> Pronto: quem chegar pelo Google e clicar no WhatsApp entra no CRM com a etiqueta <strong>Google Ads</strong> e o <code>gclid</code>.</p>
+              <p><strong className="text-muted">3.</strong> Pronto: quem chegar pelo Google e clicar no WhatsApp entra no CRM com a etiqueta <strong>Google Ads</strong>.</p>
+            </div>
+
+            {/* Pré-requisito: auto-tagging (é o que faz o Google identificar a origem) */}
+            <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-xs text-muted">
+              <p className="font-medium text-amber-600">⚙️ Confira uma vez no Google Ads: marcação automática (auto-tagging) LIGADA</p>
+              <p className="mt-1">
+                É ela que faz o Google anexar o identificador do clique (<code>gclid</code>) ao seu site — sem isso,
+                não dá para saber que a visita veio do anúncio. Já vem ligada por padrão. Caminho:
+              </p>
+              <p className="mt-1 text-faint">
+                Google Ads → <strong>Administrador / Configurações</strong> → <strong>Configurações da conta</strong> →
+                <strong> Marcação automática</strong> → marque <em>“Marcar o URL que as pessoas clicam…”</em>.
+              </p>
             </div>
           </div>
         ) : (
