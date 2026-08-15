@@ -142,6 +142,19 @@ model AdClick {
   @@map("ad_clicks")
 }
 
+// Token de recuperação de senha (esqueci a senha). Guarda só o HASH do token.
+model PasswordReset {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String
+  token_hash String   @unique
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@index([email])
+  @@map("password_resets")
+}
+
 // Inscrição de notificação push (Web Push) de um usuário/dispositivo.
 model PushSubscription {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
