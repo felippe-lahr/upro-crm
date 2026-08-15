@@ -5,6 +5,7 @@ import { processBotResponse, processMenuBotResponse, extractContactInfo, sendWha
 import { transcribeWhatsAppAudio } from '@/lib/transcribe'
 import { sendAppointmentEmail } from '@/lib/email'
 import { sendPushToTenant } from '@/lib/push'
+import { decodeAdMarker } from '@/lib/ad-marker'
 import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string | null): boolean {
@@ -208,11 +209,14 @@ async function processIncomingMessage(
     }).catch(() => {})
   }
 
-  // Origem Google Ads: a 1ª mensagem traz o marcador "#GAD:<code>" (injetado pelo
-  // redirecionamento /r/wa). Casa o código com o AdClick e atribui gclid/UTMs ao lead.
-  const gadMatch = (resolvedText || '').match(/#GAD:([A-Za-z0-9]{4,})/)
-  if (gadMatch && !(dbContact as any).lead_source) {
-    const code = gadMatch[1]
+  // Origem Google Ads: a 1ª mensagem traz o marcador do clique (injetado pelo /r/wa),
+  // de forma INVISÍVEL (zero-width). Fallback para o formato antigo visível "#GAD:<code>".
+  const gadCode =
+    decodeAdMarker(resolvedText || '') ||
+    (resolvedText || '').match(/#GAD:([A-Za-z0-9]{4,})/)?.[1] ||
+    null
+  if (gadCode && !(dbContact as any).lead_source) {
+    const code = gadCode
     const click = await globalPrisma.adClick.findUnique({ where: { code } }).catch(() => null)
     if (click && click.tenant_id === tenant.id) {
       const tags: string[] = dbContact.tags || []

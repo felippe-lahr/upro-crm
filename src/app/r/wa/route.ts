@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { globalPrisma } from '@/lib/prisma-tenant'
+import { embedAdMarker } from '@/lib/ad-marker'
 
 /**
  * Redirecionamento rastreável de anúncio → WhatsApp.
@@ -47,9 +48,10 @@ export async function GET(req: Request) {
     }
   }).catch(() => {})
 
-  // Texto que o cliente enviará. O marcador precisa sobreviver ao envio; fica no fim.
+  // Texto que o cliente enviará. O marcador vai EMBUTIDO de forma invisível
+  // (caracteres zero-width) — o cliente vê só a frase natural, sem código à mostra.
   const baseText = url.searchParams.get('text') || 'Olá! Vim pelo Google e gostaria de mais informações.'
-  const text = `${baseText} #GAD:${code}`
+  const text = embedAdMarker(baseText, code)
   const target = `https://wa.me/${number}?text=${encodeURIComponent(text)}`
 
   return Response.redirect(target, 302)
