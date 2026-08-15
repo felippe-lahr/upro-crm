@@ -200,6 +200,14 @@ Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 - **Isolamento multi-tenant auditado** — todos os endpoints derivam o `schemaName` da **sessão**, nunca do input do cliente. OK.
 - **Webhook WhatsApp** — assinatura `X-Hub-Signature-256` já era validada. OK.
 
+**✅ Página de login endurecida (ago/2026):**
+- **Recuperação de senha** — `/forgot-password` + `/reset-password`, token de uso único (guarda só o hash, expira em 1h) enviado por e-mail (Resend). Resposta genérica (não revela se o e-mail existe). Modelo `PasswordReset` (schema público).
+- **Mostrar/ocultar senha** no login e no reset.
+- **Proteção contra força bruta** — no `authorize` (`lib/auth.ts`): 6 falhas por e-mail → bloqueio de 15 min (em memória).
+- Rotas `/forgot-password` e `/reset-password` liberadas no middleware.
+- Pré-requisito: domínio verificado no Resend (ou `EMAIL_FROM_ADDRESS=onboarding@resend.dev` para teste).
+- Futuro opcional: 2FA (código por e-mail/app), rate limit por IP no request de reset.
+
 **⏳ Pendências (pré-venda):**
 - **`ENABLE_BOOTSTRAP_ADMIN`** — manter ausente/false em produção.
 - **`MP_WEBHOOK_STRICT=true`** — ligar após validar o log num pagamento real.
