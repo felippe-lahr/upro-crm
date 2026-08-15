@@ -840,7 +840,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="mb-4">
-          <label className="mb-1 block text-xs text-muted">Número do WhatsApp para os links de anúncio (com DDI/DDD)</label>
+          <label className="mb-1 block text-xs text-muted">Número do WhatsApp que recebe os leads (com DDI/DDD)</label>
           <input
             value={adsWaNumber}
             onChange={(e) => setAdsWaNumber(e.target.value)}
@@ -851,18 +851,30 @@ export default function SettingsPage() {
 
         {adsWaNumber && settings?.slug ? (
           <div className="mb-4 rounded-lg border border-line bg-background p-3">
-            <p className="mb-1 text-xs font-medium text-fg">Link para usar como URL final do anúncio no Google Ads:</p>
-            <code className="block break-all rounded bg-surface2 px-2 py-1.5 text-xs text-brand">
-              {`${origin}/r/wa?t=${settings.slug}`}
-            </code>
-            <p className="mt-2 text-xs text-faint">
-              Com o <strong>auto-tagging</strong> ligado no Google Ads, o <code>gclid</code> é anexado
-              automaticamente. Quem clicar cai no seu WhatsApp já identificado como origem
-              <strong> Google Ads</strong> no CRM.
-            </p>
+            <p className="mb-1 text-xs font-medium text-fg">Cole este código no seu site (antes de <code>&lt;/body&gt;</code>):</p>
+            {(() => {
+              const snippet = `<script src="${origin}/track.js" data-tenant="${settings.slug}"></script>`
+              return (
+                <>
+                  <code className="block break-all rounded bg-surface2 px-2 py-1.5 text-xs text-brand">{snippet}</code>
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard?.writeText(snippet) }}
+                    className="mt-2 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-fg hover:border-brand/40 hover:text-brand"
+                  >
+                    Copiar código
+                  </button>
+                </>
+              )
+            })()}
+            <div className="mt-3 space-y-1 text-xs text-faint">
+              <p><strong className="text-muted">1.</strong> No Google Ads, mantenha o anúncio apontando para <strong>o seu próprio site</strong> (não muda nada).</p>
+              <p><strong className="text-muted">2.</strong> Cole o código acima no seu site (rodapé). Funciona com qualquer botão de WhatsApp que já exista.</p>
+              <p><strong className="text-muted">3.</strong> Pronto: quem chegar pelo Google e clicar no WhatsApp entra no CRM com a etiqueta <strong>Google Ads</strong> e o <code>gclid</code>.</p>
+            </div>
           </div>
         ) : (
-          <p className="mb-4 text-xs text-faint">Informe o número acima e salve para gerar o link rastreável.</p>
+          <p className="mb-4 text-xs text-faint">Informe o número acima e <strong>salve</strong> para gerar o código do site.</p>
         )}
 
         <a
