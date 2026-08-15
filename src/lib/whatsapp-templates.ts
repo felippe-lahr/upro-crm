@@ -1,7 +1,60 @@
 import { decrypt } from './crypto'
 
 export const SUMMARY_TEMPLATE_NAME = 'resumo_atendimento'
+export const CONSENT_TEMPLATE_NAME = 'consentimento_conversa'
 const GRAPH = 'https://graph.facebook.com/v21.0'
+
+/**
+ * Cria o template de consentimento (disparo para iniciar conversa). Estrutura:
+ *   "Olá {{1}}, somos da {{2}}. {{3}}. Se tiver interesse digite SIM para
+ *    continuar. Caso não queira mais receber esta mensagem digite SAIR."
+ * {{1}} = nome, {{2}} = empresa, {{3}} = frase livre que o tenant escreve no
+ * envio (não exige nova aprovação da Meta). Categoria MARKETING, idioma pt_BR.
+ */
+export async function createConsentTemplate(
+  tenant: WabaTenant,
+  name = CONSENT_TEMPLATE_NAME
+): Promise<{ ok: boolean; name: string; status?: string; error?: string; detail?: string; subcode?: number; alreadyExists?: boolean }> {
+  if (!tenant.waba_id || !tenant.whatsapp_token) return { ok: false, name, error: 'Tenant sem WABA/token' }
+  let token: string
+  try { token = decrypt(tenant.whatsapp_token) } catch { return { ok: false, name, error: 'Falha ao ler token' } }
+
+  const res = await fetch(`${GRAPH}/${tenant.waba_id}/message_templates`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      name,
+      language: 'pt_BR',
+      category: 'MARKETING',
+      components: [
+        {
+          type: 'BODY',
+          text:
+            'Olá {{1}}, somos da {{2}}. {{3}}. Se tiver interesse digite SIM para continuar. ' +
+            'Caso não queira mais receber esta mensagem digite SAIR.',
+          example: {
+            body_text: [[
+              'Maria',
+              'Cinthia Claro Arquitetura',
+              'temos uma condição especial de projeto de interiores para o seu apartamento'
+            ]]
+          }
+        }
+      ]
+    })
+  })
+  const data = await res.json().catch(() => ({}))
+  if (res.ok) return { ok: true, name, status: data?.status || 'PENDING' }
+
+  const err = data?.error || {}
+  const msg: string = err.message || ''
+  const detail: string = err.error_user_msg || err.error_user_title || ''
+  const subcode: number | undefined = err.error_subcode
+  if (res.status === 400 && /already exists|nome.*existe|already been used/i.test(msg + ' ' + detail)) {
+    return { ok: true, name, alreadyExists: true }
+  }
+  return { ok: false, name, error: msg || 'Falha ao criar template', detail, subcode }
+}
 
 type WabaTenant = { waba_id?: string | null; whatsapp_token?: string | null }
 

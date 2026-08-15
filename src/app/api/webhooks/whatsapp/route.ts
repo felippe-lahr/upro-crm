@@ -241,6 +241,21 @@ async function processIncomingMessage(
     }
   }
 
+  // Consentimento (disparo): SAIR = descadastro (LGPD/política Meta); SIM = consentiu.
+  const answer = (resolvedText || '').trim().toUpperCase()
+  if (answer === 'SAIR') {
+    const tags = Array.from(new Set([...(dbContact.tags || []), 'opt-out']))
+    await tenantPrisma.contact.update({
+      where: { id: dbContact.id },
+      data: { opted_out: true, tags }
+    }).catch(() => {})
+  } else if (answer === 'SIM' && !(dbContact.tags || []).includes('consentiu')) {
+    await tenantPrisma.contact.update({
+      where: { id: dbContact.id },
+      data: { tags: [...(dbContact.tags || []), 'consentiu'] }
+    }).catch(() => {})
+  }
+
   // Notificação push para os atendentes do tenant (best-effort).
   sendPushToTenant(tenant.id, {
     title: dbContact.name || dbContact.phone || 'Nova mensagem',

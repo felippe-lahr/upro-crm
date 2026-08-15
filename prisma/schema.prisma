@@ -29,6 +29,7 @@ model Tenant {
   lead_tags           String[] @default([]) // Pro: taxonomia de etiquetas que a IA pode aplicar aos leads
   auto_tag_enabled    Boolean  @default(true) // Pro: quando off, a IA não etiqueta sozinha (só manual)
   ads_wa_number       String?  // número do WhatsApp (E.164, só dígitos) usado nos links de anúncio /r/wa
+  broadcast_consent_template String? // nome do template de consentimento aprovado na WABA
 
   menu_bot_enabled    Boolean  @default(false)
   menu_bot_greeting   String?
@@ -225,6 +226,7 @@ model Contact {
   ai_summary   String?
   loss_reason  String?  // motivo da perda (quando stage = perdido)
   tags         String[] @default([])
+  opted_out    Boolean  @default(false) // respondeu SAIR — nunca mais entra em disparos
   lead_source  Json?    // origem do lead: {kind, platform, headline, source_id, source_url, ctwa_clid} — anúncios CTWA
   last_read_at DateTime? // última vez que um atendente abriu esta conversa (para o badge de não vistas)
   summary_forwarded_at DateTime? // 4.1 — quando o resumo já foi encaminhado (trava anti-duplicação)
