@@ -26,6 +26,8 @@ interface TenantSettings {
   summary_forward_template?: string | null
   summary_template_status?: string | null
   summary_template_rejected?: string | null
+  ads_wa_number?: string | null
+  slug?: string
   trial_ends_at: string | null
   menu_bot_enabled: boolean
   menu_bot_greeting: string | null
@@ -296,6 +298,8 @@ export default function SettingsPage() {
   const [autoTagEnabled, setAutoTagEnabled] = useState(true)
   const [tagInput, setTagInput] = useState('')
   const [summaryForwardNumber, setSummaryForwardNumber] = useState('')
+  const [adsWaNumber, setAdsWaNumber] = useState('')
+  const [origin, setOrigin] = useState('')
   const [menuBotEnabled, setMenuBotEnabled] = useState(false)
   const [menuGreeting, setMenuGreeting] = useState('')
   const [menuOptions, setMenuOptions] = useState<MenuOption[]>([])
@@ -319,6 +323,7 @@ export default function SettingsPage() {
   const [cancelConfirmText, setCancelConfirmText] = useState('')
 
   useEffect(() => {
+    if (typeof window !== 'undefined') setOrigin(window.location.origin)
     fetch('/api/tenant/settings')
       .then((r) => r.json())
       .then((data) => {
@@ -329,6 +334,7 @@ export default function SettingsPage() {
         setLeadTags(Array.isArray(data.lead_tags) ? data.lead_tags : [])
         setAutoTagEnabled(data.auto_tag_enabled !== false)
         setSummaryForwardNumber(data.summary_forward_number || '')
+        setAdsWaNumber(data.ads_wa_number || '')
         setMenuBotEnabled(data.menu_bot_enabled)
         setMenuGreeting(data.menu_bot_greeting || '')
         setMenuOptions(
@@ -361,6 +367,7 @@ export default function SettingsPage() {
         bot_prompt: botPrompt,
         ...(isPro ? { summary_instructions: summaryInstructions, lead_tags: leadTags, auto_tag_enabled: autoTagEnabled } : {}),
         ...(settings?.feature_summary_forward ? { summary_forward_number: summaryForwardNumber } : {}),
+        ads_wa_number: adsWaNumber,
         menu_bot_enabled: menuBotEnabled,
         menu_bot_greeting: menuGreeting,
         menu_bot_options: menuOptions.filter((o) => o.label.trim()),
@@ -821,6 +828,53 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+      </section>
+
+      {/* Rastreamento de anúncios (Google Ads → WhatsApp) */}
+      <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+        <div className="mb-4">
+          <h2 className="font-semibold text-fg">Rastreamento de anúncios (Google Ads)</h2>
+          <p className="mt-1 text-sm text-muted">
+            Descubra quais conversas vieram do Google Ads e envie as conversões de volta para o Google.
+          </p>
+        </div>
+
+        <div className="mb-4">
+          <label className="mb-1 block text-xs text-muted">Número do WhatsApp para os links de anúncio (com DDI/DDD)</label>
+          <input
+            value={adsWaNumber}
+            onChange={(e) => setAdsWaNumber(e.target.value)}
+            placeholder="Ex: 5511999998888"
+            className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
+          />
+        </div>
+
+        {adsWaNumber && settings?.slug ? (
+          <div className="mb-4 rounded-lg border border-line bg-background p-3">
+            <p className="mb-1 text-xs font-medium text-fg">Link para usar como URL final do anúncio no Google Ads:</p>
+            <code className="block break-all rounded bg-surface2 px-2 py-1.5 text-xs text-brand">
+              {`${origin}/r/wa?t=${settings.slug}`}
+            </code>
+            <p className="mt-2 text-xs text-faint">
+              Com o <strong>auto-tagging</strong> ligado no Google Ads, o <code>gclid</code> é anexado
+              automaticamente. Quem clicar cai no seu WhatsApp já identificado como origem
+              <strong> Google Ads</strong> no CRM.
+            </p>
+          </div>
+        ) : (
+          <p className="mb-4 text-xs text-faint">Informe o número acima e salve para gerar o link rastreável.</p>
+        )}
+
+        <a
+          href="/api/leads/google-conversions"
+          className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-medium text-fg hover:border-brand/40 hover:text-brand"
+        >
+          ⬇️ Baixar conversões (CSV para o Google Ads)
+        </a>
+        <p className="mt-2 text-xs text-faint">
+          Importe este arquivo em <strong>Google Ads → Metas → Conversões → Importar → Cliques (offline)</strong>.
+          Inclui os leads do Google Ads que avançaram no funil, com o <code>gclid</code> de cada um.
+        </p>
       </section>
 
       {/* Menu bot — disponível no Básico */}

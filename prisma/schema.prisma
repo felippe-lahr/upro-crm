@@ -28,6 +28,7 @@ model Tenant {
   summary_instructions String? // Pro: orienta o que o resumo (ai_summary) deve conter e o formato
   lead_tags           String[] @default([]) // Pro: taxonomia de etiquetas que a IA pode aplicar aos leads
   auto_tag_enabled    Boolean  @default(true) // Pro: quando off, a IA não etiqueta sozinha (só manual)
+  ads_wa_number       String?  // número do WhatsApp (E.164, só dígitos) usado nos links de anúncio /r/wa
 
   menu_bot_enabled    Boolean  @default(false)
   menu_bot_greeting   String?
@@ -119,6 +120,26 @@ model AppointmentPayment {
   created_at     DateTime @default(now())
 
   @@map("appointment_payments")
+}
+
+// Clique de anúncio (Google Ads) capturado no redirecionamento /r/wa.
+// Guarda o gclid/UTMs por um código curto que viaja no texto pré-preenchido do
+// WhatsApp; o webhook casa o código com a 1ª mensagem e atribui a origem ao lead.
+model AdClick {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code         String    @unique
+  tenant_id    String    @db.Uuid
+  gclid        String?
+  utm_source   String?
+  utm_medium   String?
+  utm_campaign String?
+  utm_term     String?
+  utm_content  String?
+  matched_at   DateTime?
+  created_at   DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@map("ad_clicks")
 }
 
 // Inscrição de notificação push (Web Push) de um usuário/dispositivo.

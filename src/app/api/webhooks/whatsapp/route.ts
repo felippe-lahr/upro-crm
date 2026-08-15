@@ -208,6 +208,35 @@ async function processIncomingMessage(
     }).catch(() => {})
   }
 
+  // Origem Google Ads: a 1ª mensagem traz o marcador "#GAD:<code>" (injetado pelo
+  // redirecionamento /r/wa). Casa o código com o AdClick e atribui gclid/UTMs ao lead.
+  const gadMatch = (resolvedText || '').match(/#GAD:([A-Za-z0-9]{4,})/)
+  if (gadMatch && !(dbContact as any).lead_source) {
+    const code = gadMatch[1]
+    const click = await globalPrisma.adClick.findUnique({ where: { code } }).catch(() => null)
+    if (click && click.tenant_id === tenant.id) {
+      const tags: string[] = dbContact.tags || []
+      if (!tags.includes('Google Ads')) tags.push('Google Ads')
+      await tenantPrisma.contact.update({
+        where: { id: dbContact.id },
+        data: {
+          tags,
+          lead_source: {
+            kind: 'google_ads',
+            gclid: click.gclid || null,
+            utm_source: click.utm_source || null,
+            utm_medium: click.utm_medium || null,
+            utm_campaign: click.utm_campaign || null,
+            utm_term: click.utm_term || null,
+            utm_content: click.utm_content || null,
+            captured_at: new Date().toISOString()
+          }
+        }
+      }).catch(() => {})
+      await globalPrisma.adClick.update({ where: { code }, data: { matched_at: new Date() } }).catch(() => {})
+    }
+  }
+
   // Notificação push para os atendentes do tenant (best-effort).
   sendPushToTenant(tenant.id, {
     title: dbContact.name || dbContact.phone || 'Nova mensagem',
