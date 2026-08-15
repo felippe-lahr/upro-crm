@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { isValidAdminToken } from '@/lib/admin-auth'
 import { chatComplete } from '@/lib/ai'
 
 /**
@@ -9,7 +10,7 @@ import { chatComplete } from '@/lib/ai'
  */
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get('token')
-  if (!token || token !== process.env.NEXTAUTH_SECRET) {
+  if (!isValidAdminToken(token)) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
 

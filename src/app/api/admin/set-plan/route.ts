@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { isValidAdminToken } from '@/lib/admin-auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 
 const ALLOWED_PLANS = ['trial', 'basic', 'pro', 'promaster']
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
   const email = url.searchParams.get('email')
   const plan = (url.searchParams.get('plan') || '').toLowerCase()
 
-  if (!token || token !== process.env.NEXTAUTH_SECRET) {
+  if (!isValidAdminToken(token)) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
   if (!email) return Response.json({ error: 'Informe ?email=' }, { status: 400 })

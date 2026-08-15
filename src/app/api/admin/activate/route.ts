@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { isValidAdminToken } from '@/lib/admin-auth'
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 
 /**
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
   // Contas de cliente real: ative com &noseed=1 para NÃO popular dados de demonstração.
   const noSeed = ['1', 'true'].includes((url.searchParams.get('noseed') || '').toLowerCase())
 
-  if (!token || token !== process.env.NEXTAUTH_SECRET) {
+  if (!isValidAdminToken(token)) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
   if (!email) {

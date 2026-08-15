@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { isValidAdminToken } from '@/lib/admin-auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { encrypt } from '@/lib/crypto'
 
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}))
   const { token, email, tenantId, phone_number_id, access_token, waba_id, plan } = body
 
-  if (!token || token !== process.env.NEXTAUTH_SECRET) {
+  if (!isValidAdminToken(token)) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
 

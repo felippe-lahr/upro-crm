@@ -38,7 +38,7 @@ async function syncPromasterCatalogs(now: Date): Promise<number> {
  * que começam nas próximas 24h e ainda não foram lembrados.
  */
 export async function GET(req: Request) {
-  const expected = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET
+  const expected = process.env.CRON_SECRET
   const token = new URL(req.url).searchParams.get('token')
   if (!token || token !== expected) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
@@ -139,6 +139,11 @@ export async function GET(req: Request) {
 
   // Encaminha resumos completos (4.1) das conversas que assentaram. Best-effort.
   const summariesForwarded = await forwardPendingSummaries(now).catch(() => 0)
+
+  // Faxina: apaga cliques de anúncio (AdClick) com mais de 30 dias. Os cliques
+  // já casados copiaram o gclid para o contato; os não casados viram lixo.
+  const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  await globalPrisma.adClick.deleteMany({ where: { created_at: { lt: cutoff } } }).catch(() => {})
 
   return Response.json({ ok: true, tenants: tenants.length, reminders_sent: sent, catalogs_synced: catalogsSynced, summaries_forwarded: summariesForwarded })
 }

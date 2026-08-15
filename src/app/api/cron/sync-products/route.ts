@@ -9,7 +9,7 @@ import { syncTenantProducts } from '@/lib/product-feed'
  * baixa o XML e faz upsert dos produtos no schema do tenant.
  */
 export async function GET(req: Request) {
-  const expected = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET
+  const expected = process.env.CRON_SECRET
   const token = new URL(req.url).searchParams.get('token')
   if (!token || token !== expected) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })

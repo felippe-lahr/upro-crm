@@ -83,32 +83,49 @@ async function handleSubscriptionPayment(paymentId: string) {
   console.log('[MP webhook] annual plan activated', { tenantId: extRef, amount })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function verifyMPSignature(req: Request, body: string): boolean {
+// Valida a assinatura do webhook do Mercado Pago (formato oficial x-signature).
+function verifyMPSignature(req: Request): boolean {
+  const secret = process.env.MP_WEBHOOK_SECRET
+  if (!secret) return false
   const xSignature = req.headers.get('x-signature')
   const xRequestId = req.headers.get('x-request-id')
-  const dataId = new URL(req.url).searchParams.get('data.id') || ''
-
+  const dataId = (new URL(req.url).searchParams.get('data.id') || '').toLowerCase()
   if (!xSignature) return false
 
   const parts = Object.fromEntries(
     xSignature.split(',').map((p) => p.trim().split('=') as [string, string])
   )
+  if (!parts['ts'] || !parts['v1']) return false
 
   const manifest = `id:${dataId};request-id:${xRequestId};ts:${parts['ts']};`
-  const expected = crypto
-    .createHmac('sha256', process.env.MP_WEBHOOK_SECRET || process.env.MP_ACCESS_TOKEN!)
-    .update(manifest)
-    .digest('hex')
-
-  return parts['v1'] === expected
+  const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex')
+  try {
+    return crypto.timingSafeEqual(Buffer.from(parts['v1']), Buffer.from(expected))
+  } catch {
+    return false
+  }
 }
 
 export async function POST(req: Request) {
+  // Verificação de assinatura. Por segurança de rollout, o padrão é MONITOR
+  // (só loga se passou/falhou) — a proteção efetiva contra forja já vem da
+  // reconsulta ao Mercado Pago mais abaixo. Setar MP_WEBHOOK_STRICT=true faz
+  // o webhook REJEITAR quem falhar a assinatura.
+  const sigOk = verifyMPSignature(req)
+  if (!sigOk) {
+    console.warn('[MP webhook] assinatura inválida/ausente', {
+      strict: process.env.MP_WEBHOOK_STRICT === 'true',
+      hasSecret: !!process.env.MP_WEBHOOK_SECRET
+    })
+    if (process.env.MP_WEBHOOK_STRICT === 'true') {
+      return Response.json({ error: 'invalid signature' }, { status: 401 })
+    }
+  }
+
   const rawBody = await req.text()
   const body = JSON.parse(rawBody)
 
-  console.log('[MP webhook]', JSON.stringify(body))
+  console.log('[MP webhook]', JSON.stringify({ type: body?.type, id: body?.data?.id }))
 
   if (body.type === 'subscription_preapproval') {
     const subscriptionId = body.data?.id

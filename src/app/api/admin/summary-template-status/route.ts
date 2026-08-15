@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { isValidAdminToken } from '@/lib/admin-auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { decrypt } from '@/lib/crypto'
 
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
   const token = url.searchParams.get('token')
   const email = url.searchParams.get('email')
   const name = url.searchParams.get('name') // opcional: filtra por um nome específico
-  if (!token || token !== process.env.NEXTAUTH_SECRET) {
+  if (!isValidAdminToken(token)) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
   if (!email) return Response.json({ error: 'Informe ?email=<tenant>' }, { status: 400 })

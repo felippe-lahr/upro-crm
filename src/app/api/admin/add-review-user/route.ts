@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { isValidAdminToken } from '@/lib/admin-auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import bcrypt from 'bcryptjs'
 
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
   const email = url.searchParams.get('email')
   const password = url.searchParams.get('password')
 
-  if (!token || token !== process.env.NEXTAUTH_SECRET) {
+  if (!isValidAdminToken(token)) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
   if (!tenantEmail || !email || !password) {
