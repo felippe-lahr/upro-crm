@@ -33,7 +33,9 @@ export async function transcribeWhatsAppAudio(
     // 3) Envia para a transcrição (Groq Whisper)
     const form = new FormData()
     form.append('file', new Blob([audioBuffer]), 'audio.ogg')
-    form.append('model', 'whisper-large-v3')
+    // Turbo = melhor custo-benefício (rápido e ~3x mais barato). Sobrescrevível
+    // por GROQ_WHISPER_MODEL (ex.: 'whisper-large-v3' para precisão máxima).
+    form.append('model', (process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo').trim())
     form.append('language', 'pt')
     form.append('response_format', 'text')
 
