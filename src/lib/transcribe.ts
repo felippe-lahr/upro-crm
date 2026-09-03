@@ -9,7 +9,7 @@ export async function transcribeWhatsAppAudio(
   tenant: { phone_number_id: string; whatsapp_token: string },
   mediaId: string
 ): Promise<string | null> {
-  const apiKey = process.env.GROQ_API_KEY
+  const apiKey = (process.env.GROQ_API_KEY || '').trim()
   if (!apiKey || !mediaId) return null
 
   const token = decrypt(tenant.whatsapp_token)
