@@ -187,6 +187,36 @@ Quando o bot qualifica um lead, enviar automaticamente o **resumo do atendimento
 - Custo: cada envio é uma conversa *utility* iniciada pelo negócio (tarifada pela Meta) — avisar o cliente.
 - Alternativa mais simples que ficou **descartada** pelo cliente: enviar por **e-mail** (sem template/janela).
 
+### ✅ 4.3 Resumo de pedido (feature_orders) — IMPLEMENTADO
+> **Implementado (set/2026).** Recurso de nicho liberado **por tenant pelo superadmin**. Ideia: uma distribuidora (ex.: cosméticos) sobe a lista de produtos com preço no prompt do bot; o cliente monta um pedido pelo WhatsApp; o pedido **não é uma venda concluída/paga** — vira um **resumo em PDF** para um vendedor humano processar. O PDF fica disponível nas duas pontas (cliente e tenant).
+
+**Decisões tomadas com o cliente:**
+- **Catálogo ≤ 200 produtos** → cabe direto no `bot_prompt` do tenant (sem RAG, sem tela de upload separada). O tenant escreve/cola a lista com preços no prompt.
+- **Entrega ao cliente: PDF automático no WhatsApp** ao fechar o pedido.
+- **Entrega ao vendedor: aba "Pedidos" no CRM** + o resumo do lead (`ai_summary`) passa a registrar que houve um pedido.
+- **Ativação: só pelo admin** (entitlement `feature_orders`), como o 4.1. Não exposto a todo o Pro.
+
+**Fluxo ponta a ponta:**
+1. Admin liga `feature_orders` no modal "Editar tenant" (checkbox "Resumo de pedido").
+2. Tenant coloca o catálogo (produtos + preços) no prompt do bot.
+3. O cliente conversa e monta o pedido; o bot confirma itens/quantidades/total e chama a tool `registrar_pedido` **uma vez** (preços vêm do catálogo do prompt — o bot é instruído a nunca inventar valores e a deixar claro que **não é compra paga/concluída**).
+4. Ao registrar: cria `Order` (schema do tenant) + `OrderRef` (índice público), gera o PDF, **envia o PDF ao cliente** no WhatsApp (documento por link) e marca o `ai_summary` do lead.
+5. O vendedor vê o pedido na aba **"Pedidos"** (só aparece com a flag ligada): itens, total, telefone, "abrir conversa", **status editável** e link do PDF.
+
+**Desenho técnico (o que foi feito):**
+- **Schema:** `Tenant.feature_orders Boolean @default(false)`; model `Order` **tenant-scoped** (`contact_id?`, `customer_name/phone`, `items Json` = `[{nome, quantidade, preco_unit, subtotal}]`, `total`, `notes`, `status` = novo|em_separacao|concluido|cancelado, `public_token @unique`); model `OrderRef` **público** (`token @unique`, `tenant_id`, `schema_name`, `order_id`) — roteia o PDF público sem expor o schema na URL; relação `Contact.orders`.
+- **Bot (`lib/bot.ts`):** tool `registrar_pedido(itens[], observacoes?)` + hint "RESUMO DE PEDIDO"; gate `ordersOn = useAnthropic && tenant.feature_orders`; handler valida/normaliza itens, calcula subtotais/total, cria `Order`+`OrderRef`, envia PDF via novo `sendWhatsAppDocument(tenant, to, link, filename, caption)` e atualiza `ai_summary`.
+- **PDF (`lib/order-pdf.ts`, dep `pdf-lib`):** A4, multipágina, cabeçalho com nome do negócio, dados do cliente, tabela de itens, total, observações e rodapé "não é nota fiscal nem confirmação de pagamento". WinAnsi cobre acentos do pt-BR. Gerado **sob demanda** (sem armazenar bytes).
+- **Rota pública `/api/pedido/[token]`:** busca `OrderRef` → schema → `Order` → gera PDF → responde `application/pdf`. Fora do matcher do middleware (`/api/*`), token opaco = capability; só expõe o próprio pedido.
+- **CRM:** aba `/orders` (server component, `redirect('/dashboard')` se a flag estiver off) + `order-actions.tsx` (status via `/api/orders/update` — schema **sempre** da sessão, guard da flag — e link do PDF). Item de nav "Pedidos" gated por `ordersEnabled` (calculado no `(tenant)/layout.tsx` e passado ao `AppShell`).
+- **Admin:** toggle "Resumo de pedido" no `edit-tenant.tsx` → `featureOrders` em `/api/admin/tenants/update`.
+- **Migração:** aditiva — `Order` (tenant) e `OrderRef` (público) criados no boot (`boot-migrate` + `migrate-tenant-schemas`). Nenhuma coluna existente alterada.
+
+**Pendências / evoluções possíveis:**
+- Opcional: botão para **reenviar/encaminhar o PDF a um número/e-mail do vendedor** (hoje é só a aba + PDF automático ao cliente).
+- Opcional: filtro/busca e export CSV na aba Pedidos; notificação (push) ao chegar pedido novo.
+- Catálogos maiores que ~200 itens exigiriam mover o catálogo para tabela + RAG (fora do escopo atual).
+
 ### 5. Disparo em massa (templates) — coberto pelo item ✅ 0 (disparos de consentimento)
 Envio via templates aprovados já implementado no item 0 (teto de 30 + opt-out). Evolução futura possível: volumes maiores com fila/rate-limit dedicado e outras categorias de template.
 
