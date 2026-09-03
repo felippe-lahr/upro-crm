@@ -90,6 +90,43 @@ export function parseProductFeed(xml: string): ParsedProduct[] {
   return products
 }
 
+/**
+ * Garante que a tabela `products` (e seus índices) exista no schema do tenant.
+ * Idempotente e sem depender do CLI do Prisma em runtime — evita o caso em que o
+ * provisionamento (`prisma db push`) falhou e o catálogo fica sem tabela, fazendo
+ * a sincronização gravar 0 produtos. O DDL espelha o model Product do schema.prisma.
+ */
+export async function ensureProductsTable(schemaName: string): Promise<void> {
+  // Sanitiza o nome do schema (derivado do slug) — só permite [a-z0-9_].
+  const schema = String(schemaName).replace(/[^a-z0-9_]/gi, '')
+  if (!schema) throw new Error('schema inválido')
+
+  await globalPrisma.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS "${schema}"`)
+  await globalPrisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "${schema}"."products" (
+      "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+      "feed_id" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "description" TEXT,
+      "brand" TEXT,
+      "category" TEXT,
+      "price" DECIMAL(12,2),
+      "sale_price" DECIMAL(12,2),
+      "in_stock" BOOLEAN NOT NULL DEFAULT true,
+      "url" TEXT,
+      "image" TEXT,
+      "gtin" TEXT,
+      "sku" TEXT,
+      "installments" JSONB,
+      "synced_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "products_pkey" PRIMARY KEY ("id")
+    )`)
+  await globalPrisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "products_feed_id_key" ON "${schema}"."products"("feed_id")`)
+  await globalPrisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "products_brand_idx" ON "${schema}"."products"("brand")`)
+  await globalPrisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "products_in_stock_idx" ON "${schema}"."products"("in_stock")`)
+}
+
 export interface SyncResult {
   ok: boolean
   total: number
@@ -125,6 +162,14 @@ export async function syncTenantProducts(tenant: {
   const { getTenantPrisma } = await import('./prisma-tenant')
   const db = getTenantPrisma(tenant.schema_name)
   const now = new Date()
+
+  // Auto-cura: garante que a tabela do catálogo exista neste schema antes de gravar.
+  // Cobre tenants cujo provisionamento (prisma db push) falhou/ficou incompleto.
+  try {
+    await ensureProductsTable(tenant.schema_name)
+  } catch (e: any) {
+    return { ok: false, total: 0, upserted: 0, outOfStock: 0, error: `Não foi possível preparar o catálogo do tenant: ${e?.message || e}` }
+  }
 
   let upserted = 0
   let firstError: string | null = null
