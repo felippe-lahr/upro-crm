@@ -235,6 +235,36 @@ const PRODUCT_TOOLS = [
   }
 ]
 
+// Ferramenta de resumo de pedido (feature_orders). O catálogo vive no bot_prompt
+// do tenant; o bot monta o pedido conversando e chama isto UMA vez ao confirmar.
+const ORDER_TOOLS = [
+  {
+    name: 'registrar_pedido',
+    description:
+      'Registra o resumo de um pedido montado pelo cliente e gera um PDF. Use APENAS quando o cliente confirmar o pedido completo. NÃO conclui a venda — o pedido vai para um vendedor humano. Passe todos os itens de uma vez, com o preço unitário exatamente conforme o catálogo do prompt (nunca invente preços).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        itens: {
+          type: 'array',
+          description: 'Lista dos itens do pedido',
+          items: {
+            type: 'object',
+            properties: {
+              produto: { type: 'string', description: 'Nome do produto como está no catálogo' },
+              quantidade: { type: 'number', description: 'Quantidade (inteiro > 0)' },
+              preco_unit: { type: 'number', description: 'Preço unitário em reais, conforme o catálogo' }
+            },
+            required: ['produto', 'quantidade', 'preco_unit']
+          }
+        },
+        observacoes: { type: 'string', description: 'Observações do cliente sobre o pedido (opcional)' }
+      },
+      required: ['itens']
+    }
+  }
+]
+
 async function resolveService(tenantPrisma: any, name?: string): Promise<{ id: string | null; duration: number; label: string; gap: number; minNotice: number; chargeMode: string; chargeValue: number; holdMinutes: number; price: number }> {
   const toObj = (s: any) => ({ id: s.id, duration: s.duration_min, label: s.name, gap: s.gap_min || 0, minNotice: s.min_notice_min || 0, chargeMode: s.charge_mode || 'none', chargeValue: Number(s.charge_value) || 0, holdMinutes: s.hold_minutes || 30, price: Number(s.price) || 0 })
   if (name) {
@@ -289,6 +319,64 @@ async function runSchedulingTool(name: string, input: any, ctx: SchedulingCtx): 
         preco: p.price != null ? Number(p.price) : null,
         promocao: p.sale_price != null ? Number(p.sale_price) : null,
         parcelamento: p.installments || null, em_estoque: p.in_stock, link: p.url
+      })
+    }
+    if (name === 'registrar_pedido') {
+      const rawItens = Array.isArray(input.itens) ? input.itens : []
+      const items = rawItens
+        .map((it: any) => {
+          const nome = String(it?.produto || '').trim().slice(0, 160)
+          const quantidade = Math.max(1, Math.round(Number(it?.quantidade) || 0))
+          const preco_unit = Math.max(0, Number(it?.preco_unit) || 0)
+          return { nome, quantidade, preco_unit, subtotal: Math.round(quantidade * preco_unit * 100) / 100 }
+        })
+        .filter((it: any) => it.nome && it.quantidade > 0)
+      if (!items.length) {
+        return JSON.stringify({ ok: false, erro: 'Nenhum item válido no pedido. Confirme os produtos e as quantidades com o cliente.' })
+      }
+      const total = Math.round(items.reduce((s: number, it: any) => s + it.subtotal, 0) * 100) / 100
+      const notes = typeof input.observacoes === 'string' ? input.observacoes.trim().slice(0, 800) : null
+
+      // Token opaco para o link público do PDF.
+      const token = (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)).replace(/-/g, '')
+
+      const order = await tenantPrisma.order.create({
+        data: {
+          contact_id: ctx.contactId || null,
+          customer_name: ctx.contactName || null,
+          customer_phone: ctx.contactPhone || null,
+          items, total, notes, status: 'novo', public_token: token
+        }
+      })
+
+      // Índice global para servir o PDF sem expor o schema.
+      const { globalPrisma } = await import('./prisma-tenant')
+      await globalPrisma.orderRef.create({
+        data: { token, tenant_id: ctx.tenantId || '', schema_name: ctx.schemaName || '', order_id: order.id }
+      }).catch(() => {})
+
+      // Marca no CRM que houve um pedido (aparece no resumo do lead).
+      if (ctx.contactId) {
+        const resumoPedido = `Fez um pedido (${items.length} ${items.length === 1 ? 'item' : 'itens'}, total ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`
+        await tenantPrisma.contact.update({
+          where: { id: ctx.contactId },
+          data: { ai_summary: resumoPedido }
+        }).catch(() => {})
+      }
+
+      // Envia o PDF automaticamente ao cliente pelo WhatsApp.
+      const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://uprocrm.com.br'
+      const link = `${baseUrl}/api/pedido/${token}`
+      if (ctx.waTenant && ctx.contactPhone) {
+        const filename = `pedido-${order.id.slice(0, 8)}.pdf`
+        const caption = `Aqui está o resumo do seu pedido 📄\nTotal: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\nUm de nossos vendedores vai dar sequência. 🙏`
+        await sendWhatsAppDocument(ctx.waTenant, ctx.contactPhone, link, filename, caption)
+          .catch((e) => console.error('[order] pdf send failed', (e as any)?.message || e))
+      }
+
+      return JSON.stringify({
+        ok: true, pedido_registrado: true, itens: items.length, total,
+        aviso: 'O pedido foi registrado e o PDF do resumo JÁ foi enviado ao cliente pelo WhatsApp. Confirme ao cliente que o pedido foi anotado e que um vendedor dará sequência. NÃO diga que a compra está paga ou concluída.'
       })
     }
     if (name === 'verificar_horarios') {
@@ -459,6 +547,7 @@ export async function processBotResponse(
     booking_min_notice_min?: number
     scheduling_enabled?: boolean
     mp_access_token?: string | null
+    feature_orders?: boolean
   },
   userText: string,
   contact: { id: string },
@@ -550,6 +639,7 @@ export async function processBotResponse(
     (process.env.ANTHROPIC_API_KEY || '').startsWith('sk-ant')
   let schedulingOn = false
   let catalogOn = false
+  const ordersOn = useAnthropic && tenant.feature_orders === true
   if (useAnthropic) {
     if (tenant.scheduling_enabled === false) {
       schedulingOn = false
@@ -560,7 +650,7 @@ export async function processBotResponse(
   }
 
   let botReply: string
-  if (useAnthropic && (schedulingOn || catalogOn)) {
+  if (useAnthropic && (schedulingOn || catalogOn || ordersOn)) {
     let hint = ''
     if (schedulingOn) {
       const todayName = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long' })
@@ -585,9 +675,17 @@ export async function processBotResponse(
         `- Mencione o preço promocional e o parcelamento quando existirem. Ao fechar, mande o link e diga que é só finalizar a compra na página.\n` +
         `- Se buscar_produtos não retornar nada, peça mais detalhes (marca, tipo, faixa de preço) em vez de inventar.`
     }
+    if (ordersOn) {
+      hint += `\n\nRESUMO DE PEDIDO (regras rígidas):\n` +
+        `- O catálogo de produtos e preços está no seu prompt acima. Use SOMENTE esses produtos e preços; NUNCA invente itens ou valores.\n` +
+        `- Ajude o cliente a montar o pedido: pergunte os produtos e as quantidades. Confirme o resumo (itens, quantidades e total) com o cliente ANTES de registrar.\n` +
+        `- Ao confirmar, chame registrar_pedido UMA vez com todos os itens (produto, quantidade e preco_unit conforme o catálogo).\n` +
+        `- Este pedido NÃO é uma compra paga nem concluída: é um resumo para um vendedor humano. Nunca diga que o pagamento foi feito ou que a compra está finalizada.\n` +
+        `- Depois de registrar_pedido, o PDF é enviado automaticamente ao cliente. Apenas confirme que o pedido foi anotado e que um vendedor dará sequência.`
+    }
     let mpToken: string | null = null
     if (tenant.mp_access_token) { try { mpToken = decrypt(tenant.mp_access_token) } catch { mpToken = null } }
-    const tools = [...(schedulingOn ? SCHEDULING_TOOLS : []), ...(catalogOn ? PRODUCT_TOOLS : [])]
+    const tools = [...(schedulingOn ? SCHEDULING_TOOLS : []), ...(catalogOn ? PRODUCT_TOOLS : []), ...(ordersOn ? ORDER_TOOLS : [])]
     botReply = await aiReplyWithTools(basePrompt + GUARDRAIL + welcome + hint, messages, {
       tenantPrisma, contactId: contact.id, contactName: current?.name || null, businessName: tenant.name, replyTo: tenant.email,
       tenantId: tenant.id, schemaName: tenant.schema_name, mpAccessToken: mpToken,
@@ -789,6 +887,40 @@ export async function sendWhatsAppMessage(
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`WhatsApp send failed: ${err}`)
+  }
+}
+
+/**
+ * Envia um DOCUMENTO (PDF) por link ao cliente no WhatsApp. O link precisa ser
+ * HTTPS e acessível publicamente (a Meta baixa o arquivo). Usado no resumo de pedido.
+ */
+export async function sendWhatsAppDocument(
+  tenant: { phone_number_id: string; whatsapp_token: string },
+  to: string,
+  link: string,
+  filename: string,
+  caption?: string
+) {
+  const token = decrypt(tenant.whatsapp_token)
+
+  const res = await fetch(
+    `https://graph.facebook.com/v21.0/${tenant.phone_number_id}/messages`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'document',
+        document: { link, filename, ...(caption ? { caption } : {}) }
+      })
+    }
+  )
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`WhatsApp document send failed: ${err}`)
   }
 }
 

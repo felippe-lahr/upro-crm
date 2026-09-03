@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, KanbanSquare, MessageSquare, Users, Megaphone, Settings, ShieldCheck,
-  CalendarDays, Menu, X, type LucideIcon
+  CalendarDays, ClipboardList, Menu, X, type LucideIcon
 } from 'lucide-react'
 import { SignOutButton } from './sign-out-button'
 import { ThemeToggle } from './theme-toggle'
@@ -25,12 +25,14 @@ export function AppShell({
   children,
   unread,
   isSuperadmin,
+  ordersEnabled,
   userName,
   userEmail
 }: {
   children: React.ReactNode
   unread: number
   isSuperadmin: boolean
+  ordersEnabled?: boolean
   userName?: string | null
   userEmail?: string | null
 }) {
@@ -76,6 +78,7 @@ export function AppShell({
     { href: '/conversations', icon: MessageSquare, label: 'Conversas', badge: unreadLive },
     { href: '/agenda', icon: CalendarDays, label: 'Agenda' },
     { href: '/contacts', icon: Users, label: 'Contatos' },
+    ...(ordersEnabled ? [{ href: '/orders', icon: ClipboardList, label: 'Pedidos' }] : []),
     { href: '/broadcasts', icon: Megaphone, label: 'Disparos' },
     { href: '/settings', icon: Settings, label: 'Configurações' }
   ]

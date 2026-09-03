@@ -40,6 +40,10 @@ model Tenant {
 
   // 4.1 — encaminhar resumo do atendimento para WhatsApp do gestor (feature de nicho)
   feature_summary_forward  Boolean @default(false) // entitlement ligado SÓ pelo superadmin
+
+  // Resumo de pedido: o bot monta um pedido a partir do catálogo no prompt e gera
+  // um PDF (não conclui a venda — vai para um vendedor). Entitlement do superadmin.
+  feature_orders           Boolean @default(false)
   summary_forward_number   String? // destino E.164 (só dígitos)
   summary_forward_template String? // nome do template aprovado na WABA
   last_send_status         Json?   // diagnóstico: último status de entrega recebido da Meta (delivered/failed + erro)
@@ -143,6 +147,20 @@ model AdClick {
   @@map("ad_clicks")
 }
 
+// Índice global de pedidos (resumo de pedido). Permite servir o PDF público por
+// um token opaco sem expor o schema do tenant na URL. O pedido em si fica no
+// schema do tenant (model Order); aqui guardamos só o roteamento.
+model OrderRef {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token       String   @unique
+  tenant_id   String   @db.Uuid
+  schema_name String
+  order_id    String   @db.Uuid
+  created_at  DateTime @default(now())
+
+  @@map("order_refs")
+}
+
 // Token de recuperação de senha (esqueci a senha). Guarda só o HASH do token.
 model PasswordReset {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -236,9 +254,32 @@ model Contact {
   messages     Message[]
   conversations Conversation[]
   appointments Appointment[]
+  orders       Order[]
 
   @@index([bsuid])
   @@map("contacts")
+}
+
+// Pedido montado pelo bot (resumo de pedido). NÃO é uma venda concluída: é um
+// resumo para um vendedor humano processar. Os itens ficam em JSON (nome,
+// quantidade, preço unitário e subtotal); um PDF é gerado sob demanda.
+model Order {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contact_id     String?  @db.Uuid
+  customer_name  String?
+  customer_phone String?
+  items          Json     // [{ nome, quantidade, preco_unit, subtotal }]
+  total          Decimal  @db.Decimal(12, 2)
+  notes          String?  // observações do cliente
+  status         String   @default("novo") // novo | em_separacao | concluido | cancelado
+  public_token   String   @unique // token do OrderRef (para o link do PDF)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  contact Contact? @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("orders")
 }
 
 model QuickReply {

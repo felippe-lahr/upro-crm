@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { tenantId, name, email, status, plan, trialDays, newPassword, featureSummaryForward } = body
+  const { tenantId, name, email, status, plan, trialDays, newPassword, featureSummaryForward, featureOrders } = body
   if (!tenantId) return Response.json({ error: 'tenantId obrigatório' }, { status: 400 })
 
   const tenant = await globalPrisma.tenant.findUnique({ where: { id: tenantId } })
@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     data.trial_ends_at = days > 0 ? new Date(Date.now() + days * 24 * 60 * 60 * 1000) : null
   }
   if (featureSummaryForward !== undefined) data.feature_summary_forward = !!featureSummaryForward
+  if (featureOrders !== undefined) data.feature_orders = !!featureOrders
 
   const updated = await globalPrisma.tenant.update({
     where: { id: tenantId },

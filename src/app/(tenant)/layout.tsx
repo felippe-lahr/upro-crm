@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/ui/app-shell'
-import { getTenantPrisma } from '@/lib/prisma-tenant'
+import { getTenantPrisma, globalPrisma } from '@/lib/prisma-tenant'
 
 export default async function TenantLayout({
   children
@@ -20,6 +20,14 @@ export default async function TenantLayout({
   }
 
   const schemaName = (session.user as any).schemaName
+  const tenantId = (session.user as any).tenantId
+  let ordersEnabled = false
+  if (tenantId) {
+    try {
+      const t = await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { feature_orders: true } })
+      ordersEnabled = !!t?.feature_orders
+    } catch { /* ignore */ }
+  }
   let unread = 0
   if (schemaName) {
     try {
@@ -44,6 +52,7 @@ export default async function TenantLayout({
   return (
     <AppShell
       unread={unread}
+      ordersEnabled={ordersEnabled}
       isSuperadmin={(session.user as any).role === 'superadmin'}
       userName={session.user.name}
       userEmail={session.user.email}

@@ -10,6 +10,7 @@ interface TenantLite {
   status: string
   plan: string
   feature_summary_forward?: boolean
+  feature_orders?: boolean
 }
 
 const PLANS = [
@@ -37,12 +38,13 @@ export function EditTenant({ tenant }: { tenant: TenantLite }) {
   const [trialDays, setTrialDays] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [featureSummaryForward, setFeatureSummaryForward] = useState(!!tenant.feature_summary_forward)
+  const [featureOrders, setFeatureOrders] = useState(!!tenant.feature_orders)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   function reset() {
     setName(tenant.name); setEmail(tenant.email); setStatus(tenant.status); setPlan(tenant.plan)
-    setTrialDays(''); setNewPassword(''); setFeatureSummaryForward(!!tenant.feature_summary_forward); setError('')
+    setTrialDays(''); setNewPassword(''); setFeatureSummaryForward(!!tenant.feature_summary_forward); setFeatureOrders(!!tenant.feature_orders); setError('')
   }
 
   async function save() {
@@ -53,7 +55,7 @@ export function EditTenant({ tenant }: { tenant: TenantLite }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenantId: tenant.id, name, email, status, plan,
-          featureSummaryForward,
+          featureSummaryForward, featureOrders,
           ...(trialDays !== '' ? { trialDays: Number(trialDays) } : {}),
           ...(newPassword ? { newPassword } : {})
         })
@@ -124,6 +126,13 @@ export function EditTenant({ tenant }: { tenant: TenantLite }) {
                 <span className="text-sm text-fg">
                   Encaminhar resumo por WhatsApp
                   <span className="block text-xs text-muted">Libera, nas Configurações do cliente, o envio automático do resumo do atendimento para um número (via template).</span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2.5 py-1">
+                <input type="checkbox" checked={featureOrders} onChange={(e) => setFeatureOrders(e.target.checked)} className="mt-0.5" />
+                <span className="text-sm text-fg">
+                  Resumo de pedido
+                  <span className="block text-xs text-muted">O bot monta pedidos a partir do catálogo no prompt, gera um PDF (enviado ao cliente) e mostra a aba “Pedidos” no painel.</span>
                 </span>
               </label>
             </div>
