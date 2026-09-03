@@ -127,6 +127,7 @@ export async function syncTenantProducts(tenant: {
   const now = new Date()
 
   let upserted = 0
+  let firstError: string | null = null
   // Upsert em lotes pequenos para não estourar o pool de conexões.
   const BATCH = 20
   for (let i = 0; i < parsed.length; i += BATCH) {
@@ -151,9 +152,25 @@ export async function syncTenantProducts(tenant: {
         return db.product
           .upsert({ where: { feed_id: p.feed_id }, create: { feed_id: p.feed_id, ...data }, update: data })
           .then(() => { upserted++ })
-          .catch((e: any) => console.error('[product-feed] upsert falhou', p.feed_id, e?.message))
-      })
+          .catch((e: any) => {
+            if (!firstError) firstError = e?.message || String(e)
+            console.error('[product-feed] upsert falhou', p.feed_id, e?.message)
+          })
+    })
     )
+  }
+
+  // O feed tinha itens, mas NENHUM foi gravado → não é sucesso: quase sempre a
+  // tabela `products` não existe no schema do tenant (schema não migrado) ou
+  // houve erro de banco. Reporta o erro real em vez de fingir "0 produtos".
+  if (upserted === 0) {
+    const missingTable = /does not exist|relation .* does not exist|P2021|não existe/i.test(firstError || '')
+    return {
+      ok: false, total: 0, upserted: 0, outOfStock: 0,
+      error: missingTable
+        ? 'O catálogo deste tenant ainda não foi provisionado (tabela de produtos ausente). Rode a migração dos schemas e tente novamente.'
+        : `Feed lido (${parsed.length} itens), mas nenhum produto pôde ser salvo${firstError ? `: ${String(firstError).slice(0, 180)}` : '.'}`
+    }
   }
 
   // Itens que não vieram no feed desta vez → fora de estoque.
