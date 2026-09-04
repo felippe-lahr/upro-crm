@@ -17,6 +17,8 @@ interface TenantSettings {
   status: string
   whatsapp_connected: boolean
   phone_number_id: string | null
+  display_phone_number?: string | null
+  verified_name?: string | null
   bot_enabled: boolean
   bot_prompt: string | null
   summary_instructions: string | null
@@ -561,6 +563,14 @@ export default function SettingsPage() {
             <p className="text-sm font-medium text-fg">
               {settings.whatsapp_connected ? 'Conectado' : 'Não conectado'}
             </p>
+            {settings.whatsapp_connected && settings.display_phone_number && (
+              <p className="mt-0.5 text-sm font-medium text-brand">
+                📱 {settings.display_phone_number}
+                {settings.verified_name && (
+                  <span className="ml-1 font-normal text-muted">· {settings.verified_name}</span>
+                )}
+              </p>
+            )}
             {settings.phone_number_id && (
               <p className="mt-0.5 text-xs text-faint">Phone ID: {settings.phone_number_id}</p>
             )}

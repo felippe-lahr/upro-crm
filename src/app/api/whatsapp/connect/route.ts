@@ -22,7 +22,7 @@ export async function DELETE() {
 
   await globalPrisma.tenant.update({
     where: { id: tenantId },
-    data: { waba_id: null, phone_number_id: null, whatsapp_token: null, whatsapp_connected: false }
+    data: { waba_id: null, phone_number_id: null, whatsapp_token: null, whatsapp_connected: false, display_phone_number: null, verified_name: null }
   })
   return Response.json({ ok: true })
 }

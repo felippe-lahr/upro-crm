@@ -22,6 +22,8 @@ model Tenant {
   phone_number_id     String?
   whatsapp_token      String?
   whatsapp_connected  Boolean  @default(false)
+  display_phone_number String? // número legível conectado (ex.: +55 11 9...) — via Graph
+  verified_name        String? // nome verificado do WhatsApp Business — via Graph
 
   bot_enabled         Boolean  @default(false)
   bot_prompt          String?

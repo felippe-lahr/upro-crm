@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { auth } from '@/lib/auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
-import { encrypt } from '@/lib/crypto'
+import { encrypt, decrypt } from '@/lib/crypto'
 import { getSummaryTemplateStatus } from '@/lib/whatsapp-templates'
 
 export async function GET() {
@@ -17,6 +17,7 @@ export async function GET() {
     select: {
       id: true, name: true, email: true, plan: true, status: true,
       whatsapp_connected: true, phone_number_id: true, waba_id: true,
+      display_phone_number: true, verified_name: true,
       bot_enabled: true, bot_prompt: true, summary_instructions: true, lead_tags: true, auto_tag_enabled: true, ads_wa_number: true, slug: true, trial_ends_at: true,
       menu_bot_enabled: true, menu_bot_greeting: true, menu_bot_options: true,
       handoff_pause: true, keep_responding_after_human: true,
@@ -37,9 +38,35 @@ export async function GET() {
     summary_template_rejected = st.rejected_reason
   }
 
+  // Backfill preguiçoso do número legível: se está conectado e ainda não temos o
+  // display_phone_number salvo, busca na Graph (best-effort) e guarda — assim os
+  // tenants já conectados passam a exibir o número sem precisar reconectar.
+  let display_phone_number = tenant?.display_phone_number || null
+  let verified_name = tenant?.verified_name || null
+  if (tenant?.whatsapp_connected && tenant.phone_number_id && tenant.whatsapp_token && !display_phone_number) {
+    try {
+      const tk = decrypt(tenant.whatsapp_token)
+      const res = await fetch(
+        `https://graph.facebook.com/v21.0/${tenant.phone_number_id}?fields=display_phone_number,verified_name`,
+        { headers: { Authorization: `Bearer ${tk}` } }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        display_phone_number = data?.display_phone_number || null
+        verified_name = data?.verified_name || null
+        if (display_phone_number || verified_name) {
+          await globalPrisma.tenant.update({
+            where: { id: tenantId },
+            data: { display_phone_number, verified_name }
+          }).catch(() => {})
+        }
+      }
+    } catch { /* best-effort: se falhar, a UI mostra só o Phone ID */ }
+  }
+
   // Nunca devolve tokens; apenas o que a UI precisa.
   const { mp_access_token, whatsapp_token, ...rest } = tenant || {}
-  return Response.json({ ...rest, mp_connected: !!mp_access_token, summary_template_status, summary_template_rejected })
+  return Response.json({ ...rest, display_phone_number, verified_name, mp_connected: !!mp_access_token, summary_template_status, summary_template_rejected })
 }
 
 export async function PATCH(req: Request) {
