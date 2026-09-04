@@ -506,7 +506,9 @@ async function aiReplyWithTools(
   tools: any[]
 ): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  // Timeout e retries explícitos: sem isso, uma chamada lenta/instável pode
+  // pendurar o atendimento indefinidamente (cliente fica sem resposta).
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000, maxRetries: 2 })
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5'
 
   const convo: any[] = messages.map((m) => ({ role: m.role, content: m.content }))

@@ -52,22 +52,32 @@ export async function POST(req: Request) {
     return new Response('Invalid signature', { status: 401 })
   }
 
-  const body = JSON.parse(rawBody)
+  let body: any
+  try { body = JSON.parse(rawBody) } catch { return Response.json({ ok: true }) }
+
+  // IMPORTANTE: responde 200 ao Meta IMEDIATAMENTE e processa em segundo plano.
+  // O Meta tem timeout curto no webhook — se esperarmos a IA responder (que pode
+  // levar vários segundos), o Meta considera a entrega falha e REENVIA o evento,
+  // gerando duplicatas, resposta repetida e acúmulo. O processo do Railway é
+  // persistente (`next start`), então o trabalho continua após o retorno.
+  void processWebhookBody(body).catch((err: any) =>
+    console.error('[whatsapp webhook] processamento em background falhou', err?.message || String(err))
+  )
+
+  return Response.json({ ok: true })
+}
+
+/** Processa o corpo do webhook em segundo plano (nunca lança para o handler HTTP). */
+async function processWebhookBody(body: any) {
   const entry = body.entry?.[0]
   const changes = entry?.changes?.[0]
   const phoneNumberId = changes?.value?.metadata?.phone_number_id
+  if (!phoneNumberId) return
 
-  if (!phoneNumberId) {
-    return Response.json({ ok: true })
-  }
-
-  const tenant = await globalPrisma.tenant.findFirst({
-    where: { phone_number_id: phoneNumberId }
-  })
-
+  const tenant = await globalPrisma.tenant.findFirst({ where: { phone_number_id: phoneNumberId } })
   if (!tenant) {
     console.warn(`Unknown phone_number_id: ${phoneNumberId}`)
-    return Response.json({ ok: true })
+    return
   }
 
   const messages = changes?.value?.messages || []
@@ -88,10 +98,12 @@ export async function POST(req: Request) {
 
   for (const message of messages) {
     const contactInfo = contacts[0]
-    await processIncomingMessage(tenant as any, message, contactInfo)
+    try {
+      await processIncomingMessage(tenant as any, message, contactInfo)
+    } catch (err: any) {
+      console.error('[whatsapp webhook] processIncomingMessage falhou', err?.message || String(err))
+    }
   }
-
-  return Response.json({ ok: true })
 }
 
 async function processIncomingMessage(
@@ -111,6 +123,17 @@ async function processIncomingMessage(
   contactInfo: any
 ) {
   const tenantPrisma = getTenantPrisma(tenant.schema_name)
+
+  // Deduplicação: se esta mensagem (message.id) já foi processada, ignora.
+  // Evita resposta duplicada e o erro de unique-constraint quando o Meta reenvia
+  // o mesmo evento (o que acontecia quando a resposta demorava).
+  if (message.id) {
+    const already = await tenantPrisma.message.findUnique({ where: { whatsapp_id: message.id } }).catch(() => null)
+    if (already) {
+      console.log('[whatsapp webhook] mensagem duplicada ignorada', message.id)
+      return
+    }
+  }
 
   // Identificadores do WhatsApp:
   // - senderId (message.from): id endereçável para responder (telefone ou BSUID)
@@ -288,6 +311,10 @@ async function processIncomingMessage(
         await processBotResponse(tenant, resolvedText, dbContact, message.from)
       } catch (err: any) {
         console.error('[whatsapp webhook] processBotResponse failed', err?.message || String(err), err?.stack)
+        // Fallback: nunca deixa o cliente no silêncio quando a IA falha/expira.
+        await sendWhatsAppMessage(tenant, message.from,
+          'Oi! Estou com uma instabilidade momentânea por aqui. Já já te respondo — ou, se preferir, me manda a mensagem de novo. 🙏'
+        ).catch(() => {})
       }
       try {
         await extractContactInfo(tenant, dbContact)

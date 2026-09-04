@@ -42,7 +42,7 @@ export async function chatComplete({ system, messages, maxTokens = 1024 }: ChatO
 
 async function chatAnthropic(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000, maxRetries: 2 })
 
   const response = await anthropic.messages.create({
     model: ANTHROPIC_MODEL,
