@@ -245,6 +245,27 @@ Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 
 **Itens de infra que acompanham:** não escalar a zero (mín. 1 instância — mata cold start de madrugada), **PgBouncer** para o pool de conexões (muitos schemas de tenant), monitoramento de erros (Sentry) + painel de saúde por tenant.
 
+### 💰 Otimização de custo de IA (aguardando dados de setembro para estimar)
+**Decisão (set/2026):** registrar o plano e **aguardar setembro** para medir o custo real antes de implementar/estimar com precisão.
+
+**De onde vem o custo (hoje).** Cada mensagem de cliente num tenant Pro/Promaster com bot dispara **3 chamadas ao Claude `claude-sonnet-5`**: (1) resposta do bot (`processBotResponse`) — no Promaster com catálogo é um **loop de ferramentas**, frequentemente **2 chamadas**; (2) `extractContactInfo` — roda em **toda** mensagem, reenviando as últimas 30 msgs. **Não há prompt caching** → o prompt do bot + guardrails + esquema das ferramentas é reenviado e pago inteiro em cada chamada (inclusive a cada volta do loop). Áudio (Groq Whisper) é desprezível.
+
+**Preços de referência (jun/2026):** Sonnet 5 = US$ 2/1M entrada, US$ 10/1M saída. Haiku 4.5 = US$ 1/1M entrada, US$ 5/1M saída.
+
+**Estimativa atual (sem caching):** ~US$ 0,03–0,05 por msg recebida no Promaster (com ferramentas); ~US$ 0,012–0,02 no Pro só texto. Fórmula: `custo_mês ≈ msgs_recebidas × chamadas_por_msg × tokens_médios × preço`. Com 4 tenants e volume modesto, provável faixa de dezenas a ~US$ 100–200/mês total — **fechar o número em setembro com o volume real de msgs/dia por tenant.**
+
+**Pré-requisito para medir de verdade:** logar `response.usage` (tokens entrada/saída) por chamada e somar por tenant → base de um painel "custo por tenant".
+
+**Levers de economia (ordenados por impacto):**
+1. **Prompt caching** (`cache_control` no prompt do bot + ferramentas + catálogo) — ataca o loop de ferramentas do Promaster; **–40% a –70%** da entrada. Maior ganho.
+2. **`extractContactInfo` menos vezes** (a cada 3–4 msgs ou só na conclusão, em vez de toda msg) — **–20% a –30%** (elimina 1 chamada/msg).
+3. **`extractContactInfo` em `claude-haiku-4-5`** (tarefa simples de extração/resumo) — **–50%** naquela chamada.
+4. **`effort: medium`** no bot (hoje roda no default `high`; atendimento é chat) — **–15% a –30%**.
+5. **Encolher histórico** (`HISTORY_LIMIT` 25→~12; transcript da extração 30→~15) — **–10% a –20%** da entrada.
+6. **Tenants de texto simples** (sem agenda/catálogo): usar `claude-haiku-4-5` no bot inteiro — custo pela metade; manter Sonnet só no vendedor (Promaster) e fluxos com ferramentas.
+
+Combinando 1+2+3 dá pra **cortar o custo pela metade ou mais** sem perda perceptível. **Ordem de implementação sugerida (quando decidir):** caching → extract (Haiku + throttle) → effort/histórico → logar `usage` por tenant.
+
 ## 🔒 Segurança — revisão para comercialização (ago/2026)
 
 **✅ Feito e verificado nesta rodada:**
