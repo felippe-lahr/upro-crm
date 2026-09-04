@@ -172,11 +172,13 @@ async function processIncomingMessage(
 
   // Resolve o texto da mensagem (transcreve áudio quando possível)
   let resolvedText = ''
+  let audioUnresolved = false // áudio recebido que NÃO pôde virar texto
   if (message.type === 'text') {
     resolvedText = message.text?.body || ''
   } else if (message.type === 'audio' && message.audio?.id) {
     const transcription = await transcribeWhatsAppAudio(tenant, message.audio.id)
     if (transcription) resolvedText = transcription
+    else audioUnresolved = true
   }
 
   const storedContent =
@@ -321,6 +323,12 @@ async function processIncomingMessage(
       } catch (err: any) {
         console.error('[whatsapp webhook] extractContactInfo failed', err?.message || String(err))
       }
+    } else if (audioUnresolved) {
+      // Áudio que não pôde ser transcrito (transcrição desligada ou falhou):
+      // nunca fica em silêncio — pede para o cliente escrever.
+      await sendWhatsAppMessage(tenant, message.from,
+        'Recebi seu áudio, mas não consegui ouvi-lo agora. 🙏 Pode me escrever sua mensagem por texto? Assim consigo te responder na hora.'
+      ).catch((e) => console.error('[whatsapp webhook] aviso de áudio falhou', e?.message || e))
     }
     return
   }
