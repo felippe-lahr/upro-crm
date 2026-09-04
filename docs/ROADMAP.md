@@ -225,6 +225,26 @@ Envio via templates aprovados já implementado no item 0 (teto de 30 + opt-out).
 ### 6. Refresh automático do token de 60 dias do WhatsApp
 Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 
+## 🏗️ Infraestrutura / confiabilidade (escala)
+
+### 🔜 Fila durável de processamento de mensagens (prioridade p/ escalar)
+**Motivação.** Hoje, após o ACK imediato ao Meta, a resposta do bot é processada **em segundo plano no próprio processo** (promessa "solta"). Isso resolveu os timeouts/duplicatas, mas ainda tem lacunas para escala:
+- Se o container **reiniciar/derrubar** no meio do processamento (deploy, OOM, crash), a resposta **em andamento se perde** (a mensagem recebida fica salva, mas sem retry automático).
+- **Falha de provedor (Anthropic/Groq)**: hoje há timeout (60s) + 2 retries no cliente e um **fallback** ao cliente; mas **não há re-tentativa posterior** quando o provedor volta — a conversa depende de um humano ou de o cliente reenviar.
+- Sem **controle de concorrência por conversa** (2 mensagens quase simultâneas do mesmo lead podem gerar respostas fora de ordem).
+
+**Proposta.** Introduzir uma **fila durável** (Redis + BullMQ, ou fila gerenciada) entre o webhook e o processamento:
+- Webhook só **enfileira** `{tenantId, messageId, payload}` e devolve 200 (já faz o ACK; passa a persistir o job).
+- **Workers** consomem a fila com **retry com backoff exponencial** (ex.: 5 tentativas ao longo de minutos) — cobre janelas de instabilidade da Anthropic/Groq **sem depender de o cliente reenviar**.
+- **Idempotência** por `messageId` (a dedup já existe; a fila reforça).
+- **Concorrência por conversa** (chave = contact_id) para ordenar respostas do mesmo lead.
+- **Dead-letter queue (DLQ)**: jobs que esgotam as tentativas caem numa fila de erro → alerta + opção de **escalar para humano** automaticamente (marcar conversa como pendente) em vez de só um fallback.
+- **Métrica**: recebidas × respondidas × falhas por tenant (base do painel de saúde).
+
+**Quando fazer.** Passo nº 1 de infra ao passar de ~algumas dezenas de tenants ou volume alto. Requer: instância Redis (Railway oferece), processo worker (pode ser o mesmo serviço com um loop de worker, ou serviço separado), e mover `processBotResponse`/`extractContactInfo` para o worker.
+
+**Itens de infra que acompanham:** não escalar a zero (mín. 1 instância — mata cold start de madrugada), **PgBouncer** para o pool de conexões (muitos schemas de tenant), monitoramento de erros (Sentry) + painel de saúde por tenant.
+
 ## 🔒 Segurança — revisão para comercialização (ago/2026)
 
 **✅ Feito e verificado nesta rodada:**
