@@ -18,7 +18,7 @@ export default async function DashboardPage() {
 
   let stats = {
     contacts: 0,
-    messagesToday: 0,
+    conversationsToday: 0,
     openConversations: 0,
     pipelineValue: 0,
     wonValue: 0
@@ -27,12 +27,15 @@ export default async function DashboardPage() {
   if (tenant?.status === 'active' && schemaName) {
     try {
       const db = getTenantPrisma(schemaName)
-      const startOfDay = new Date()
-      startOfDay.setHours(0, 0, 0, 0)
+      // Início do dia no fuso de São Paulo (Brasil, UTC-3), como instante UTC —
+      // para "hoje" bater com o que o cliente vê (meia-noite local no navegador).
+      const dateSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+      const startOfDay = new Date(`${dateSP}T03:00:00.000Z`) // 00:00 em SP = 03:00 UTC
 
-      const [contacts, messagesToday, openConversations, pipeline, won] = await Promise.all([
+      const [contacts, convToday, openConversations, pipeline, won] = await Promise.all([
         db.contact.count(),
-        db.message.count({ where: { timestamp: { gte: startOfDay } } }),
+        // Conversas hoje = contatos com pelo menos uma mensagem hoje (bate com a aba Conversas → Hoje).
+        db.message.groupBy({ by: ['contact_id'], where: { timestamp: { gte: startOfDay } } }),
         db.conversation.count({ where: { status: 'open' } }),
         db.contact.aggregate({
           _sum: { deal_value: true },
@@ -45,7 +48,7 @@ export default async function DashboardPage() {
       ])
       stats = {
         contacts,
-        messagesToday,
+        conversationsToday: convToday.length,
         openConversations,
         pipelineValue: Number(pipeline._sum.deal_value || 0),
         wonValue: Number(won._sum.deal_value || 0)
@@ -100,7 +103,7 @@ export default async function DashboardPage() {
       {/* Stats */}
       <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3">
         <StatCard label="Contatos" value={String(stats.contacts)} icon="👥" />
-        <StatCard label="Mensagens hoje" value={String(stats.messagesToday)} icon="💬" />
+        <StatCard label="Conversas hoje" value={String(stats.conversationsToday)} icon="💬" />
         <StatCard label="Conversas abertas" value={String(stats.openConversations)} icon="🔔" />
         <StatCard label="Em negociação" value={brl(stats.pipelineValue)} icon="📈" accent />
         <StatCard label="Fechado (ganho)" value={brl(stats.wonValue)} icon="🏆" accent />
