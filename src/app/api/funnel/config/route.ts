@@ -9,10 +9,10 @@ export async function PATCH(req: Request) {
   const tenantId = (session?.user as any)?.tenantId
   if (!tenantId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Personalização do funil é exclusiva do plano Pro.
+  // Personalização do funil: planos Pro e Promaster.
   const tenant = await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } })
-  if (tenant?.plan !== 'pro') {
-    return Response.json({ error: 'A personalização do funil está disponível apenas no plano Pro.' }, { status: 403 })
+  if (!['pro', 'promaster'].includes(tenant?.plan || '')) {
+    return Response.json({ error: 'A personalização do funil está disponível nos planos Pro e Promaster.' }, { status: 403 })
   }
 
   const { funnel_labels, loss_reasons } = await req.json()

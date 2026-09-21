@@ -41,7 +41,8 @@ export default async function FunnelPage() {
   const tenant = tenantId
     ? await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true, funnel_labels: true, loss_reasons: true, lead_tags: true } })
     : null
-  const isPro = tenant?.plan === 'pro'
+  // Personalização do funil liberada para Pro e Promaster.
+  const isPro = ['pro', 'promaster'].includes(tenant?.plan || '')
   const stages = resolveStages(tenant?.funnel_labels as Record<string, string> | null)
   const lossReasons = Array.isArray(tenant?.loss_reasons) ? (tenant!.loss_reasons as string[]) : []
   const availableTags = Array.isArray(tenant?.lead_tags) ? (tenant!.lead_tags as string[]) : []
