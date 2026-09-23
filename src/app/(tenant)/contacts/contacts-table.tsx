@@ -13,7 +13,7 @@ export interface ContactRow {
   created_at: string // ISO
 }
 
-export function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
+export function ContactsTable({ contacts, existingTags = [] }: { contacts: ContactRow[]; existingTags?: string[] }) {
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [tag, setTag] = useState('')
@@ -45,7 +45,10 @@ export function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
       })
       const data = await res.json()
       if (!res.ok) { setMsg(data.error || 'Falha'); return }
-      setMsg(`${action === 'remove' ? 'Removida' : 'Aplicada'} etiqueta "${data.tag}" em ${data.affected} contato(s).`)
+      setMsg(
+        `${action === 'remove' ? 'Removida' : 'Aplicada'} etiqueta "${data.tag}" em ${data.affected} contato(s).` +
+        (data.taxonomy_added ? ' Nova etiqueta criada e disponível nas Configurações.' : '')
+      )
       setSelected(new Set()); setTag('')
       router.refresh()
     } catch {
@@ -64,9 +67,13 @@ export function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
           <input
             value={tag}
             onChange={(e) => setTag(e.target.value)}
-            placeholder="Etiqueta (ex.: campanha-set)"
+            list="contact-tags"
+            placeholder="Escolher ou criar etiqueta"
             className="w-56 rounded-lg border border-line bg-background px-3 py-1.5 text-sm text-fg focus:border-brand focus:outline-none"
           />
+          <datalist id="contact-tags">
+            {existingTags.map((t) => <option key={t} value={t} />)}
+          </datalist>
           <button
             onClick={() => applyTag('add')}
             disabled={busy || !tag.trim()}

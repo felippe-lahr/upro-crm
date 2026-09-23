@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export function ImportContacts() {
+export function ImportContacts({ existingTags = [] }: { existingTags?: string[] }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -50,9 +50,13 @@ export function ImportContacts() {
       <input
         value={tag}
         onChange={(e) => setTag(e.target.value)}
+        list="import-tags"
         placeholder="Etiqueta (opcional)"
         className="w-40 rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
       />
+      <datalist id="import-tags">
+        {existingTags.map((t) => <option key={t} value={t} />)}
+      </datalist>
       <input
         ref={inputRef}
         type="file"

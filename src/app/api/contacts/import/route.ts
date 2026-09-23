@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { auth } from '@/lib/auth'
-import { getTenantPrisma } from '@/lib/prisma-tenant'
+import { getTenantPrisma, globalPrisma } from '@/lib/prisma-tenant'
 
 // Normaliza um número de telefone para apenas dígitos.
 function normalizePhone(raw: string): string {
@@ -11,7 +11,8 @@ function normalizePhone(raw: string): string {
 export async function POST(req: Request) {
   const session = await auth()
   const schemaName = (session?.user as any)?.schemaName
-  if (!schemaName) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const tenantId = (session?.user as any)?.tenantId
+  if (!schemaName || !tenantId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { csv, tag } = await req.json()
   if (!csv?.trim()) {
@@ -64,6 +65,18 @@ export async function POST(req: Request) {
       imported++
     } catch {
       skipped++
+    }
+  }
+
+  // Registra a etiqueta na taxonomia do tenant (aparece nas Configurações).
+  if (cleanTag) {
+    const t = await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { lead_tags: true } })
+    const current = (t?.lead_tags as string[]) || []
+    if (!current.includes(cleanTag)) {
+      await globalPrisma.tenant.update({
+        where: { id: tenantId },
+        data: { lead_tags: [...current, cleanTag].slice(0, 100) }
+      }).catch(() => {})
     }
   }
 

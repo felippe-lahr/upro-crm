@@ -1,11 +1,12 @@
 import { auth } from '@/lib/auth'
-import { getTenantPrisma } from '@/lib/prisma-tenant'
+import { getTenantPrisma, globalPrisma } from '@/lib/prisma-tenant'
 import { ImportContacts } from '@/components/ui/import-contacts'
 import { ContactsTable } from './contacts-table'
 
 export default async function ContactsPage() {
   const session = await auth()
   const schemaName = (session!.user as any).schemaName
+  const tenantId = (session!.user as any).tenantId
 
   let contacts: {
     id: string
@@ -27,6 +28,15 @@ export default async function ContactsPage() {
     }
   }
 
+  // Etiquetas já criadas (taxonomia do tenant) para o dropdown de etiquetagem.
+  let existingTags: string[] = []
+  if (tenantId) {
+    try {
+      const t = await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { lead_tags: true } })
+      existingTags = ((t?.lead_tags as string[]) || []).slice().sort()
+    } catch { /* ignore */ }
+  }
+
   return (
     <div className="p-4 sm:p-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
@@ -36,7 +46,7 @@ export default async function ContactsPage() {
             {contacts.length} contato{contacts.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <ImportContacts />
+        <ImportContacts existingTags={existingTags} />
       </div>
 
       {contacts.length === 0 ? (
@@ -50,6 +60,7 @@ export default async function ContactsPage() {
         </div>
       ) : (
         <ContactsTable
+          existingTags={existingTags}
           contacts={contacts.map((c) => ({
             id: c.id,
             name: c.name,
