@@ -13,12 +13,19 @@ export default async function FunnelPage() {
   if (schemaName) {
     try {
       const db = getTenantPrisma(schemaName)
-      const contacts = await db.contact.findMany({
-        orderBy: { updated_at: 'desc' },
-        include: {
-          messages: { orderBy: { timestamp: 'desc' }, take: 1 }
-        }
-      })
+      const contacts = await db.contact.findMany({ orderBy: { updated_at: 'desc' } })
+
+      // Última mensagem de cada contato em UMA query (evita o N+1 do include take:1).
+      const lastByContact = new Map<string, string | null>()
+      try {
+        const lastMsgs: { contact_id: string; content: string | null }[] = await db.$queryRawUnsafe(`
+          SELECT DISTINCT ON (contact_id) contact_id, content
+          FROM messages
+          ORDER BY contact_id, timestamp DESC
+        `)
+        for (const m of lastMsgs) lastByContact.set(m.contact_id, m.content)
+      } catch { /* sem mensagens ainda */ }
+
       leads = contacts.map((c: any) => ({
         id: c.id,
         name: c.name,
@@ -28,7 +35,7 @@ export default async function FunnelPage() {
         ai_summary: c.ai_summary || null,
         stage: c.stage || 'novo_lead',
         deal_value: c.deal_value ? String(c.deal_value) : null,
-        lastMessage: c.messages?.[0]?.content || null,
+        lastMessage: lastByContact.get(c.id) ?? null,
         tags: c.tags || [],
         lossReason: c.loss_reason || null,
         createdAt: c.created_at.toISOString()

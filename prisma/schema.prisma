@@ -336,6 +336,8 @@ model Message {
   contact         Contact       @relation(fields: [contact_id], references: [id], onDelete: Cascade)
   conversation    Conversation? @relation(fields: [conversation_id], references: [id])
 
+  // Acelera a última-mensagem-por-contato (DISTINCT ON) e a contagem de não vistas.
+  @@index([contact_id, timestamp])
   @@map("messages")
 }
 

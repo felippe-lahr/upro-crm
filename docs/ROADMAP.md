@@ -227,6 +227,17 @@ Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 
 ## 🏗️ Infraestrutura / confiabilidade (escala)
 
+### ✅/🔜 Listagem de conversas e funil — correção + escala
+**Bug corrigido (set/2026).** A tela de **Conversas** montava a lista pegando as **últimas 400 mensagens** e agrupando por contato → só apareciam os contatos dessas mensagens recentes (ex.: 33 no uniu.art), escondendo conversas antigas e quebrando os filtros de período (só "Hoje" parecia funcionar). Corrigido: passa a usar **`DISTINCT ON (contact_id)`** (última mensagem de CADA contato, ordenado por atividade, teto 2000) + contagem de não vistas em query separada. Funil já carregava todos os contatos (número correto), mas com **N+1** (subconsulta de última mensagem por contato) — trocado por **1 query `DISTINCT ON`**. Adicionado **índice `messages(contact_id, timestamp)`** (acelera o DISTINCT ON e a contagem de não vistas).
+
+**🔜 Próximo passo — paginação + filtro/busca server-side (quando o volume crescer).** Hoje Conversas tem teto de 2000 e Funil carrega todos os contatos; os filtros (período, etiqueta, busca) rodam **no cliente** sobre o que foi carregado. Isso é adequado até alguns milhares, mas não escala. O correto:
+- **Conversas:** endpoint paginado por cursor (última atividade) + **busca e filtro de período/etiqueta no servidor** (SQL com índice), trocando o teto por "carregar mais"/scroll infinito. Atenção: paginação **exige** mover o filtro/busca para o servidor — senão o filtro só enxerga a página carregada (foi exatamente o bug original).
+- **Funil:** **paginação por etapa** (cada coluna do Kanban carrega N e "carregar mais"), com contagem por etapa via `groupBy`. Mais complexo por causa do drag-drop entre colunas.
+- **Índices** adicionais conforme necessário (`contacts(stage, updated_at)`).
+- **Arquivamento** de histórico antigo só num estágio bem posterior.
+
+
+
 ### 🔜 Fila durável de processamento de mensagens (prioridade p/ escalar)
 **Motivação.** Hoje, após o ACK imediato ao Meta, a resposta do bot é processada **em segundo plano no próprio processo** (promessa "solta"). Isso resolveu os timeouts/duplicatas, mas ainda tem lacunas para escala:
 - Se o container **reiniciar/derrubar** no meio do processamento (deploy, OOM, crash), a resposta **em andamento se perde** (a mensagem recebida fica salva, mas sem retry automático).
