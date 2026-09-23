@@ -7,59 +7,67 @@ export default async function ConversationsPage() {
   const session = await auth()
   const schemaName = (session!.user as any).schemaName
 
-  let messages: {
-    id: string
+  // Uma linha por conversa (contato): a ÚLTIMA mensagem de cada contato, ordenada
+  // pela atividade mais recente. Antes a lista pegava as últimas 400 MENSAGENS e
+  // agrupava — o que escondia conversas antigas (só apareciam os contatos das 400
+  // mensagens recentes) e quebrava os filtros de período. Aqui o DISTINCT ON pega
+  // o último de CADA contato, cobrindo todas as conversas (com um teto de segurança).
+  const CONVERSATION_CAP = 2000
+  let lastRows: {
     contact_id: string
     content: string | null
     direction: string
-    timestamp: Date
-    contact: { name: string | null; phone: string; tags: string[] }
+    ts: Date
+    name: string | null
+    phone: string
+    tags: string[]
   }[] = []
-
-  // Mapa contato → última leitura, buscado à parte para que uma eventual
-  // ausência da coluna (schema em migração) NÃO derrube a lista de conversas.
-  const lastReadByContact = new Map<string, number>()
+  const unreadByContact = new Map<string, number>()
 
   if (schemaName) {
     const db = getTenantPrisma(schemaName)
     try {
-      messages = await db.message.findMany({
-        include: { contact: { select: { name: true, phone: true, tags: true } } },
-        orderBy: { timestamp: 'desc' },
-        take: 400
-      })
+      lastRows = await db.$queryRawUnsafe(`
+        SELECT t.contact_id, t.content, t.direction, t.ts, t.name, t.phone, t.tags
+        FROM (
+          SELECT DISTINCT ON (m.contact_id)
+            m.contact_id, m.content, m.direction, m.timestamp AS ts,
+            c.name, c.phone, c.tags
+          FROM messages m
+          JOIN contacts c ON c.id = m.contact_id
+          ORDER BY m.contact_id, m.timestamp DESC
+        ) t
+        ORDER BY t.ts DESC
+        LIMIT ${CONVERSATION_CAP}
+      `)
     } catch {
       // schema not provisioned
     }
     try {
-      const reads: { id: string; last_read_at: Date | null }[] = await db.contact.findMany({
-        select: { id: true, last_read_at: true }
-      })
-      for (const r of reads) if (r.last_read_at) lastReadByContact.set(r.id, new Date(r.last_read_at).getTime())
+      // Não vistas por conversa: mensagens recebidas depois da última abertura.
+      const rows: { contact_id: string; unread: number }[] = await db.$queryRawUnsafe(`
+        SELECT m.contact_id, COUNT(*)::int AS unread
+        FROM messages m
+        JOIN contacts c ON c.id = m.contact_id
+        WHERE m.direction = 'inbound'
+          AND m.timestamp > COALESCE(c.last_read_at, to_timestamp(0))
+        GROUP BY m.contact_id
+      `)
+      for (const r of rows) unreadByContact.set(r.contact_id, Number(r.unread) || 0)
     } catch {
-      // coluna ainda não migrada — trata tudo como não lido (não quebra a lista)
+      // coluna last_read_at ainda não migrada — trata tudo como visto (não quebra a lista)
     }
   }
 
-  const grouped = messages.reduce<Record<string, typeof messages>>((acc, m) => {
-    if (!acc[m.contact_id]) acc[m.contact_id] = []
-    acc[m.contact_id].push(m)
-    return acc
-  }, {})
-
-  const conversations: ConversationItem[] = Object.entries(grouped).map(([contactId, msgs]) => ({
-    contactId,
-    name: msgs[0].contact.name,
-    phone: msgs[0].contact.phone,
-    tags: msgs[0].contact.tags || [],
-    lastContent: msgs[0].content,
-    lastDirection: msgs[0].direction,
-    lastTimestamp: msgs[0].timestamp.toISOString(),
-    // Não vistas: mensagens recebidas mais novas que a última abertura da conversa.
-    unread: (() => {
-      const cutoff = lastReadByContact.get(contactId) ?? 0
-      return msgs.filter((m) => m.direction === 'inbound' && new Date(m.timestamp).getTime() > cutoff).length
-    })()
+  const conversations: ConversationItem[] = lastRows.map((r) => ({
+    contactId: r.contact_id,
+    name: r.name,
+    phone: r.phone,
+    tags: r.tags || [],
+    lastContent: r.content,
+    lastDirection: r.direction,
+    lastTimestamp: new Date(r.ts).toISOString(),
+    unread: unreadByContact.get(r.contact_id) ?? 0
   }))
 
   const allTags = Array.from(new Set(conversations.flatMap((c) => c.tags))).sort()
