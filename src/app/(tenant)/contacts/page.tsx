@@ -1,8 +1,7 @@
 import { auth } from '@/lib/auth'
 import { getTenantPrisma } from '@/lib/prisma-tenant'
-import Link from 'next/link'
 import { ImportContacts } from '@/components/ui/import-contacts'
-import { DeleteContact } from './contact-actions'
+import { ContactsTable } from './contacts-table'
 
 export default async function ContactsPage() {
   const session = await auth()
@@ -50,56 +49,15 @@ export default async function ContactsPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-          <table className="w-full min-w-[560px]">
-            <thead>
-              <tr className="border-b border-line bg-surface2">
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Nome</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Telefone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Etiquetas</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-faint">Desde</th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-faint">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {contacts.map((c) => (
-                <tr key={c.id} className="transition-colors hover:bg-surface2">
-                  <td className="px-6 py-4">
-                    <Link href={`/conversations/${c.id}`} className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/15 text-sm font-medium text-brand">
-                        {(c.name || c.phone)[0].toUpperCase()}
-                      </div>
-                      <span className="text-sm font-medium text-fg">
-                        {c.name || 'Sem nome'}
-                      </span>
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-muted">{c.phone}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {(c.tags || []).map((t) => (
-                        <span
-                          key={t}
-                          className="rounded-full bg-brand/15 px-2 py-0.5 text-xs text-brand"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-faint">
-                    {new Date(c.created_at).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end">
-                      <DeleteContact contactId={c.id} name={c.name || c.phone} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ContactsTable
+          contacts={contacts.map((c) => ({
+            id: c.id,
+            name: c.name,
+            phone: c.phone,
+            tags: c.tags || [],
+            created_at: c.created_at.toISOString()
+          }))}
+        />
       )}
     </div>
   )
