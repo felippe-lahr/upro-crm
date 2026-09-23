@@ -7,6 +7,7 @@ export function ImportContacts() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [tag, setTag] = useState('')
   const router = useRouter()
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -19,11 +20,14 @@ export function ImportContacts() {
       const res = await fetch('/api/contacts/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csv })
+        body: JSON.stringify({ csv, tag: tag.trim() || undefined })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Falha')
-      setMsg(`${data.imported} importados, ${data.skipped} ignorados`)
+      setMsg(
+        `${data.imported} importados, ${data.skipped} ignorados` +
+        (data.tag ? ` · etiqueta "${data.tag}"` : '')
+      )
       router.refresh()
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Erro na importação')
@@ -34,8 +38,21 @@ export function ImportContacts() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      {msg && <span className="text-xs text-muted">{msg}</span>}
+    <div className="flex flex-wrap items-center gap-2">
+      {msg && <span className="w-full text-xs text-muted sm:w-auto">{msg}</span>}
+      <a
+        href="/modelo-contatos.csv"
+        download
+        className="rounded-lg border border-line px-3 py-2 text-xs font-medium text-muted transition-colors hover:border-brand/40 hover:text-brand"
+      >
+        ⬇ Baixar modelo
+      </a>
+      <input
+        value={tag}
+        onChange={(e) => setTag(e.target.value)}
+        placeholder="Etiqueta (opcional)"
+        className="w-40 rounded-lg border border-line bg-background px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
+      />
       <input
         ref={inputRef}
         type="file"

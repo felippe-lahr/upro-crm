@@ -13,10 +13,12 @@ export async function POST(req: Request) {
   const schemaName = (session?.user as any)?.schemaName
   if (!schemaName) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { csv } = await req.json()
+  const { csv, tag } = await req.json()
   if (!csv?.trim()) {
     return Response.json({ error: 'CSV vazio' }, { status: 400 })
   }
+  // Etiqueta opcional aplicada em lote a todos os contatos importados.
+  const cleanTag = typeof tag === 'string' ? tag.trim().slice(0, 40) : ''
 
   const lines = String(csv).trim().split(/\r?\n/)
   // Detecta cabeçalho (se a primeira linha contém "nome"/"name"/"phone"/"telefone")
@@ -52,11 +54,18 @@ export async function POST(req: Request) {
         update: { name: name || undefined },
         create: { whatsapp_id: phone, phone, name: name || null }
       })
+      // Aplica a etiqueta (sem duplicar) tanto em contato novo quanto existente.
+      if (cleanTag) {
+        await db.$executeRawUnsafe(
+          `UPDATE contacts SET tags = array_append(tags, $1) WHERE whatsapp_id = $2 AND NOT ($1 = ANY(tags))`,
+          cleanTag, phone
+        ).catch(() => {})
+      }
       imported++
     } catch {
       skipped++
     }
   }
 
-  return Response.json({ ok: true, imported, skipped })
+  return Response.json({ ok: true, imported, skipped, tag: cleanTag || null })
 }

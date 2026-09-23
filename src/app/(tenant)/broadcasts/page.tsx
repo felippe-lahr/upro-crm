@@ -51,7 +51,7 @@ export default function BroadcastsPage() {
 
   async function send() {
     if (!message.trim() || sending) return
-    if (!confirm(`Enviar o convite de consentimento para os contatos selecionados (máx. ${max})?`)) return
+    if (!confirm(`Enviar o convite de consentimento para o próximo lote (até ${max} contatos)?`)) return
     setSending(true); setError(''); setNotice('')
     try {
       const res = await fetch('/api/broadcasts', {
@@ -65,7 +65,14 @@ export default function BroadcastsPage() {
         else setError(data.error || 'Falha ao enviar.')
         return
       }
-      setMessage(''); setFilterTag('')
+      // Mantém a mensagem e a etiqueta para o usuário disparar o próximo lote.
+      const rest = typeof data.remaining === 'number' ? data.remaining : 0
+      setNotice(
+        `Lote enviado: ${data.sent ?? 0}${data.failed ? ` (${data.failed} falhas)` : ''}. ` +
+        (rest > 0
+          ? `Restam ${rest} nesta seleção — clique em "Enviar convite" de novo para o próximo lote.`
+          : 'Todos os contatos elegíveis já foram convidados. ✅')
+      )
       load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao enviar')
@@ -90,9 +97,52 @@ export default function BroadcastsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-fg">Disparos de consentimento</h1>
         <p className="mt-1 text-sm text-muted">
-          Convide até <strong>{max} contatos</strong> a iniciarem uma conversa. Quem responder <strong>SIM</strong> continua o
-          atendimento; quem responder <strong>SAIR</strong> é descadastrado automaticamente.
+          Convide até <strong>{max} contatos por lote</strong> a iniciarem uma conversa. Quem responder <strong>SIM</strong> continua o
+          atendimento; quem responder <strong>SAIR</strong> é descadastrado automaticamente. Clique novamente para enviar o próximo lote.
         </p>
+      </div>
+
+      <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+        <p className="font-medium text-amber-400">⚠️ Use apenas com contatos que já têm relação com você</p>
+        <p className="mt-1 text-xs text-amber-500/90">
+          Envie somente para pessoas que <strong>já são seus clientes/contatos ou autorizaram</strong> receber sua mensagem.
+          Disparar para <strong>listas frias ou compradas</strong> gera bloqueios/denúncias e pode fazer a Meta
+          <strong> banir o seu número de WhatsApp</strong> — além de risco de LGPD.
+        </p>
+
+        <details className="mt-3 text-xs text-amber-500/90">
+          <summary className="cursor-pointer font-medium text-amber-400">Boas práticas e riscos (ler antes de disparar)</summary>
+          <div className="mt-2 space-y-3">
+            <div>
+              <p className="font-semibold text-amber-400">✅ Boas práticas</p>
+              <ul className="mt-1 list-disc space-y-1 pl-4">
+                <li><strong>Lista morna:</strong> só clientes/contatos que já falaram com você ou deram o número.</li>
+                <li><strong>Mensagem relevante e pessoal:</strong> diga quem é você e por que está falando com a pessoa.</li>
+                <li><strong>Comece devagar</strong> (aquecimento): poucos por dia num número novo, aumentando aos poucos.</li>
+                <li><strong>Respeite o SAIR</strong> (automático) e nunca reenvie para quem saiu.</li>
+                <li><strong>Monitore</strong>: se aparecerem falhas/bloqueios, pare e revise a lista.</li>
+                <li>Envie em <strong>lotes de {max}</strong>, sem pressa, ao longo do dia.</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-amber-400">🚫 O que arrisca banir o número</p>
+              <ul className="mt-1 list-disc space-y-1 pl-4">
+                <li><strong>Listas frias/compradas/raspadas</strong> — principal causa de banimento.</li>
+                <li>Muitos envios de uma vez para quem <strong>não te conhece</strong> → bloqueios e denúncias.</li>
+                <li>Mensagem <strong>genérica/spam</strong> ou repetida.</li>
+                <li>Pedir consentimento na mensagem <strong>não</strong> torna o envio a frio seguro: o primeiro contato já é não solicitado.</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-amber-400">🎯 Para atrair novos clientes com segurança</p>
+              <p className="mt-1">
+                Use anúncios <strong>Click-to-WhatsApp</strong> (Instagram/Facebook) e <strong>Google Ads → WhatsApp</strong>:
+                é o <strong>cliente</strong> quem inicia a conversa — sem risco de ban e dentro da política da Meta e da LGPD.
+                O UProCRM já recebe e etiqueta esses leads pela origem automaticamente.
+              </p>
+            </div>
+          </div>
+        </details>
       </div>
 
       <section className="mb-8 rounded-2xl border border-line bg-surface p-6">

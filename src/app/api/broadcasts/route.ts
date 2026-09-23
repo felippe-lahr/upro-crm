@@ -35,13 +35,26 @@ export async function GET() {
     consent_status = st.status
   }
 
+  // Etiquetas disponíveis = taxonomia do tenant (lead_tags) UNIÃO com as etiquetas
+  // realmente usadas nos contatos (inclui as criadas na importação em lote).
+  let usedTags: string[] = []
+  try {
+    const rows: { tag: string }[] = await db.$queryRawUnsafe(
+      `SELECT DISTINCT unnest(tags) AS tag FROM contacts WHERE tags IS NOT NULL`
+    )
+    usedTags = rows.map((r) => r.tag).filter(Boolean)
+  } catch { /* sem contatos ainda */ }
+  const available_tags = Array.from(
+    new Set([...((tenant?.lead_tags as string[]) || []), ...usedTags])
+  ).sort()
+
   return Response.json({
     broadcasts,
     meta: {
       company: tenant?.name || '',
       consent_template: templateName,
       consent_status,
-      available_tags: (tenant?.lead_tags as string[]) || [],
+      available_tags,
       max_recipients: MAX_RECIPIENTS
     }
   })
@@ -89,20 +102,21 @@ export async function POST(req: Request) {
 
   const db = getTenantPrisma(schemaName)
 
-  // Seleção de destinatários: por etiqueta e/ou lista manual. Nunca inclui opt-out.
-  const where: any = { opted_out: false }
+  // Seleção de destinatários: por etiqueta e/ou lista manual.
+  // Nunca inclui opt-out (SAIR) e NUNCA reenvia para quem já recebeu o convite
+  // (broadcast_sent_at) — assim cada clique manda para o PRÓXIMO lote de até 30.
+  const where: any = { opted_out: false, broadcast_sent_at: null }
   if (Array.isArray(contactIds) && contactIds.length) {
     where.id = { in: contactIds.map((x: any) => String(x)) }
   } else if (filter_tag) {
     where.tags = { has: String(filter_tag) }
   }
-  const contacts = await db.contact.findMany({ where, take: MAX_RECIPIENTS + 1 })
+  const contacts = await db.contact.findMany({
+    where, orderBy: { created_at: 'asc' }, take: MAX_RECIPIENTS
+  })
 
   if (contacts.length === 0) {
-    return Response.json({ error: 'Nenhum contato elegível para o disparo.' }, { status: 400 })
-  }
-  if (contacts.length > MAX_RECIPIENTS) {
-    return Response.json({ error: `Este disparo é para no máximo ${MAX_RECIPIENTS} contatos. Refine a seleção (por etiqueta ou escolhendo manualmente).` }, { status: 400 })
+    return Response.json({ error: 'Nenhum contato novo elegível (todos já receberam o convite ou responderam SAIR).' }, { status: 400 })
   }
 
   const creds = { phone_number_id: tenant.phone_number_id, whatsapp_token: tenant.whatsapp_token }
@@ -126,12 +140,20 @@ export async function POST(req: Request) {
           timestamp: new Date()
         }
       })
+      // Marca como convidado para não reenviar nos próximos lotes.
+      await db.contact.update({ where: { id: c.id }, data: { broadcast_sent_at: new Date() } }).catch(() => {})
       sent++
     } catch {
       failed++
     }
     await new Promise((r) => setTimeout(r, 400)) // pequeno intervalo entre envios
   }
+
+  // Quantos ainda faltam nesta seleção (para o progresso "de 30 em 30").
+  const remainingWhere: any = { opted_out: false, broadcast_sent_at: null }
+  if (Array.isArray(contactIds) && contactIds.length) remainingWhere.id = { in: contactIds.map((x: any) => String(x)) }
+  else if (filter_tag) remainingWhere.tags = { has: String(filter_tag) }
+  const remaining = await db.contact.count({ where: remainingWhere }).catch(() => 0)
 
   const broadcast = await db.broadcast.create({
     data: {
@@ -145,5 +167,5 @@ export async function POST(req: Request) {
     }
   })
 
-  return Response.json(broadcast)
+  return Response.json({ ...broadcast, sent, failed, remaining })
 }
