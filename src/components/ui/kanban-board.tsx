@@ -24,6 +24,7 @@ export interface LeadCard {
 const DATE_PRESETS = [
   { id: 'all', label: 'Todos' },
   { id: 'today', label: 'Hoje' },
+  { id: 'yesterday', label: 'Ontem' },
   { id: '7d', label: '7 dias' },
   { id: '30d', label: '30 dias' },
   { id: 'custom', label: 'Período' }
@@ -43,10 +44,13 @@ function withinPreset(iso: string, preset: string, from?: string, to?: string): 
     }
     return true
   }
+  const todayStart = (() => { const s = new Date(); s.setHours(0, 0, 0, 0); return s.getTime() })()
   if (preset === 'today') {
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
-    return d >= start.getTime()
+    return d >= todayStart
+  }
+  if (preset === 'yesterday') {
+    // Somente ontem: [00:00 de ontem, 00:00 de hoje).
+    return d >= todayStart - 24 * 60 * 60 * 1000 && d < todayStart
   }
   const days = preset === '7d' ? 7 : 30
   return d >= Date.now() - days * 24 * 60 * 60 * 1000

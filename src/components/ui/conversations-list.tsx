@@ -18,6 +18,7 @@ export interface ConversationItem {
 const DATE_PRESETS = [
   { id: 'all', label: 'Todas' },
   { id: 'today', label: 'Hoje' },
+  { id: 'yesterday', label: 'Ontem' },
   { id: '7d', label: '7 dias' },
   { id: '30d', label: '30 dias' },
   { id: 'custom', label: 'Período' }
@@ -38,12 +39,15 @@ function withinPreset(iso: string, preset: string, from?: string, to?: string): 
     return true
   }
   const now = Date.now()
-  const days = preset === 'today' ? 1 : preset === '7d' ? 7 : 30
+  const todayStart = (() => { const s = new Date(); s.setHours(0, 0, 0, 0); return s.getTime() })()
   if (preset === 'today') {
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
-    return d >= start.getTime()
+    return d >= todayStart
   }
+  if (preset === 'yesterday') {
+    // Somente ontem: [00:00 de ontem, 00:00 de hoje).
+    return d >= todayStart - 24 * 60 * 60 * 1000 && d < todayStart
+  }
+  const days = preset === '7d' ? 7 : 30
   return d >= now - days * 24 * 60 * 60 * 1000
 }
 
@@ -55,7 +59,7 @@ export function ConversationsList({
   allTags: string[]
 }) {
   const [search, setSearch] = useState('')
-  const [datePreset, setDatePreset] = useState('all')
+  const [datePreset, setDatePreset] = useState('yesterday')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [activeTags, setActiveTags] = useState<string[]>([])
