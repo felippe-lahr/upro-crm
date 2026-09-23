@@ -45,7 +45,9 @@ export default function BroadcastsPage() {
   const company = meta?.company || 'sua empresa'
   const max = meta?.max_recipients || 30
   const status = meta?.consent_status
-  const canSend = status === 'APPROVED'
+  // Habilita o envio quando o modelo está aprovado OU ainda não existe (o 1º clique
+  // cria o modelo na Meta). Só bloqueia quando está em análise (PENDING) ou recusado.
+  const canSend = status !== 'PENDING' && status !== 'REJECTED'
 
   const preview = `Olá [nome], somos da ${company}. ${message || '[sua mensagem]'}. Se tiver interesse digite SIM para continuar. Caso não queira mais receber esta mensagem digite SAIR.`
 
