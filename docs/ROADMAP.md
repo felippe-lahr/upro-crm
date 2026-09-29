@@ -20,7 +20,8 @@ Estado e próximos passos do produto. Atualizar conforme as coisas andam.
 - **Contatos — etiquetar em lote + etiquetas sincronizadas.** Lista de Contatos com seleção múltipla (checkbox + selecionar todos) e barra para **aplicar/remover etiqueta** (`/api/contacts/tag`). Campo de etiqueta (em lote e na importação CSV) com **dropdown das etiquetas existentes** + digitação de nova; etiqueta nova entra em `lead_tags` e passa a aparecer nas Configurações e nos Disparos.
 - **Disparos — 1º envio liberado.** O botão só habilitava com o modelo APROVADO, mas o modelo é criado no 1º envio (impasse). Agora libera com modelo inexistente (cria) ou aprovado; bloqueia só em análise/recusado.
 - **Áudio sem transcrição não fica em silêncio.** Se a transcrição falha/está desligada, o bot pede para o cliente escrever.
-- **Conversas — filtro "Ontem"** (default da tela de Conversas) e também disponível no Funil (lá o default segue "Todos").
+- **Conversas — fila numerada e ordem configurável.** Cada conversa do filtro atual mostra um selo com a posição (**1º, 2º…**). Chave **Ordem**: *Recentes primeiro* (1º = mensagem mais nova) ou *Fila de chegada* (1º = parada há mais tempo; novas entram no fim). Preferência guardada no aparelho (`localStorage`). Filtro padrão da tela: **Hoje**. Obs.: a fila usa o horário da última mensagem; se preferir o início da conversa no dia, ajustar.
+- **Filtro "Ontem"** disponível em Conversas e no Funil (no Funil o padrão segue "Todos").
 - **Dashboard — "Conversas hoje"** (contatos com mensagem hoje, bate com a aba Conversas) no lugar de "Mensagens hoje", com o dia no fuso de São Paulo.
 - **Funil — personalização liberada para Promaster** (antes só Pro, na API e na UI).
 - **Configurações — número do WhatsApp visível.** Mostra o número conectado e o nome verificado (Graph API, com preenchimento automático para contas já conectadas); limpa ao desconectar.
