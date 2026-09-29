@@ -12,6 +12,8 @@ export default async function ContactsPage() {
     id: string
     name: string | null
     phone: string
+    email: string | null
+    ai_summary: string | null
     tags: string[]
     created_at: Date
   }[] = []
@@ -19,9 +21,11 @@ export default async function ContactsPage() {
   if (schemaName) {
     try {
       const db = getTenantPrisma(schemaName)
+      // Campos enxutos; teto alto para filtros e exportação cobrirem a base toda.
       contacts = await db.contact.findMany({
         orderBy: { created_at: 'desc' },
-        take: 200
+        take: 5000,
+        select: { id: true, name: true, phone: true, email: true, ai_summary: true, tags: true, created_at: true }
       })
     } catch {
       // schema not provisioned
@@ -65,6 +69,8 @@ export default async function ContactsPage() {
             id: c.id,
             name: c.name,
             phone: c.phone,
+            email: c.email,
+            ai_summary: c.ai_summary,
             tags: c.tags || [],
             created_at: c.created_at.toISOString()
           }))}

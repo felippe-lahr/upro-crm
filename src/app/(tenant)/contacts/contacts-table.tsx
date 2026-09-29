@@ -1,14 +1,53 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Download } from 'lucide-react'
 import { DeleteContact } from './contact-actions'
+import { DatePickerBR } from '@/components/ui/date-picker-br'
+
+const PERIODS = [
+  { id: 'all', label: 'Todos' },
+  { id: 'today', label: 'Hoje' },
+  { id: 'yesterday', label: 'Ontem' },
+  { id: '7d', label: '7 dias' },
+  { id: '30d', label: '30 dias' },
+  { id: 'custom', label: 'Período' }
+]
+const DAY = 24 * 60 * 60 * 1000
+const RENDER_LIMIT = 300
+
+function inPeriod(iso: string, p: string, from: string, to: string): boolean {
+  if (p === 'all') return true
+  const d = new Date(iso).getTime()
+  const today = (() => { const s = new Date(); s.setHours(0, 0, 0, 0); return s.getTime() })()
+  if (p === 'today') return d >= today
+  if (p === 'yesterday') return d >= today - DAY && d < today
+  if (p === '7d') return d >= Date.now() - 7 * DAY
+  if (p === '30d') return d >= Date.now() - 30 * DAY
+  if (from && d < new Date(from + 'T00:00:00').getTime()) return false
+  if (to && d > new Date(to + 'T23:59:59').getTime()) return false
+  return true
+}
+
+// CSV no padrão do Excel em português: separador ";" e BOM UTF-8 (acentos corretos).
+function toCsv(rows: ContactRow[]): string {
+  const esc = (v: string | null | undefined) => {
+    const t = String(v ?? '').replace(/\r?\n/g, ' ').trim()
+    return /[";]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
+  }
+  const lines = [['Nome', 'Telefone', 'E-mail', 'Resumo da conversa'].join(';')]
+  for (const r of rows) lines.push([esc(r.name), esc(r.phone), esc(r.email), esc(r.ai_summary)].join(';'))
+  return '\uFEFF' + lines.join('\r\n')
+}
 
 export interface ContactRow {
   id: string
   name: string | null
   phone: string
+  email?: string | null
+  ai_summary?: string | null
   tags: string[]
   created_at: string // ISO
 }
@@ -19,8 +58,40 @@ export function ContactsTable({ contacts, existingTags = [] }: { contacts: Conta
   const [tag, setTag] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [period, setPeriod] = useState('all')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [filterTags, setFilterTags] = useState<string[]>([])
 
-  const allChecked = contacts.length > 0 && selected.size === contacts.length
+  const allTags = useMemo(() => Array.from(new Set(contacts.flatMap((c) => c.tags || []))).sort(), [contacts])
+  const filtered = useMemo(
+    () => contacts.filter((c) =>
+      inPeriod(c.created_at, period, from, to) &&
+      (filterTags.length === 0 || filterTags.some((t) => (c.tags || []).includes(t)))
+    ),
+    [contacts, period, from, to, filterTags]
+  )
+  const shown = filtered.slice(0, RENDER_LIMIT)
+  const allChecked = filtered.length > 0 && filtered.every((c) => selected.has(c.id))
+
+  function toggleFilterTag(t: string) {
+    setFilterTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
+  }
+
+  function exportCsv() {
+    const rows = selected.size > 0 ? filtered.filter((c) => selected.has(c.id)) : filtered
+    if (!rows.length) return
+    const blob = new Blob([toCsv(rows)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `contatos-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    setMsg(`${rows.length} contato(s) exportado(s).`)
+  }
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -31,7 +102,7 @@ export function ContactsTable({ contacts, existingTags = [] }: { contacts: Conta
     })
   }
   function toggleAll() {
-    setSelected(allChecked ? new Set() : new Set(contacts.map((c) => c.id)))
+    setSelected(allChecked ? new Set() : new Set(filtered.map((c) => c.id)))
   }
 
   async function applyTag(action: 'add' | 'remove') {
@@ -60,6 +131,63 @@ export function ContactsTable({ contacts, existingTags = [] }: { contacts: Conta
 
   return (
     <div>
+      {/* Filtros */}
+      <div className="mb-3 flex flex-col gap-3 rounded-2xl border border-line bg-surface p-3.5">
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1">
+          {PERIODS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              className={`flex-shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors ${
+                period === p.id ? 'bg-brand text-white' : 'bg-surface2 text-muted hover:text-fg'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {period === 'custom' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-faint">De</span>
+            <DatePickerBR value={from} max={to || undefined} onChange={setFrom} />
+            <span className="text-xs text-faint">até</span>
+            <DatePickerBR value={to} min={from || undefined} onChange={setTo} />
+          </div>
+        )}
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-faint">Etiquetas:</span>
+            {allTags.map((t) => (
+              <button
+                key={t}
+                onClick={() => toggleFilterTag(t)}
+                className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                  filterTags.includes(t) ? 'bg-brand text-white' : 'bg-brand/10 text-brand hover:bg-brand/20'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+            {filterTags.length > 0 && (
+              <button onClick={() => setFilterTags([])} className="text-xs text-faint hover:text-red-400">limpar</button>
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+          <span className="text-xs text-muted">
+            {filtered.length} contato(s) no filtro{selected.size > 0 ? ` · ${selected.size} selecionado(s)` : ''}
+          </span>
+          <button
+            onClick={exportCsv}
+            disabled={filtered.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl border border-line px-3.5 py-2 text-sm font-semibold text-fg transition-colors hover:border-brand/50 hover:text-brand disabled:opacity-40"
+          >
+            <Download className="h-4 w-4" />
+            Exportar CSV ({selected.size > 0 ? selected.size : filtered.length})
+          </button>
+        </div>
+      </div>
+
       {/* Barra de ações em lote (aparece quando há seleção) */}
       {selected.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand/30 bg-brand/5 p-3">
@@ -113,7 +241,7 @@ export function ContactsTable({ contacts, existingTags = [] }: { contacts: Conta
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {contacts.map((c) => (
+            {shown.map((c) => (
               <tr key={c.id} className={`transition-colors hover:bg-surface2 ${selected.has(c.id) ? 'bg-brand/5' : ''}`}>
                 <td className="px-4 py-4">
                   <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} aria-label={`Selecionar ${c.name || c.phone}`} />
@@ -145,6 +273,14 @@ export function ContactsTable({ contacts, existingTags = [] }: { contacts: Conta
           </tbody>
         </table>
       </div>
+      {filtered.length === 0 && (
+        <p className="mt-4 text-center text-sm text-faint">Nenhum contato com esses filtros.</p>
+      )}
+      {filtered.length > RENDER_LIMIT && (
+        <p className="mt-3 text-center text-xs text-faint">
+          Mostrando {RENDER_LIMIT} de {filtered.length}. A seleção em lote e a exportação valem para todos os {filtered.length}.
+        </p>
+      )}
     </div>
   )
 }
