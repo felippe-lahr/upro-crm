@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { DatePickerBR } from './date-picker-br'
 
@@ -68,8 +68,19 @@ export function ConversationsList({
     setActiveTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
   }
 
+  // Ordem de exibição (e da numeração): recentes primeiro ou fila de chegada.
+  // Preferência guardada no aparelho.
+  const [order, setOrder] = useState<'recent' | 'queue'>('recent')
+  useEffect(() => {
+    try { if (localStorage.getItem('conv-order') === 'queue') setOrder('queue') } catch { /* sem storage */ }
+  }, [])
+  function changeOrder(o: 'recent' | 'queue') {
+    setOrder(o)
+    try { localStorage.setItem('conv-order', o) } catch { /* sem storage */ }
+  }
+
   const filtered = useMemo(() => {
-    return conversations.filter((c) => {
+    const list = conversations.filter((c) => {
       if (search.trim()) {
         const q = search.toLowerCase()
         if (!(c.name || '').toLowerCase().includes(q) && !c.phone.includes(q)) return false
@@ -78,7 +89,9 @@ export function ConversationsList({
       if (activeTags.length > 0 && !activeTags.some((t) => c.tags.includes(t))) return false
       return true
     })
-  }, [conversations, search, datePreset, customFrom, customTo, activeTags])
+    const t = (c: ConversationItem) => new Date(c.lastTimestamp).getTime()
+    return list.sort((a, b) => (order === 'queue' ? t(a) - t(b) : t(b) - t(a)))
+  }, [conversations, search, datePreset, customFrom, customTo, activeTags, order])
 
   return (
     <div>
@@ -101,6 +114,24 @@ export function ConversationsList({
                 }`}
               >
                 {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-faint">Ordem:</span>
+          <div className="flex overflow-hidden rounded-lg border border-line" role="radiogroup" aria-label="Ordem da lista">
+            {([['recent', 'Recentes primeiro'], ['queue', 'Fila de chegada']] as const).map(([id, label]) => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={order === id}
+                onClick={() => changeOrder(id)}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${
+                  order === id ? 'bg-brand text-white' : 'bg-surface text-muted hover:text-fg'
+                }`}
+              >
+                {label}
               </button>
             ))}
           </div>
