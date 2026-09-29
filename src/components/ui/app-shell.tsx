@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, KanbanSquare, MessageSquare, Users, Megaphone, Settings, ShieldCheck,
-  CalendarDays, ClipboardList, Menu, X, type LucideIcon
+  CalendarDays, ClipboardList, UsersRound, Menu, X, type LucideIcon
 } from 'lucide-react'
 import { SignOutButton } from './sign-out-button'
 import { ThemeToggle } from './theme-toggle'
@@ -80,6 +80,7 @@ export function AppShell({
     { href: '/contacts', icon: Users, label: 'Contatos' },
     ...(ordersEnabled ? [{ href: '/orders', icon: ClipboardList, label: 'Pedidos' }] : []),
     { href: '/broadcasts', icon: Megaphone, label: 'Disparos' },
+    { href: '/team', icon: UsersRound, label: 'Equipe' },
     { href: '/settings', icon: Settings, label: 'Configurações' }
   ]
 
