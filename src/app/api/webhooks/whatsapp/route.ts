@@ -274,7 +274,13 @@ async function processIncomingMessage(
       where: { id: dbContact.id },
       data: { opted_out: true, tags }
     }).catch(() => {})
-  } else if (answer === 'SIM' && !(dbContact.tags || []).includes('consentiu')) {
+  } else if (
+    answer === 'SIM' &&
+    // Só conta como consentimento se a pessoa recebeu o convite de disparo.
+    // Sem isso, qualquer "sim" dito ao bot numa conversa normal virava "consentiu".
+    (dbContact as any).broadcast_sent_at &&
+    !(dbContact.tags || []).includes('consentiu')
+  ) {
     await tenantPrisma.contact.update({
       where: { id: dbContact.id },
       data: { tags: [...(dbContact.tags || []), 'consentiu'] }
