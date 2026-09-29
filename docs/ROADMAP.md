@@ -278,6 +278,36 @@ Rotina para renovar o token antes de expirar, evitando desconexão silenciosa.
 
 Combinando 1+2+3 dá pra **cortar o custo pela metade ou mais** sem perda perceptível. **Ordem de implementação sugerida (quando decidir):** caching → extract (Haiku + throttle) → effort/histórico → logar `usage` por tenant.
 
+## 🏖️ Plano 4 (nicho) — Bot para aluguel por temporada (Airbnb/Booking via iCal)
+
+**Ideia.** Um plano/vertical em que o bot com IA responde **disponibilidade de imóveis** por WhatsApp ("tem vaga no apê da praia de 10 a 15/01?"), cota e fecha uma **reserva direta** com **sinal via Pix**. Reaproveita muito do que já existe (Agenda, Pix, bot com tools).
+
+**⚠️ Realidade da integração (decidido — não iludir o cliente):**
+- O **Airbnb não tem API pública/aberta** para consultar disponibilidade. A **API de parceiros** (channel managers) é **por convite e aprovação rigorosa** — fora de alcance no curto prazo.
+- **Scraping do site é proibido** (ToS), instável e arriscado — **descartado**.
+- O caminho legítimo e padrão do setor é o **calendário iCal (.ics)**, que Airbnb, Booking, VRBO e reserva direta expõem. **Dois feeds independentes, cada um um sentido:**
+  1. **Import (ler):** o anfitrião cola o link iCal do anúncio → UProCRM sabe as **datas ocupadas** do Airbnb. (Airbnb → nós)
+  2. **Export (bloquear):** UProCRM **publica** um iCal com as reservas diretas → o anfitrião adiciona esse link em "Importar calendário" no Airbnb → o **Airbnb bloqueia** essas datas. (nós → Airbnb)
+
+**⏱️ Limitação central — o bloqueio no Airbnb NÃO é em tempo real.** O Airbnb **relê** os calendários importados só de tempos em tempos (historicamente a cada algumas horas). Fluxo: Pix pago → data bloqueada **na nossa agenda na hora** → entra no nosso iCal → Airbnb só bloqueia **na próxima releitura** (minutos a horas depois). **Nessa janela há risco de overbooking.** Tempo real garantido só com a API de parceiros (indisponível).
+
+**Desenho seguro (mitiga overbooking):**
+- iCal **nos dois sentidos** (lê o Airbnb + publica o nosso para o Airbnb importar).
+- Reserva via Pix tratada como **pré-reserva/solicitação** que o anfitrião **confirma** — OU confirmação automática **apenas para datas com folga** (ex.: +X dias de antecedência), nunca para datas muito próximas (mesmo dia / próximos dias), onde o atraso de sync morde.
+- Buffer configurável entre reservas.
+
+**O que já existe e é reaproveitado:** Agenda (datas/bloqueios → disponibilidade do imóvel), sinal via **Pix** (reserva direta — inclusive argumento de venda: anfitrião economiza a taxa do Airbnb em hóspedes diretos/recorrentes), **bot com tools** (Anthropic).
+
+**A construir:**
+- **Modelo de dados (tenant):** `Property` (imóvel: nome, descrição, preço/diária, capacidade, buffer, política de confirmação auto/manual) + `PropertyCalendar` (fonte iCal: `ical_url`, `source` = airbnb/booking/vrbo/direto, `last_synced_at`) + reservas diretas ligadas ao imóvel.
+- **Import iCal:** parser `.ics` (sem dep pesada) + **cron** que relê os feeds e materializa as **datas ocupadas** por imóvel. Índice por período.
+- **Export iCal:** rota pública que gera um `.ics` das reservas diretas confirmadas do imóvel (por token opaco, como o `/api/pedido/[token]`), para o anfitrião importar no Airbnb.
+- **Tool do bot:** `consultar_disponibilidade(imovel, data_inicio, data_fim)` (lê o calendário mesclado) e `pre_reservar(imovel, datas)` (cria a pré-reserva + cobra o sinal Pix, reaproveitando o fluxo de agendamento com sinal).
+- **UI do tenant:** cadastro de imóveis + colar links iCal por plataforma + status de sync; painel de reservas por imóvel.
+- **Admin:** entitlement `feature_rentals` (liberado por tenant), como as demais features de nicho.
+
+**Limitações a comunicar ao cliente (na tela):** iCal lê disponibilidade (ocupado/livre), **não** cria/edita reserva no Airbnb e **não** garante bloqueio instantâneo; para segurança total contra overbooking, usar confirmação manual/folga.
+
 ## 🔒 Segurança — revisão para comercialização (ago/2026)
 
 **✅ Feito e verificado nesta rodada:**
