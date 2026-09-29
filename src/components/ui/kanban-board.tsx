@@ -362,9 +362,22 @@ export function KanbanBoard({
                     <span className="truncate text-sm font-medium text-fg">
                       {lead.name || lead.phone}
                     </span>
+                    {lead.assignedTo && (() => {
+                      const m = memberById.get(lead.assignedTo)
+                      const who = lead.assignedTo === meId ? 'Você' : (m?.name || m?.email || 'Ex-integrante')
+                      return (
+                        <span
+                          title={`Responsável: ${who}`}
+                          className="ml-auto grid h-5 w-5 flex-shrink-0 place-items-center rounded-full text-[9px] font-bold text-white"
+                          style={{ background: avatarColor(m?.email || lead.assignedTo) }}
+                        >
+                          {initials(m?.name, m?.email || '?')}
+                        </span>
+                      )
+                    })()}
                     <button
                       onClick={(e) => { e.stopPropagation(); setMenuId(menuId === lead.id ? null : lead.id) }}
-                      className="ml-auto flex-shrink-0 rounded-md p-1.5 text-faint transition-colors hover:bg-brand/5 hover:text-brand"
+                      className={`${lead.assignedTo ? '' : 'ml-auto '}flex-shrink-0 rounded-md p-1.5 text-faint transition-colors hover:bg-brand/5 hover:text-brand`}
                       title="Mover para outra etapa"
                       aria-label="Mover"
                     >
@@ -425,46 +438,6 @@ export function KanbanBoard({
                     )}
                   </div>
 
-                  {/* Responsável */}
-                  <div className="mt-2.5 flex items-center gap-2 border-t border-line pt-2.5">
-                    {(() => {
-                      const m = lead.assignedTo ? memberById.get(lead.assignedTo) : null
-                      if (!lead.assignedTo) {
-                        return (
-                          <>
-                            <span className="flex-1 text-xs text-faint">Sem responsável</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); assignLead(lead.id, meId) }}
-                              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600"
-                            >
-                              Puxar pra mim
-                            </button>
-                          </>
-                        )
-                      }
-                      const mine = lead.assignedTo === meId
-                      const label = mine ? 'Você' : (m?.name || m?.email || 'Ex-integrante')
-                      return (
-                        <>
-                          <span
-                            className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[10px] font-bold text-white"
-                            style={{ background: avatarColor(m?.email || lead.assignedTo) }}
-                          >
-                            {initials(m?.name, m?.email || '?')}
-                          </span>
-                          <span className="flex-1 truncate text-xs font-semibold text-fg">{label}</span>
-                          {mine && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); assignLead(lead.id, null) }}
-                              className="rounded-lg bg-surface2 px-2.5 py-1 text-[11px] font-semibold text-muted hover:text-fg"
-                            >
-                              Soltar
-                            </button>
-                          )}
-                        </>
-                      )
-                    })()}
-                  </div>
                 </div>
               ))}
               {stageLeads.length === 0 && (
