@@ -38,7 +38,8 @@ export default async function FunnelPage() {
         lastMessage: lastByContact.get(c.id) ?? null,
         tags: c.tags || [],
         lossReason: c.loss_reason || null,
-        createdAt: c.created_at.toISOString()
+        createdAt: c.created_at.toISOString(),
+        assignedTo: c.assigned_to || null
       }))
     } catch {
       // schema não provisionado
@@ -54,6 +55,17 @@ export default async function FunnelPage() {
   const lossReasons = Array.isArray(tenant?.loss_reasons) ? (tenant!.loss_reasons as string[]) : []
   const availableTags = Array.isArray(tenant?.lead_tags) ? (tenant!.lead_tags as string[]) : []
 
+  // Equipe da conta (para mostrar o responsável e reatribuir).
+  const meId = (session!.user as any).id as string
+  const isAdmin = ['admin', 'superadmin'].includes((session!.user as any).role)
+  const team = tenantId
+    ? await globalPrisma.tenantUser.findMany({
+        where: { tenant_id: tenantId },
+        select: { id: true, name: true, email: true },
+        orderBy: { created_at: 'asc' }
+      }).catch(() => [])
+    : []
+
   return (
     <div className="p-4 sm:p-8">
       <div className="mb-6">
@@ -63,7 +75,7 @@ export default async function FunnelPage() {
         </p>
       </div>
 
-      <KanbanBoard initialLeads={leads} stages={stages} lossReasons={lossReasons} isPro={isPro} availableTags={availableTags} />
+      <KanbanBoard initialLeads={leads} stages={stages} lossReasons={lossReasons} isPro={isPro} availableTags={availableTags} team={team} meId={meId} isAdmin={isAdmin} />
       {leads.length === 0 && (
         <p className="mt-4 text-center text-sm text-faint">
           Os contatos do WhatsApp aparecem aqui automaticamente como leads.

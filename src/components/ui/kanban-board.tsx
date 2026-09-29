@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { MoveRight } from 'lucide-react'
 import { FUNNEL_STAGES, LOST_STAGE_ID, type Stage } from '@/lib/funnel'
 import { DatePickerBR } from './date-picker-br'
+import { avatarColor, initials } from '@/lib/avatar'
+
+export interface TeamMember { id: string; name: string | null; email: string }
 
 export interface LeadCard {
   id: string
@@ -19,6 +22,7 @@ export interface LeadCard {
   tags: string[]
   lossReason?: string | null
   createdAt: string
+  assignedTo?: string | null
 }
 
 const DATE_PRESETS = [
@@ -61,13 +65,19 @@ export function KanbanBoard({
   stages = FUNNEL_STAGES,
   lossReasons = [],
   isPro = false,
-  availableTags = []
+  availableTags = [],
+  team = [],
+  meId = '',
+  isAdmin = false
 }: {
   initialLeads: LeadCard[]
   stages?: Stage[]
   lossReasons?: string[]
   isPro?: boolean
   availableTags?: string[]
+  team?: TeamMember[]
+  meId?: string
+  isAdmin?: boolean
 }) {
   const [leads, setLeads] = useState<LeadCard[]>(initialLeads)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -80,6 +90,32 @@ export function KanbanBoard({
   const [config, setConfig] = useState(false)
   const [menuId, setMenuId] = useState<string | null>(null) // card com o menu "mover" aberto (mobile)
   const [detailId, setDetailId] = useState<string | null>(null) // card com o painel de detalhes aberto
+  const [owner, setOwner] = useState<'all' | 'mine' | 'none'>('all') // filtro por responsável
+  const [assignError, setAssignError] = useState('')
+
+  const memberById = useMemo(() => new Map(team.map((m) => [m.id, m])), [team])
+
+  // Atribui/solta o responsável — otimista, com rollback e aviso se outra pessoa assumiu antes.
+  async function assignLead(contactId: string, userId: string | null) {
+    const prev = leads
+    setAssignError('')
+    setLeads((ls) => ls.map((l) => (l.id === contactId ? { ...l, assignedTo: userId } : l)))
+    try {
+      const res = await fetch('/api/leads/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactId, userId })
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setAssignError(d.error || 'Não foi possível atribuir o lead.')
+        setLeads(prev)
+      }
+    } catch {
+      setAssignError('Erro de conexão. Tente de novo.')
+      setLeads(prev)
+    }
+  }
 
   const detailLead = useMemo(() => leads.find((l) => l.id === detailId) || null, [leads, detailId])
 
@@ -119,9 +155,11 @@ export function KanbanBoard({
       leads.filter((l) => {
         if (!withinPreset(l.createdAt, datePreset, customFrom, customTo)) return false
         if (activeTags.length > 0 && !activeTags.some((t) => l.tags.includes(t))) return false
+        if (owner === 'mine' && l.assignedTo !== meId) return false
+        if (owner === 'none' && l.assignedTo) return false
         return true
       }),
-    [leads, datePreset, customFrom, customTo, activeTags]
+    [leads, datePreset, customFrom, customTo, activeTags, owner, meId]
   )
 
   function toggleTag(t: string) {
@@ -165,6 +203,27 @@ export function KanbanBoard({
 
   return (
     <div>
+      {/* Filtro por responsável */}
+      <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+        {([
+          ['all', 'Todos', leads.length],
+          ['mine', 'Meus leads', leads.filter((l) => l.assignedTo === meId).length],
+          ['none', 'Não atribuídos', leads.filter((l) => !l.assignedTo).length]
+        ] as const).map(([id, label, n]) => (
+          <button
+            key={id}
+            onClick={() => setOwner(id)}
+            className={`flex flex-shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors ${
+              owner === id ? 'border-brand bg-brand text-white' : 'border-line bg-surface text-muted hover:text-fg'
+            }`}
+          >
+            {label}
+            <span className={`rounded-full px-2 text-[11px] font-bold ${owner === id ? 'bg-white/25 text-white' : 'bg-surface2 text-muted'}`}>{n}</span>
+          </button>
+        ))}
+      </div>
+      {assignError && <p className="mb-3 rounded-xl bg-red-500/10 px-3.5 py-2.5 text-sm text-red-500">{assignError}</p>}
+
       {/* Filtros */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="flex overflow-hidden rounded-lg border border-line">
@@ -245,6 +304,10 @@ export function KanbanBoard({
           lead={detailLead}
           stages={stages}
           availableTags={availableTags}
+          team={team}
+          meId={meId}
+          isAdmin={isAdmin}
+          onAssign={(userId) => assignLead(detailLead.id, userId)}
           onClose={() => setDetailId(null)}
           onSave={(patch) => updateLead(detailLead.id, patch)}
         />
@@ -288,9 +351,9 @@ export function KanbanBoard({
                   onDragStart={() => setDragId(lead.id)}
                   onDragEnd={() => setDragId(null)}
                   onClick={() => { if (!dragId) setDetailId(lead.id) }}
-                  className={`cursor-pointer rounded-xl border border-line bg-surface p-3 shadow-sm ${
-                    dragId === lead.id ? 'opacity-50' : ''
-                  }`}
+                  className={`cursor-pointer rounded-xl border bg-surface p-3 shadow-sm ${
+                    lead.assignedTo && lead.assignedTo === meId ? 'border-brand/60 ring-1 ring-brand/30' : 'border-line'
+                  } ${dragId === lead.id ? 'opacity-50' : ''}`}
                 >
                   <div className="mb-1 flex items-center gap-2">
                     <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-brand/15 text-xs font-medium text-brand">
@@ -361,6 +424,47 @@ export function KanbanBoard({
                       </span>
                     )}
                   </div>
+
+                  {/* Responsável */}
+                  <div className="mt-2.5 flex items-center gap-2 border-t border-line pt-2.5">
+                    {(() => {
+                      const m = lead.assignedTo ? memberById.get(lead.assignedTo) : null
+                      if (!lead.assignedTo) {
+                        return (
+                          <>
+                            <span className="flex-1 text-xs text-faint">Sem responsável</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); assignLead(lead.id, meId) }}
+                              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600"
+                            >
+                              Puxar pra mim
+                            </button>
+                          </>
+                        )
+                      }
+                      const mine = lead.assignedTo === meId
+                      const label = mine ? 'Você' : (m?.name || m?.email || 'Ex-integrante')
+                      return (
+                        <>
+                          <span
+                            className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[10px] font-bold text-white"
+                            style={{ background: avatarColor(m?.email || lead.assignedTo) }}
+                          >
+                            {initials(m?.name, m?.email || '?')}
+                          </span>
+                          <span className="flex-1 truncate text-xs font-semibold text-fg">{label}</span>
+                          {mine && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); assignLead(lead.id, null) }}
+                              className="rounded-lg bg-surface2 px-2.5 py-1 text-[11px] font-semibold text-muted hover:text-fg"
+                            >
+                              Soltar
+                            </button>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </div>
                 </div>
               ))}
               {stageLeads.length === 0 && (
@@ -400,10 +504,14 @@ function LossReasonModal({ reasons, onPick, onCancel }: {
   )
 }
 
-function LeadDetailModal({ lead, stages, availableTags, onClose, onSave }: {
+function LeadDetailModal({ lead, stages, availableTags, team, meId, isAdmin, onAssign, onClose, onSave }: {
   lead: LeadCard
   stages: Stage[]
   availableTags: string[]
+  team: TeamMember[]
+  meId: string
+  isAdmin: boolean
+  onAssign: (userId: string | null) => void
   onClose: () => void
   onSave: (patch: Partial<LeadCard>) => void
 }) {
@@ -455,6 +563,53 @@ function LeadDetailModal({ lead, stages, availableTags, onClose, onSave }: {
 
         {/* Corpo rolável */}
         <div className="flex-1 overflow-y-auto p-5">
+        {/* Responsável */}
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-medium text-muted">Responsável</label>
+          {(() => {
+            const m = team.find((t) => t.id === lead.assignedTo)
+            const mine = !!lead.assignedTo && lead.assignedTo === meId
+            return (
+              <div className="flex items-center gap-2.5 rounded-xl border border-line bg-surface2 p-2.5">
+                {lead.assignedTo ? (
+                  <span
+                    className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-xs font-bold text-white"
+                    style={{ background: avatarColor(m?.email || lead.assignedTo) }}
+                  >
+                    {initials(m?.name, m?.email || '?')}
+                  </span>
+                ) : (
+                  <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full border border-dashed border-line text-xs text-faint">?</span>
+                )}
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">
+                  {lead.assignedTo ? (mine ? 'Você' : (m?.name || m?.email || 'Ex-integrante')) : 'Sem responsável'}
+                </span>
+                {isAdmin ? (
+                  <select
+                    value={lead.assignedTo || ''}
+                    onChange={(e) => onAssign(e.target.value || null)}
+                    className="rounded-lg border border-line bg-background px-2.5 py-2 text-xs font-semibold text-fg focus:border-brand focus:outline-none"
+                    aria-label="Atribuir a"
+                  >
+                    <option value="">Ninguém</option>
+                    {team.map((t) => (
+                      <option key={t.id} value={t.id}>{t.id === meId ? 'Você' : (t.name || t.email)}</option>
+                    ))}
+                  </select>
+                ) : !lead.assignedTo ? (
+                  <button onClick={() => onAssign(meId)} className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white hover:bg-brand-600">
+                    Puxar pra mim
+                  </button>
+                ) : mine ? (
+                  <button onClick={() => onAssign(null)} className="rounded-lg bg-background px-3 py-2 text-xs font-semibold text-muted hover:text-fg">
+                    Soltar
+                  </button>
+                ) : null}
+              </div>
+            )
+          })()}
+        </div>
+
         {lead.ai_summary && (
           <div className="mb-4">
             <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted"><span>✨</span> Resumo (IA)</label>
