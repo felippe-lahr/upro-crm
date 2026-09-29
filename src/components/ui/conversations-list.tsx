@@ -59,7 +59,7 @@ export function ConversationsList({
   allTags: string[]
 }) {
   const [search, setSearch] = useState('')
-  const [datePreset, setDatePreset] = useState('yesterday')
+  const [datePreset, setDatePreset] = useState('today')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [activeTags, setActiveTags] = useState<string[]>([])
@@ -156,14 +156,23 @@ export function ConversationsList({
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-          {filtered.map((conv) => (
+          {filtered.map((conv, i) => (
             <Link
               key={conv.contactId}
               href={`/conversations/${conv.contactId}`}
               className="flex items-center gap-4 border-b border-line px-6 py-4 transition-colors last:border-0 hover:bg-surface2"
             >
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand/15 font-medium text-brand">
-                {(conv.name || conv.phone)[0].toUpperCase()}
+              <div className="relative flex-shrink-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/15 font-medium text-brand">
+                  {(conv.name || conv.phone)[0].toUpperCase()}
+                </div>
+                {/* Posição na fila do filtro atual (1º = topo da lista) */}
+                <span
+                  className="absolute -left-1.5 -top-1.5 grid h-5 min-w-[20px] place-items-center rounded-full border-2 border-surface bg-fg px-1 text-[10px] font-bold tabular-nums text-background"
+                  aria-label={`${i + 1}º da fila`}
+                >
+                  {i + 1}º
+                </span>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
