@@ -86,10 +86,15 @@ async function tenantCheck(email: string) {
   let teste_ia: any = null
   const last: any = recent[0]
   if (last) {
+    // Janela em volta do áudio: 10 min antes até 15 min depois.
+    const at = new Date(last.timestamp).getTime()
     const msgs = await db.message.findMany({
-      where: { contact_id: last.contact_id },
+      where: {
+        contact_id: last.contact_id,
+        timestamp: { gte: new Date(at - 10 * 60 * 1000), lte: new Date(at + 15 * 60 * 1000) }
+      },
       orderBy: { timestamp: 'desc' },
-      take: 12,
+      take: 30,
       select: { direction: true, sent_by_bot: true, type: true, content: true, timestamp: true }
     }).catch(() => [])
     const conv = await db.conversation.findFirst({
@@ -136,6 +141,7 @@ async function tenantCheck(email: string) {
     roteamento: routing,
     groq_key_presente: !!(process.env.GROQ_API_KEY || '').trim(),
     feature_orders: tenant.feature_orders,
+    ultima_falha_do_bot: (tenant as any).last_bot_error ?? 'nenhuma registrada',
     ultimos_audios: recent.map((m: any) => ({ quando: m.timestamp, conteudo: m.content })),
     conversa_do_ultimo_audio: conversa,
     teste_ia_com_ultimo_audio: teste_ia,

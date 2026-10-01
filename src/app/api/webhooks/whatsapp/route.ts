@@ -328,10 +328,21 @@ async function processIncomingMessage(
         await processBotResponse(tenant, resolvedText, dbContact, message.from)
       } catch (err: any) {
         console.error('[whatsapp webhook] processBotResponse failed', err?.message || String(err), err?.stack)
+        // Registra a falha para diagnóstico (antes não sobrava rastro).
+        globalPrisma.tenant.update({
+          where: { id: tenant.id },
+          data: { last_bot_error: {
+            at: new Date().toISOString(), contact_id: dbContact.id, type: message.type,
+            error: String(err?.message || err).slice(0, 500),
+            status: err?.status ?? null
+          } } as any
+        }).catch(() => {})
         // Fallback: nunca deixa o cliente no silêncio quando a IA falha/expira.
-        await sendWhatsAppMessage(tenant, message.from,
-          'Oi! Estou com uma instabilidade momentânea por aqui. Já já te respondo — ou, se preferir, me manda a mensagem de novo. 🙏'
-        ).catch(() => {})
+        const fallback = 'Oi! Estou com uma instabilidade momentânea por aqui. Já já te respondo — ou, se preferir, me manda a mensagem de novo. 🙏'
+        await sendWhatsAppMessage(tenant, message.from, fallback).catch(() => {})
+        await tenantPrisma.message.create({
+          data: { contact_id: dbContact.id, direction: 'outbound', type: 'text', content: fallback, sent_by_bot: true, timestamp: new Date() }
+        }).catch(() => {})
       }
       try {
         await extractContactInfo(tenant, dbContact)
@@ -341,9 +352,12 @@ async function processIncomingMessage(
     } else if (audioUnresolved) {
       // Áudio que não pôde ser transcrito (transcrição desligada ou falhou):
       // nunca fica em silêncio — pede para o cliente escrever.
-      await sendWhatsAppMessage(tenant, message.from,
-        'Recebi seu áudio, mas não consegui ouvi-lo agora. 🙏 Pode me escrever sua mensagem por texto? Assim consigo te responder na hora.'
-      ).catch((e) => console.error('[whatsapp webhook] aviso de áudio falhou', e?.message || e))
+      const notice = 'Recebi seu áudio, mas não consegui ouvi-lo agora. 🙏 Pode me escrever sua mensagem por texto? Assim consigo te responder na hora.'
+      await sendWhatsAppMessage(tenant, message.from, notice)
+        .catch((e) => console.error('[whatsapp webhook] aviso de áudio falhou', e?.message || e))
+      await tenantPrisma.message.create({
+        data: { contact_id: dbContact.id, direction: 'outbound', type: 'text', content: notice, sent_by_bot: true, timestamp: new Date() }
+      }).catch(() => {})
     }
     return
   }
