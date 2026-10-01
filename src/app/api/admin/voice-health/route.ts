@@ -1,17 +1,23 @@
 export const dynamic = 'force-dynamic'
 
 import { isValidAdminToken } from '@/lib/admin-auth'
+import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
+import { transcribeWhatsAppAudioDetailed } from '@/lib/transcribe'
 
 /**
  * Diagnóstico da transcrição de voz (Groq Whisper).
- * Uso: /api/admin/voice-health?token=<ADMIN_API_SECRET>
- * Confirma se a GROQ_API_KEY está presente/limpa e se autentica no Groq.
+ * Uso geral:      /api/admin/voice-health?token=<ADMIN_API_SECRET>
+ * Por tenant:     /api/admin/voice-health?token=<ADMIN_API_SECRET>&email=<email-do-tenant>
+ *   → confere plano/bot, últimos áudios recebidos e tenta transcrever de novo o mais recente.
  */
 export async function GET(req: Request) {
-  const token = new URL(req.url).searchParams.get('token')
+  const url = new URL(req.url)
+  const token = url.searchParams.get('token')
   if (!isValidAdminToken(token)) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
+  const email = (url.searchParams.get('email') || '').trim().toLowerCase()
+  if (email) return tenantCheck(email)
 
   const raw = process.env.GROQ_API_KEY || ''
   const key = raw.trim()
@@ -46,5 +52,51 @@ export async function GET(req: Request) {
     hint: auth_ok
       ? 'Chave OK — a transcrição de áudio deve funcionar.'
       : 'Groq recusou a chave. Verifique o valor no Railway (sem espaços/quebras).'
+  })
+}
+
+/** Caminho completo do áudio para um tenant: roteamento, áudios recentes e nova tentativa. */
+async function tenantCheck(email: string) {
+  const tenant = await globalPrisma.tenant.findFirst({ where: { email } })
+  if (!tenant) return Response.json({ ok: false, reason: 'Tenant não encontrado para esse e-mail' }, { status: 404 })
+
+  const aiBot = ['pro', 'promaster'].includes(tenant.plan) && tenant.bot_enabled
+  const routing = {
+    plan: tenant.plan,
+    bot_enabled: tenant.bot_enabled,
+    menu_bot_enabled: tenant.menu_bot_enabled,
+    whatsapp_connected: tenant.whatsapp_connected,
+    audio_vai_para_ia: aiBot,
+    nota: aiBot
+      ? 'Áudio é transcrito e respondido pela IA.'
+      : 'A IA só atende áudio nos planos Pro/Promaster com o bot ligado. Neste tenant o áudio não chega à IA.'
+  }
+
+  const db = getTenantPrisma(tenant.schema_name)
+  const recent = await db.message.findMany({
+    where: { direction: 'inbound', type: 'audio' },
+    orderBy: { timestamp: 'desc' },
+    take: 5,
+    select: { content: true, media_url: true, timestamp: true }
+  }).catch(() => [])
+
+  // Tenta transcrever de novo o áudio mais recente que tenha o id guardado.
+  let retry: any = null
+  const withId = recent.find((m: any) => String(m.media_url || '').startsWith('wa-media:'))
+  if (withId && tenant.phone_number_id && tenant.whatsapp_token) {
+    const mediaId = String(withId.media_url).slice('wa-media:'.length)
+    const r = await transcribeWhatsAppAudioDetailed(
+      { phone_number_id: tenant.phone_number_id, whatsapp_token: tenant.whatsapp_token },
+      mediaId
+    )
+    retry = r.text ? { ok: true, texto: r.text.slice(0, 200) } : { ok: false, motivo: r.error }
+  }
+
+  return Response.json({
+    tenant: tenant.name,
+    roteamento: routing,
+    groq_key_presente: !!(process.env.GROQ_API_KEY || '').trim(),
+    ultimos_audios: recent.map((m: any) => ({ quando: m.timestamp, conteudo: m.content })),
+    nova_tentativa: retry ?? 'nenhum áudio recente com id guardado (envie um áudio novo depois do deploy)'
   })
 }

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { processBotResponse, processMenuBotResponse, extractContactInfo, sendWhatsAppMessage, sendTypingIndicator, type MenuOption } from '@/lib/bot'
-import { transcribeWhatsAppAudio } from '@/lib/transcribe'
+import { transcribeWhatsAppAudioDetailed } from '@/lib/transcribe'
 import { sendAppointmentEmail } from '@/lib/email'
 import { sendPushToTenant } from '@/lib/push'
 import { decodeAdMarker } from '@/lib/ad-marker'
@@ -173,18 +173,25 @@ async function processIncomingMessage(
   // Resolve o texto da mensagem (transcreve áudio quando possível)
   let resolvedText = ''
   let audioUnresolved = false // áudio recebido que NÃO pôde virar texto
+  let audioError = ''
   if (message.type === 'text') {
     resolvedText = message.text?.body || ''
   } else if (message.type === 'audio' && message.audio?.id) {
-    const transcription = await transcribeWhatsAppAudio(tenant, message.audio.id)
-    if (transcription) resolvedText = transcription
-    else audioUnresolved = true
+    const tr = await transcribeWhatsAppAudioDetailed(tenant, message.audio.id)
+    if (tr.text) resolvedText = tr.text
+    else {
+      audioUnresolved = true
+      audioError = tr.error || 'motivo desconhecido'
+      console.warn('[whatsapp webhook] áudio não transcrito', tenant.id, audioError)
+    }
   }
 
   const storedContent =
     message.type === 'audio' && resolvedText
       ? `🎤 ${resolvedText}`
-      : extractMessageContent(message)
+      : message.type === 'audio' && audioError
+        ? `[Áudio não transcrito: ${audioError.slice(0, 180)}]`
+        : extractMessageContent(message)
 
   await tenantPrisma.message.create({
     data: {
@@ -193,6 +200,8 @@ async function processIncomingMessage(
       direction: 'inbound',
       type: message.type,
       content: storedContent,
+      // Guarda o id do áudio na Meta para diagnóstico/reprocessamento.
+      ...(message.type === 'audio' && message.audio?.id ? { media_url: `wa-media:${message.audio.id}` } : {}),
       timestamp: new Date(parseInt(message.timestamp) * 1000)
     }
   })
