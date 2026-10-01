@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { isValidAdminToken } from '@/lib/admin-auth'
 import { globalPrisma, getTenantPrisma } from '@/lib/prisma-tenant'
 import { transcribeWhatsAppAudioDetailed } from '@/lib/transcribe'
+import { probeBotReply } from '@/lib/bot'
 
 /**
  * Diagnóstico da transcrição de voz (Groq Whisper).
@@ -77,8 +78,46 @@ async function tenantCheck(email: string) {
     where: { direction: 'inbound', type: 'audio' },
     orderBy: { timestamp: 'desc' },
     take: 5,
-    select: { content: true, media_url: true, timestamp: true }
+    select: { content: true, media_url: true, timestamp: true, contact_id: true }
   }).catch(() => [])
+
+  // Conversa do áudio mais recente: o que aconteceu depois dele?
+  let conversa: any = null
+  let teste_ia: any = null
+  const last: any = recent[0]
+  if (last) {
+    const msgs = await db.message.findMany({
+      where: { contact_id: last.contact_id },
+      orderBy: { timestamp: 'desc' },
+      take: 12,
+      select: { direction: true, sent_by_bot: true, type: true, content: true, timestamp: true }
+    }).catch(() => [])
+    const conv = await db.conversation.findFirst({
+      where: { contact_id: last.contact_id },
+      orderBy: { created_at: 'desc' },
+      select: { status: true }
+    }).catch(() => null)
+    const humanCutoff = Date.now() - 30 * 60 * 1000
+    const humanRecent = msgs.find((m: any) => m.direction === 'outbound' && !m.sent_by_bot && new Date(m.timestamp).getTime() >= humanCutoff)
+    conversa = {
+      status_conversa: conv?.status ?? 'sem registro',
+      handoff_pause: tenant.handoff_pause,
+      keep_responding_after_human: tenant.keep_responding_after_human,
+      humano_respondeu_nos_ultimos_30min: !!humanRecent,
+      mensagens: msgs.reverse().map((m: any) => ({
+        quando: m.timestamp,
+        quem: m.direction === 'inbound' ? 'cliente' : m.sent_by_bot ? 'bot' : 'humano',
+        tipo: m.type,
+        texto: String(m.content || '').slice(0, 140)
+      }))
+    }
+    // Testa a IA com o texto do último áudio (não envia nada ao WhatsApp).
+    const texto = String(last.content || '').replace(/^🎤\s*/, '')
+    if (texto && !texto.startsWith('[')) {
+      teste_ia = await probeBotReply(tenant as any, texto).catch((e: any) => ({ ok: false, error: e?.message || String(e) }))
+      if (teste_ia?.reply) teste_ia.reply = String(teste_ia.reply).slice(0, 400)
+    }
+  }
 
   // Tenta transcrever de novo o áudio mais recente que tenha o id guardado.
   let retry: any = null
@@ -96,7 +135,10 @@ async function tenantCheck(email: string) {
     tenant: tenant.name,
     roteamento: routing,
     groq_key_presente: !!(process.env.GROQ_API_KEY || '').trim(),
+    feature_orders: tenant.feature_orders,
     ultimos_audios: recent.map((m: any) => ({ quando: m.timestamp, conteudo: m.content })),
+    conversa_do_ultimo_audio: conversa,
+    teste_ia_com_ultimo_audio: teste_ia,
     nova_tentativa: retry ?? 'nenhum áudio recente com id guardado (envie um áudio novo depois do deploy)'
   })
 }
