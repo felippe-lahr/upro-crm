@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { isValidAdminToken } from '@/lib/admin-auth'
+import { isAdminRequest } from '@/lib/admin-auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { encrypt, decrypt } from '@/lib/crypto'
 import { tryPlatformToken } from '@/lib/wa-token'
@@ -12,7 +12,7 @@ import { tryPlatformToken } from '@/lib/wa-token'
  */
 export async function GET(req: Request) {
   const url = new URL(req.url)
-  if (!isValidAdminToken(url.searchParams.get('token'))) {
+  if (!(await isAdminRequest(url.searchParams.get('token')))) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
   const email = (url.searchParams.get('email') || '').trim().toLowerCase()

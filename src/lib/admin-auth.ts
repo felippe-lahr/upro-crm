@@ -15,3 +15,19 @@ export function isValidAdminToken(token: string | null | undefined): boolean {
   const expected = adminSecret()
   return !!expected && !!token && token === expected
 }
+
+/**
+ * Acesso aos endpoints de diagnóstico: aceita o token de administração (uso por
+ * URL) OU a sessão de um superadmin logado (uso pelo painel /admin, sem expor a
+ * chave na URL).
+ */
+export async function isAdminRequest(token: string | null | undefined): Promise<boolean> {
+  if (isValidAdminToken(token)) return true
+  try {
+    const { auth } = await import('./auth')
+    const session = await auth()
+    return (session?.user as any)?.role === 'superadmin'
+  } catch {
+    return false
+  }
+}

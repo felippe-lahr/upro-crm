@@ -54,7 +54,12 @@ export default async function AdminPage() {
       </div>
 
       <div className="p-8 space-y-8">
-        <h1 className="text-2xl font-bold text-fg">Dashboard Admin</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold text-fg">Dashboard Admin</h1>
+          <Link href="/admin/diagnostics" className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600">
+            Diagnósticos
+          </Link>
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

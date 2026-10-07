@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { isValidAdminToken } from '@/lib/admin-auth'
+import { isAdminRequest } from '@/lib/admin-auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { decrypt } from '@/lib/crypto'
 import { inspectToken } from '@/lib/wa-token'
@@ -12,7 +12,7 @@ import { inspectToken } from '@/lib/wa-token'
  * (whatsapp_token_type, whatsapp_token_expires_at, whatsapp_needs_reconnect).
  */
 export async function GET(req: Request) {
-  if (!isValidAdminToken(new URL(req.url).searchParams.get('token'))) {
+  if (!(await isAdminRequest(new URL(req.url).searchParams.get('token')))) {
     return Response.json({ error: 'Token inválido' }, { status: 401 })
   }
   const tenants = await globalPrisma.tenant.findMany({
