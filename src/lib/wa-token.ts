@@ -72,8 +72,10 @@ async function canAccessNumber(token: string, phoneNumberId: string, wabaId?: st
     const scopes: any[] = d?.data?.granular_scopes || []
     const msg = scopes.find((s) => s.scope === 'whatsapp_business_messaging')
     if (!msg) return false
-    // Sem target_ids = vale para todas as contas às quais o usuário do sistema tem acesso.
-    return !Array.isArray(msg.target_ids) || msg.target_ids.includes(String(wabaId))
+    // Só aprova se a WABA aparecer EXPLICITAMENTE nos target_ids. (Antes, a ausência
+    // de target_ids era tratada como "todas" e gerou falso positivo: Uniu/Bonitas/VIP
+    // passaram sem o usuário do sistema ter a conta atribuída.)
+    return Array.isArray(msg.target_ids) && msg.target_ids.map(String).includes(String(wabaId))
   } catch {
     return false
   }
