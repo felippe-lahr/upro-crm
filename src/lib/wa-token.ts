@@ -96,16 +96,77 @@ export async function tryPlatformToken(opts: {
   if (await canAccessNumber(sys, opts.phoneNumberId, opts.wabaId)) return { token: sys, detail: 'token da plataforma tem permissão de mensagens nesta conta' }
 
   const sysUserId = (process.env.META_SYSTEM_USER_ID || '').trim()
-  if (opts.wabaId && opts.clientToken && sysUserId) {
-    try {
-      await fetch(`${GRAPH}/${opts.wabaId}/assigned_users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user: sysUserId, tasks: ['MANAGE'], access_token: opts.clientToken })
-      })
-    } catch { /* tenta checar mesmo assim */ }
-    if (await canAccessNumber(sys, opts.phoneNumberId, opts.wabaId)) return { token: sys, detail: 'acesso concedido ao token da plataforma' }
-    return { token: null, detail: 'não foi possível dar acesso ao token da plataforma' }
+  if (opts.wabaId && sysUserId) {
+    // O popup da Meta já compartilha a WABA do cliente com o portfólio da plataforma.
+    // Então a PRÓPRIA plataforma (token dela) consegue atribuir seu usuário do sistema
+    // à WABA — sem passo manual no Business Manager. Se não der, tenta com o token do cliente.
+    const tokensToTry = [sys, opts.clientToken].filter(Boolean) as string[]
+    for (const tk of tokensToTry) {
+      try {
+        await fetch(`${GRAPH}/${opts.wabaId}/assigned_users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user: sysUserId, tasks: ['MANAGE'], access_token: tk })
+        })
+      } catch { /* checa abaixo */ }
+      if (await canAccessNumber(sys, opts.phoneNumberId, opts.wabaId)) {
+        return { token: sys, detail: 'permissão atribuída automaticamente ao token da plataforma' }
+      }
+    }
+    return { token: null, detail: 'não foi possível atribuir a conta ao usuário do sistema da plataforma' }
   }
-  return { token: null, detail: 'token da plataforma sem permissão de mensagens nesta conta (defina META_SYSTEM_USER_ID para atribuir automaticamente no próximo cadastro)' }
+  return { token: null, detail: 'token da plataforma sem permissão nesta conta — defina META_SYSTEM_USER_ID no Railway para a atribuição automática' }
+}
+
+/**
+ * Rotina automática (chamada pelo cron): leva todos os tenants conectados para o
+ * token permanente da plataforma e atualiza validade/vencimento de quem ainda
+ * não migrou. Roda no máximo a cada 6h por processo.
+ */
+let lastMigrationRun = 0
+export async function autoMigrateTokens(force = false): Promise<{ migrated: number; checked: number }> {
+  const now = Date.now()
+  if (!force && now - lastMigrationRun < 6 * 60 * 60 * 1000) return { migrated: 0, checked: 0 }
+  lastMigrationRun = now
+
+  const sys = (process.env.META_SYSTEM_USER_TOKEN || '').trim()
+  const { globalPrisma } = await import('./prisma-tenant')
+  const { decrypt, encrypt } = await import('./crypto')
+  const tenants = await globalPrisma.tenant.findMany({
+    where: { whatsapp_connected: true, whatsapp_token: { not: null }, phone_number_id: { not: null } },
+    select: { id: true, waba_id: true, phone_number_id: true, whatsapp_token: true }
+  }).catch(() => [])
+
+  let migrated = 0
+  let checked = 0
+  for (const t of tenants) {
+    let current = ''
+    try { current = decrypt(t.whatsapp_token!) } catch { continue }
+    if (sys && current === sys) continue // já no token permanente
+    checked++
+    const r = sys
+      ? await tryPlatformToken({ wabaId: t.waba_id, phoneNumberId: t.phone_number_id!, clientToken: current })
+      : { token: null as string | null, detail: '' }
+    if (r.token) {
+      await globalPrisma.tenant.update({
+        where: { id: t.id },
+        data: {
+          whatsapp_token_prev: t.whatsapp_token,
+          whatsapp_token: encrypt(r.token),
+          whatsapp_token_type: 'SYSTEM_USER',
+          whatsapp_token_expires_at: null,
+          whatsapp_needs_reconnect: false
+        }
+      }).catch(() => {})
+      migrated++
+      console.log('[tokens] tenant migrado para o token permanente', t.id)
+    } else {
+      const info = await inspectToken(current)
+      await globalPrisma.tenant.update({
+        where: { id: t.id },
+        data: { whatsapp_token_type: info.type, whatsapp_token_expires_at: info.expires_at, whatsapp_needs_reconnect: !info.valid }
+      }).catch(() => {})
+    }
+  }
+  return { migrated, checked }
 }

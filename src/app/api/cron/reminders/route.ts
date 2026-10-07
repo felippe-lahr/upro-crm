@@ -5,6 +5,7 @@ import { sendWhatsAppButtons } from '@/lib/bot'
 import { sendAppointmentEmail } from '@/lib/email'
 import { syncTenantProducts } from '@/lib/product-feed'
 import { forwardPendingSummaries } from '@/lib/summary-forward'
+import { autoMigrateTokens } from '@/lib/wa-token'
 
 // Sincroniza o catálogo Promaster no máximo ~1x/hora por tenant, mesmo que este
 // cron rode a cada ~15 min. Assim não é preciso configurar um job separado.
@@ -139,11 +140,13 @@ export async function GET(req: Request) {
 
   // Encaminha resumos completos (4.1) das conversas que assentaram. Best-effort.
   const summariesForwarded = await forwardPendingSummaries(now).catch(() => 0)
+  // Tokens do WhatsApp: migra para o token permanente da plataforma (a cada 6h).
+  const tokens = await autoMigrateTokens().catch(() => ({ migrated: 0, checked: 0 }))
 
   // Faxina: apaga cliques de anúncio (AdClick) com mais de 30 dias. Os cliques
   // já casados copiaram o gclid para o contato; os não casados viram lixo.
   const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   await globalPrisma.adClick.deleteMany({ where: { created_at: { lt: cutoff } } }).catch(() => {})
 
-  return Response.json({ ok: true, tenants: tenants.length, reminders_sent: sent, catalogs_synced: catalogsSynced, summaries_forwarded: summariesForwarded })
+  return Response.json({ ok: true, tenants: tenants.length, reminders_sent: sent, catalogs_synced: catalogsSynced, summaries_forwarded: summariesForwarded, tokens })
 }
