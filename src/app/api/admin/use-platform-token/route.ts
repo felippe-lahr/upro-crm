@@ -18,6 +18,16 @@ export async function GET(req: Request) {
   const email = (url.searchParams.get('email') || '').trim().toLowerCase()
   const t = await globalPrisma.tenant.findFirst({ where: { email } })
   if (!t) return Response.json({ ok: false, error: 'Tenant não encontrado' }, { status: 404 })
+
+  // &undo=1 volta para o token anterior guardado.
+  if (url.searchParams.get('undo') === '1') {
+    if (!(t as any).whatsapp_token_prev) return Response.json({ ok: false, error: 'Não há token anterior guardado' })
+    await globalPrisma.tenant.update({
+      where: { id: t.id },
+      data: { whatsapp_token: (t as any).whatsapp_token_prev, whatsapp_token_prev: t.whatsapp_token, whatsapp_needs_reconnect: false } as any
+    })
+    return Response.json({ ok: true, tenant: t.name, resultado: 'Token anterior restaurado.' })
+  }
   if (!t.phone_number_id) return Response.json({ ok: false, error: 'Tenant sem número conectado' }, { status: 400 })
 
   let clientToken: string | null = null
@@ -36,6 +46,7 @@ export async function GET(req: Request) {
   await globalPrisma.tenant.update({
     where: { id: t.id },
     data: {
+      whatsapp_token_prev: t.whatsapp_token, // guarda para poder desfazer (&undo=1)
       whatsapp_token: encrypt(r.token),
       whatsapp_connected: true,
       whatsapp_needs_reconnect: false,

@@ -24,6 +24,7 @@ model Tenant {
   whatsapp_connected  Boolean  @default(false)
   whatsapp_token_expires_at DateTime? // vencimento do token (null = não expira ou desconhecido)
   whatsapp_token_type       String?   // USER (expira) | SYSTEM_USER / integração (não expira)
+  whatsapp_token_prev       String?  // token anterior (criptografado) — permite desfazer uma troca
   whatsapp_needs_reconnect  Boolean  @default(false) // Meta recusou o token (erro 190) — precisa reconectar
   display_phone_number String? // número legível conectado (ex.: +55 11 9...) — via Graph
   verified_name        String? // nome verificado do WhatsApp Business — via Graph
