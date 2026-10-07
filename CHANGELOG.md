@@ -9,6 +9,8 @@ existente), **Corrigido** (bug), **Removido**, **Segurança**.
 
 ## [Não lançado]
 
+## [1.1.0] — 2026-10-07
+
 ### Adicionado
 - **Guardar imagens e documentos** recebidos no WhatsApp (recurso liberado por tenant pelo superadmin em "Recursos liberados"). Arquivos no Cloudflare R2, exibidos na conversa por link temporário protegido; apagados ao excluir o contato.
 
