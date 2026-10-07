@@ -44,6 +44,7 @@ export default async function AdminPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-upro-novo.png" alt="UProCRM" className="h-7 w-7 rounded-md" />
           <span className="font-bold text-fg">UProCRM Admin</span>
+          <span className="rounded-full bg-surface2 px-2 py-0.5 text-[11px] font-semibold text-muted">v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
         </div>
         <Link
           href="/dashboard"

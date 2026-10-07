@@ -1,5 +1,13 @@
+import { readFileSync } from 'fs'
+
+// Versão do app (package.json) exposta para a interface.
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: pkg.version
+  },
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs', 'web-push']
   },

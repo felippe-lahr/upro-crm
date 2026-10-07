@@ -113,6 +113,7 @@ export function AppShell({
         </div>
       </div>
       <SignOutButton />
+      <p className="mt-2 px-3 text-[11px] text-faint">UProCRM v{process.env.NEXT_PUBLIC_APP_VERSION}</p>
     </div>
   )
 
