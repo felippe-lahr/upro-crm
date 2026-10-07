@@ -11,6 +11,7 @@ interface TenantLite {
   plan: string
   feature_summary_forward?: boolean
   feature_orders?: boolean
+  feature_media_storage?: boolean
 }
 
 const PLANS = [
@@ -39,12 +40,13 @@ export function EditTenant({ tenant }: { tenant: TenantLite }) {
   const [newPassword, setNewPassword] = useState('')
   const [featureSummaryForward, setFeatureSummaryForward] = useState(!!tenant.feature_summary_forward)
   const [featureOrders, setFeatureOrders] = useState(!!tenant.feature_orders)
+  const [featureMedia, setFeatureMedia] = useState(!!tenant.feature_media_storage)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   function reset() {
     setName(tenant.name); setEmail(tenant.email); setStatus(tenant.status); setPlan(tenant.plan)
-    setTrialDays(''); setNewPassword(''); setFeatureSummaryForward(!!tenant.feature_summary_forward); setFeatureOrders(!!tenant.feature_orders); setError('')
+    setTrialDays(''); setNewPassword(''); setFeatureSummaryForward(!!tenant.feature_summary_forward); setFeatureOrders(!!tenant.feature_orders); setFeatureMedia(!!tenant.feature_media_storage); setError('')
   }
 
   async function save() {
@@ -55,7 +57,7 @@ export function EditTenant({ tenant }: { tenant: TenantLite }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenantId: tenant.id, name, email, status, plan,
-          featureSummaryForward, featureOrders,
+          featureSummaryForward, featureOrders, featureMediaStorage: featureMedia,
           ...(trialDays !== '' ? { trialDays: Number(trialDays) } : {}),
           ...(newPassword ? { newPassword } : {})
         })
@@ -133,6 +135,13 @@ export function EditTenant({ tenant }: { tenant: TenantLite }) {
                 <span className="text-sm text-fg">
                   Resumo de pedido
                   <span className="block text-xs text-muted">O bot monta pedidos a partir do catálogo no prompt, gera um PDF (enviado ao cliente) e mostra a aba “Pedidos” no painel.</span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2.5 py-1">
+                <input type="checkbox" checked={featureMedia} onChange={(e) => setFeatureMedia(e.target.checked)} className="mt-0.5" />
+                <span className="text-sm text-fg">
+                  Guardar imagens e documentos
+                  <span className="block text-xs text-muted">Salva as imagens e documentos que os contatos enviam e mostra na conversa (armazenamento Cloudflare R2, retenção de 12 meses).</span>
                 </span>
               </label>
             </div>

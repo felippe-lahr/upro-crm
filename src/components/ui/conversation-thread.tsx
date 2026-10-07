@@ -27,6 +27,8 @@ interface Msg {
   id: string
   direction: string
   content: string | null
+  type?: string
+  hasMedia?: boolean
   sent_by_bot: boolean
   timestamp: string
 }
@@ -221,7 +223,30 @@ export function ConversationThread({
                 {m.sent_by_bot && (
                   <span className="mb-0.5 block text-[10px] uppercase opacity-70">🤖 bot</span>
                 )}
-                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.content || '[mídia]'}</p>
+                {m.hasMedia && m.type === 'image' && (
+                  <a href={`/api/media/${m.id}`} target="_blank" rel="noopener noreferrer" className="mb-1.5 block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/media/${m.id}`}
+                      alt="Imagem enviada pelo contato"
+                      loading="lazy"
+                      className="max-h-72 w-full rounded-xl object-cover"
+                    />
+                  </a>
+                )}
+                {m.hasMedia && m.type === 'document' && (
+                  <a
+                    href={`/api/media/${m.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mb-1.5 flex items-center gap-2 rounded-xl border border-line bg-background px-3 py-2 text-xs font-semibold text-brand hover:bg-surface2"
+                  >
+                    📄 Abrir documento
+                  </a>
+                )}
+                {!(m.hasMedia && m.type === 'image' && (m.content === '[Imagem]' || !m.content)) && (
+                  <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.content || '[mídia]'}</p>
+                )}
                 <span className="mt-1 block text-right text-[10px] opacity-60">
                   {new Date(m.timestamp).toLocaleTimeString('pt-BR', {
                     hour: '2-digit',

@@ -19,8 +19,10 @@ export async function GET(req: Request) {
   const messages = await db.message.findMany({
     where: { contact_id: contactId },
     orderBy: { timestamp: 'asc' },
-    select: { id: true, direction: true, content: true, sent_by_bot: true, timestamp: true }
+    select: { id: true, direction: true, content: true, type: true, media_url: true, sent_by_bot: true, timestamp: true }
   })
 
-  return Response.json({ messages })
+  return Response.json({
+    messages: messages.map(({ media_url, ...m }: any) => ({ ...m, hasMedia: String(media_url || '').startsWith('r2:') }))
+  })
 }

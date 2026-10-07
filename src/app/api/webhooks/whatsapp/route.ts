@@ -7,6 +7,7 @@ import { sendAppointmentEmail } from '@/lib/email'
 import { sendPushToTenant } from '@/lib/push'
 import { decodeAdMarker } from '@/lib/ad-marker'
 import { isTokenError } from '@/lib/wa-token'
+import { storeWhatsAppMedia } from '@/lib/storage'
 import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string | null): boolean {
@@ -197,6 +198,16 @@ async function processIncomingMessage(
         ? `[Áudio não transcrito: ${audioError.slice(0, 180)}]`
         : extractMessageContent(message)
 
+  // Imagens e documentos: guarda o arquivo (recurso liberado pelo admin).
+  let storedMedia: string | null = null
+  if ((message.type === 'image' || message.type === 'document') && (tenant as any).feature_media_storage) {
+    const m = message[message.type]
+    storedMedia = await storeWhatsAppMedia({
+      tenant, mediaId: m?.id, schemaName: tenant.schema_name, contactId: dbContact.id,
+      messageKey: message.id, filename: m?.filename || null
+    })
+  }
+
   await tenantPrisma.message.create({
     data: {
       whatsapp_id: message.id,
@@ -206,6 +217,7 @@ async function processIncomingMessage(
       content: storedContent,
       // Guarda o id do áudio na Meta para diagnóstico/reprocessamento.
       ...(message.type === 'audio' && message.audio?.id ? { media_url: `wa-media:${message.audio.id}` } : {}),
+      ...(storedMedia ? { media_url: storedMedia } : {}),
       timestamp: new Date(parseInt(message.timestamp) * 1000)
     }
   })

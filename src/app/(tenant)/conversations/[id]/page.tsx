@@ -61,6 +61,8 @@ export default async function ConversationPage({
         id: m.id,
         direction: m.direction,
         content: m.content,
+        type: m.type,
+        hasMedia: String(m.media_url || '').startsWith('r2:'),
         sent_by_bot: m.sent_by_bot,
         timestamp: m.timestamp.toISOString()
       }))}

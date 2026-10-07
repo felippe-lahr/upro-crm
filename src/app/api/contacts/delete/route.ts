@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { auth } from '@/lib/auth'
 import { getTenantPrisma } from '@/lib/prisma-tenant'
+import { deleteContactMedia } from '@/lib/storage'
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
     const db = getTenantPrisma(schemaName)
     // Mensagens e conversas são removidas em cascata (onDelete: Cascade)
     await db.contact.delete({ where: { id: contactId } })
+    // Apaga também as imagens/documentos guardados deste contato (LGPD).
+    deleteContactMedia(schemaName, contactId).catch(() => {})
     return Response.json({ ok: true })
   } catch (e) {
     return Response.json(

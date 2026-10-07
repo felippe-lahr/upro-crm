@@ -50,6 +50,8 @@ model Tenant {
   // Resumo de pedido: o bot monta um pedido a partir do catálogo no prompt e gera
   // um PDF (não conclui a venda — vai para um vendedor). Entitlement do superadmin.
   feature_orders           Boolean @default(false)
+  // Guardar imagens/documentos recebidos (Cloudflare R2). Entitlement do superadmin.
+  feature_media_storage    Boolean @default(false)
   summary_forward_number   String? // destino E.164 (só dígitos)
   summary_forward_template String? // nome do template aprovado na WABA
   last_send_status         Json?   // diagnóstico: último status de entrega recebido da Meta (delivered/failed + erro)
