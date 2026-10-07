@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { isValidAdminToken } from '@/lib/admin-auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { encrypt } from '@/lib/crypto'
+import { inspectToken } from '@/lib/wa-token'
 
 /**
  * Atalho para conectar manualmente um número de WhatsApp a um tenant (teste).
@@ -54,9 +55,18 @@ export async function POST(req: Request) {
     )
   }
 
+  // Valida o token na Meta antes de salvar e registra tipo/vencimento.
+  const info = await inspectToken(String(access_token))
+  if (!info.valid) {
+    return Response.json({ error: `A Meta recusou este token: ${info.error}` }, { status: 400 })
+  }
+
   await globalPrisma.tenant.update({
     where: { id: tenant.id },
     data: {
+      whatsapp_needs_reconnect: false,
+      whatsapp_token_type: info.type,
+      whatsapp_token_expires_at: info.expires_at,
       phone_number_id: String(phone_number_id),
       whatsapp_token: encrypt(String(access_token)),
       waba_id: waba_id ? String(waba_id) : tenant.waba_id,
@@ -69,6 +79,8 @@ export async function POST(req: Request) {
     ok: true,
     tenant: tenant.email,
     phone_number_id: String(phone_number_id),
-    plan: plan ? String(plan) : tenant.plan
+    plan: plan ? String(plan) : tenant.plan,
+    token_tipo: info.type,
+    token_vence_em: info.expires_at ? info.expires_at.toISOString() : 'não expira'
   })
 }

@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { encrypt } from '@/lib/crypto'
+import { extendUserToken } from '@/lib/wa-token'
 
 // Desconecta o WhatsApp do tenant (limpa credenciais) para reconectar do zero.
 export async function DELETE() {
@@ -22,7 +23,11 @@ export async function DELETE() {
 
   await globalPrisma.tenant.update({
     where: { id: tenantId },
-    data: { waba_id: null, phone_number_id: null, whatsapp_token: null, whatsapp_connected: false, display_phone_number: null, verified_name: null }
+    data: {
+      waba_id: null, phone_number_id: null, whatsapp_token: null, whatsapp_connected: false,
+      display_phone_number: null, verified_name: null,
+      whatsapp_needs_reconnect: false, whatsapp_token_type: null, whatsapp_token_expires_at: null
+    }
   })
   return Response.json({ ok: true })
 }
@@ -58,10 +63,14 @@ export async function POST(req: NextRequest) {
     const codeEnc = encodeURIComponent(code || '')
 
     let tokenData: any = null
-    let accessToken: string | undefined = directToken || undefined
+    // PRIORIDADE: trocar o código do popup. Isso devolve um token de integração da
+    // empresa, que NÃO expira. O token "direto" do SDK é de USUÁRIO e expira
+    // (horas ou ~60 dias) — usado só como último recurso, estendido e com
+    // vencimento registrado. (Antes o direto tinha preferência: foi o que fez o
+    // token do Cinthia Claro vencer.)
+    let accessToken: string | undefined
 
-    // Só faz a troca de código quando o SDK NÃO devolveu um token direto.
-    if (!accessToken && code) {
+    if (code) {
       for (const ru of redirectCandidates) {
         const rp = ru === null ? '' : `&redirect_uri=${encodeURIComponent(ru)}`
         const url = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${codeEnc}${rp}`
@@ -74,6 +83,12 @@ export async function POST(req: NextRequest) {
         }
         console.warn('[whatsapp connect] try redirect_uri', ru === null ? '(none)' : `"${ru}"`, '->', tokenData?.error?.message)
       }
+    }
+
+    // Último recurso: token direto do SDK (de usuário) — estende para ~60 dias.
+    if (!accessToken && directToken && !(body?.sessionInfo && process.env.META_SYSTEM_USER_TOKEN)) {
+      accessToken = (await extendUserToken(directToken)) || directToken
+      console.warn('[whatsapp connect] usando token de USUÁRIO (expira) — troca do código falhou')
     }
 
     // ── Fallback: session info do Embedded Signup + token de sistema ──
@@ -105,7 +120,10 @@ export async function POST(req: NextRequest) {
 
         await globalPrisma.tenant.update({
           where: { id: tenantId },
-          data: { waba_id: wabaId, phone_number_id: phoneNumberId, whatsapp_token: encrypt(sysToken), whatsapp_connected: true }
+          data: {
+            waba_id: wabaId, phone_number_id: phoneNumberId, whatsapp_token: encrypt(sysToken), whatsapp_connected: true,
+            whatsapp_needs_reconnect: false, whatsapp_token_type: 'SYSTEM_USER', whatsapp_token_expires_at: null
+          }
         })
         console.log('[whatsapp connect] connected via session info + system token')
         return Response.json({ success: true })
@@ -128,6 +146,9 @@ export async function POST(req: NextRequest) {
         `access_token=${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`
     )
     const debugData = await debugRes.json()
+    const tokenType: string | null = debugData.data?.type || null
+    const expSec = Number(debugData.data?.expires_at || 0)
+    const tokenExpires = expSec > 0 ? new Date(expSec * 1000) : null
     const wabaId = debugData.data?.granular_scopes
       ?.find((s: any) => s.scope === 'whatsapp_business_management')
       ?.target_ids?.[0]
@@ -168,7 +189,10 @@ export async function POST(req: NextRequest) {
         waba_id: wabaId,
         phone_number_id: phoneNumberId,
         whatsapp_token: encrypt(accessToken),
-        whatsapp_connected: true
+        whatsapp_connected: true,
+        whatsapp_needs_reconnect: false,
+        whatsapp_token_type: tokenType,
+        whatsapp_token_expires_at: tokenExpires
       }
     })
 

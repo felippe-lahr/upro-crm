@@ -22,10 +22,18 @@ export default async function TenantLayout({
   const schemaName = (session.user as any).schemaName
   const tenantId = (session.user as any).tenantId
   let ordersEnabled = false
+  let waNeedsReconnect = false
+  let waExpiresSoon: Date | null = null
   if (tenantId) {
     try {
-      const t = await globalPrisma.tenant.findUnique({ where: { id: tenantId }, select: { feature_orders: true } })
+      const t = await globalPrisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { feature_orders: true, whatsapp_needs_reconnect: true, whatsapp_token_expires_at: true, whatsapp_connected: true }
+      })
       ordersEnabled = !!t?.feature_orders
+      waNeedsReconnect = !!t?.whatsapp_needs_reconnect
+      const exp = t?.whatsapp_connected ? t?.whatsapp_token_expires_at : null
+      if (exp && exp.getTime() - Date.now() < 10 * 24 * 60 * 60 * 1000) waExpiresSoon = exp
     } catch { /* ignore */ }
   }
   let unread = 0
@@ -57,6 +65,21 @@ export default async function TenantLayout({
       userName={session.user.name}
       userEmail={session.user.email}
     >
+      {(waNeedsReconnect || waExpiresSoon) && (
+        <div className="m-4 mb-0 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm sm:mx-8 sm:mt-6">
+          <p className="font-semibold text-red-500">
+            {waNeedsReconnect ? 'Seu WhatsApp está desconectado — o bot não consegue responder' : 'A conexão do seu WhatsApp vence em breve'}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {waNeedsReconnect
+              ? 'A Meta recusou o acesso desta conta (token expirado ou revogado). Reconecte o WhatsApp em Configurações para o atendimento voltar.'
+              : `O acesso vence em ${waExpiresSoon!.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Reconecte em Configurações para não interromper o atendimento.`}
+          </p>
+          <a href="/settings" className="mt-2 inline-block rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600">
+            Ir para Configurações
+          </a>
+        </div>
+      )}
       {children}
     </AppShell>
   )

@@ -6,6 +6,7 @@ import { transcribeWhatsAppAudioDetailed } from '@/lib/transcribe'
 import { sendAppointmentEmail } from '@/lib/email'
 import { sendPushToTenant } from '@/lib/push'
 import { decodeAdMarker } from '@/lib/ad-marker'
+import { isTokenError } from '@/lib/wa-token'
 import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string | null): boolean {
@@ -182,6 +183,9 @@ async function processIncomingMessage(
     else {
       audioUnresolved = true
       audioError = tr.error || 'motivo desconhecido'
+      if (isTokenError(audioError) || /HTTP 401/.test(audioError)) {
+        globalPrisma.tenant.update({ where: { id: tenant.id }, data: { whatsapp_needs_reconnect: true } as any }).catch(() => {})
+      }
       console.warn('[whatsapp webhook] áudio não transcrito', tenant.id, audioError)
     }
   }
@@ -329,20 +333,27 @@ async function processIncomingMessage(
       } catch (err: any) {
         console.error('[whatsapp webhook] processBotResponse failed', err?.message || String(err), err?.stack)
         // Registra a falha para diagnóstico (antes não sobrava rastro).
+        const errMsg = String(err?.message || err)
+        const tokenBroken = isTokenError(errMsg)
         globalPrisma.tenant.update({
           where: { id: tenant.id },
-          data: { last_bot_error: {
-            at: new Date().toISOString(), contact_id: dbContact.id, type: message.type,
-            error: String(err?.message || err).slice(0, 500),
-            status: err?.status ?? null
-          } } as any
+          data: {
+            last_bot_error: {
+              at: new Date().toISOString(), contact_id: dbContact.id, type: message.type,
+              error: errMsg.slice(0, 500), status: err?.status ?? null
+            },
+            // Token do WhatsApp recusado pela Meta → avisa no painel para reconectar.
+            ...(tokenBroken ? { whatsapp_needs_reconnect: true } : {})
+          } as any
         }).catch(() => {})
-        // Fallback: nunca deixa o cliente no silêncio quando a IA falha/expira.
-        const fallback = 'Oi! Estou com uma instabilidade momentânea por aqui. Já já te respondo — ou, se preferir, me manda a mensagem de novo. 🙏'
-        await sendWhatsAppMessage(tenant, message.from, fallback).catch(() => {})
-        await tenantPrisma.message.create({
-          data: { contact_id: dbContact.id, direction: 'outbound', type: 'text', content: fallback, sent_by_bot: true, timestamp: new Date() }
-        }).catch(() => {})
+        // Com o token quebrado nenhuma mensagem sai: não grava um falso "instabilidade".
+        if (!tokenBroken) {
+          const fallback = 'Oi! Estou com uma instabilidade momentânea por aqui. Já já te respondo — ou, se preferir, me manda a mensagem de novo. 🙏'
+          await sendWhatsAppMessage(tenant, message.from, fallback).catch(() => {})
+          await tenantPrisma.message.create({
+            data: { contact_id: dbContact.id, direction: 'outbound', type: 'text', content: fallback, sent_by_bot: true, timestamp: new Date() }
+          }).catch(() => {})
+        }
       }
       try {
         await extractContactInfo(tenant, dbContact)
