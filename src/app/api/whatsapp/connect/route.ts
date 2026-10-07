@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { globalPrisma } from '@/lib/prisma-tenant'
 import { encrypt } from '@/lib/crypto'
-import { extendUserToken } from '@/lib/wa-token'
+import { extendUserToken, tryPlatformToken } from '@/lib/wa-token'
 
 // Desconecta o WhatsApp do tenant (limpa credenciais) para reconectar do zero.
 export async function DELETE() {
@@ -183,20 +183,27 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({ access_token: accessToken })
     })
 
+    // Prefere o token PERMANENTE da plataforma; o do cadastro costuma expirar (~60 dias).
+    const platform = await tryPlatformToken({ wabaId, phoneNumberId, clientToken: accessToken })
+    console.log('[whatsapp connect] token da plataforma:', platform.detail)
+    const finalToken = platform.token || accessToken
+    const finalType = platform.token ? 'SYSTEM_USER' : tokenType
+    const finalExpires = platform.token ? null : tokenExpires
+
     await globalPrisma.tenant.update({
       where: { id: tenantId },
       data: {
         waba_id: wabaId,
         phone_number_id: phoneNumberId,
-        whatsapp_token: encrypt(accessToken),
+        whatsapp_token: encrypt(finalToken),
         whatsapp_connected: true,
         whatsapp_needs_reconnect: false,
-        whatsapp_token_type: tokenType,
-        whatsapp_token_expires_at: tokenExpires
+        whatsapp_token_type: finalType,
+        whatsapp_token_expires_at: finalExpires
       }
     })
 
-    return Response.json({ success: true })
+    return Response.json({ success: true, permanent: !!platform.token, token_note: platform.detail })
   } catch (error) {
     console.error('WhatsApp connect error:', error)
     return Response.json({ error: 'Failed to connect WhatsApp' }, { status: 500 })

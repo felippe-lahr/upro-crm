@@ -56,3 +56,44 @@ export function isTokenError(message: string | undefined | null): boolean {
   const m = String(message || '')
   return /"code"\s*:\s*190\b|OAuthException.*190|code 190|Error validating access token|Session has expired/i.test(m)
 }
+
+/** O token tem acesso a este número? (consulta simples na Graph API) */
+async function canAccessNumber(token: string, phoneNumberId: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${GRAPH}/${phoneNumberId}?fields=id`, { headers: { Authorization: `Bearer ${token}` } })
+    return r.ok
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Tenta usar o token PERMANENTE da plataforma (META_SYSTEM_USER_TOKEN) para este
+ * número. Se ainda não tiver acesso e houver META_SYSTEM_USER_ID, usa o token do
+ * cliente para atribuir a WABA ao usuário do sistema da plataforma e tenta de novo.
+ * Retorna o token permanente quando funcionou; senão, null.
+ */
+export async function tryPlatformToken(opts: {
+  wabaId: string | null | undefined
+  phoneNumberId: string
+  clientToken?: string | null
+}): Promise<{ token: string | null; detail: string }> {
+  const sys = (process.env.META_SYSTEM_USER_TOKEN || '').trim()
+  if (!sys) return { token: null, detail: 'META_SYSTEM_USER_TOKEN não configurado' }
+
+  if (await canAccessNumber(sys, opts.phoneNumberId)) return { token: sys, detail: 'token da plataforma já tem acesso' }
+
+  const sysUserId = (process.env.META_SYSTEM_USER_ID || '').trim()
+  if (opts.wabaId && opts.clientToken && sysUserId) {
+    try {
+      await fetch(`${GRAPH}/${opts.wabaId}/assigned_users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: sysUserId, tasks: ['MANAGE'], access_token: opts.clientToken })
+      })
+    } catch { /* tenta checar mesmo assim */ }
+    if (await canAccessNumber(sys, opts.phoneNumberId)) return { token: sys, detail: 'acesso concedido ao token da plataforma' }
+    return { token: null, detail: 'não foi possível dar acesso ao token da plataforma' }
+  }
+  return { token: null, detail: 'token da plataforma sem acesso a este número (defina META_SYSTEM_USER_ID para atribuir automaticamente)' }
+}
